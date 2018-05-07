@@ -8,8 +8,8 @@ import (
 type Method interface {
 	Name() string
 	FrameType() byte
-	ClassId() uint16
-	MethodId() uint16
+	ClassIdentifier() uint16
+	MethodIdentifier() uint16
 	Read(reader io.Reader) (err error)
 	Write(writer io.Writer) (err error)
 }
@@ -333,7 +333,9 @@ func (method *ConnectionOpen) Read(reader io.Reader) (err error) {
 		return err
 	}
 
-	method.Reserved2 = true // @todo implement bits readers
+	bits, err := ReadOctet(reader)
+
+	method.Reserved2 = bits&(1<<0) != 0
 
 	return
 }
@@ -551,7 +553,9 @@ func (method *ChannelFlow) MethodIdentifier() uint16 {
 
 func (method *ChannelFlow) Read(reader io.Reader) (err error) {
 
-	method.Active = true // @todo implement bits readers
+	bits, err := ReadOctet(reader)
+
+	method.Active = bits&(1<<0) != 0
 
 	return
 }
@@ -582,7 +586,9 @@ func (method *ChannelFlowOk) MethodIdentifier() uint16 {
 
 func (method *ChannelFlowOk) Read(reader io.Reader) (err error) {
 
-	method.Active = true // @todo implement bits readers
+	bits, err := ReadOctet(reader)
+
+	method.Active = bits&(1<<0) != 0
 
 	return
 }
@@ -729,15 +735,17 @@ func (method *ExchangeDeclare) Read(reader io.Reader) (err error) {
 		return err
 	}
 
-	method.Passive = true // @todo implement bits readers
+	bits, err := ReadOctet(reader)
 
-	method.Durable = true // @todo implement bits readers
+	method.Passive = bits&(1<<0) != 0
 
-	method.Reserved2 = true // @todo implement bits readers
+	method.Durable = bits&(1<<1) != 0
 
-	method.Reserved3 = true // @todo implement bits readers
+	method.Reserved2 = bits&(1<<2) != 0
 
-	method.NoWait = true // @todo implement bits readers
+	method.Reserved3 = bits&(1<<3) != 0
+
+	method.NoWait = bits&(1<<4) != 0
 
 	method.Arguments, err = ReadTable(reader)
 	if err != nil {
@@ -817,9 +825,11 @@ func (method *ExchangeDelete) Read(reader io.Reader) (err error) {
 		return err
 	}
 
-	method.IfUnused = true // @todo implement bits readers
+	bits, err := ReadOctet(reader)
 
-	method.NoWait = true // @todo implement bits readers
+	method.IfUnused = bits&(1<<0) != 0
+
+	method.NoWait = bits&(1<<1) != 0
 
 	return
 }
@@ -904,15 +914,17 @@ func (method *QueueDeclare) Read(reader io.Reader) (err error) {
 		return err
 	}
 
-	method.Passive = true // @todo implement bits readers
+	bits, err := ReadOctet(reader)
 
-	method.Durable = true // @todo implement bits readers
+	method.Passive = bits&(1<<0) != 0
 
-	method.Exclusive = true // @todo implement bits readers
+	method.Durable = bits&(1<<1) != 0
 
-	method.AutoDelete = true // @todo implement bits readers
+	method.Exclusive = bits&(1<<2) != 0
 
-	method.NoWait = true // @todo implement bits readers
+	method.AutoDelete = bits&(1<<3) != 0
+
+	method.NoWait = bits&(1<<4) != 0
 
 	method.Arguments, err = ReadTable(reader)
 	if err != nil {
@@ -1026,7 +1038,9 @@ func (method *QueueBind) Read(reader io.Reader) (err error) {
 		return err
 	}
 
-	method.NoWait = true // @todo implement bits readers
+	bits, err := ReadOctet(reader)
+
+	method.NoWait = bits&(1<<0) != 0
 
 	method.Arguments, err = ReadTable(reader)
 	if err != nil {
@@ -1194,7 +1208,9 @@ func (method *QueuePurge) Read(reader io.Reader) (err error) {
 		return err
 	}
 
-	method.NoWait = true // @todo implement bits readers
+	bits, err := ReadOctet(reader)
+
+	method.NoWait = bits&(1<<0) != 0
 
 	return
 }
@@ -1277,11 +1293,13 @@ func (method *QueueDelete) Read(reader io.Reader) (err error) {
 		return err
 	}
 
-	method.IfUnused = true // @todo implement bits readers
+	bits, err := ReadOctet(reader)
 
-	method.IfEmpty = true // @todo implement bits readers
+	method.IfUnused = bits&(1<<0) != 0
 
-	method.NoWait = true // @todo implement bits readers
+	method.IfEmpty = bits&(1<<1) != 0
+
+	method.NoWait = bits&(1<<2) != 0
 
 	return
 }
@@ -1362,7 +1380,9 @@ func (method *BasicQos) Read(reader io.Reader) (err error) {
 		return err
 	}
 
-	method.Global = true // @todo implement bits readers
+	bits, err := ReadOctet(reader)
+
+	method.Global = bits&(1<<0) != 0
 
 	return
 }
@@ -1450,13 +1470,15 @@ func (method *BasicConsume) Read(reader io.Reader) (err error) {
 		return err
 	}
 
-	method.NoLocal = true // @todo implement bits readers
+	bits, err := ReadOctet(reader)
 
-	method.NoAck = true // @todo implement bits readers
+	method.NoLocal = bits&(1<<0) != 0
 
-	method.Exclusive = true // @todo implement bits readers
+	method.NoAck = bits&(1<<1) != 0
 
-	method.NoWait = true // @todo implement bits readers
+	method.Exclusive = bits&(1<<2) != 0
+
+	method.NoWait = bits&(1<<3) != 0
 
 	method.Arguments, err = ReadTable(reader)
 	if err != nil {
@@ -1533,7 +1555,9 @@ func (method *BasicCancel) Read(reader io.Reader) (err error) {
 		return err
 	}
 
-	method.NoWait = true // @todo implement bits readers
+	bits, err := ReadOctet(reader)
+
+	method.NoWait = bits&(1<<0) != 0
 
 	return
 }
@@ -1621,9 +1645,11 @@ func (method *BasicPublish) Read(reader io.Reader) (err error) {
 		return err
 	}
 
-	method.Mandatory = true // @todo implement bits readers
+	bits, err := ReadOctet(reader)
 
-	method.Immediate = true // @todo implement bits readers
+	method.Mandatory = bits&(1<<0) != 0
+
+	method.Immediate = bits&(1<<1) != 0
 
 	return
 }
@@ -1727,7 +1753,9 @@ func (method *BasicDeliver) Read(reader io.Reader) (err error) {
 		return err
 	}
 
-	method.Redelivered = true // @todo implement bits readers
+	bits, err := ReadOctet(reader)
+
+	method.Redelivered = bits&(1<<0) != 0
 
 	method.Exchange, err = ReadShortstr(reader)
 	if err != nil {
@@ -1782,7 +1810,9 @@ func (method *BasicGet) Read(reader io.Reader) (err error) {
 		return err
 	}
 
-	method.NoAck = true // @todo implement bits readers
+	bits, err := ReadOctet(reader)
+
+	method.NoAck = bits&(1<<0) != 0
 
 	return
 }
@@ -1826,7 +1856,9 @@ func (method *BasicGetOk) Read(reader io.Reader) (err error) {
 		return err
 	}
 
-	method.Redelivered = true // @todo implement bits readers
+	bits, err := ReadOctet(reader)
+
+	method.Redelivered = bits&(1<<0) != 0
 
 	method.Exchange, err = ReadShortstr(reader)
 	if err != nil {
@@ -1913,7 +1945,9 @@ func (method *BasicAck) Read(reader io.Reader) (err error) {
 		return err
 	}
 
-	method.Multiple = true // @todo implement bits readers
+	bits, err := ReadOctet(reader)
+
+	method.Multiple = bits&(1<<0) != 0
 
 	return
 }
@@ -1951,7 +1985,9 @@ func (method *BasicReject) Read(reader io.Reader) (err error) {
 		return err
 	}
 
-	method.Requeue = true // @todo implement bits readers
+	bits, err := ReadOctet(reader)
+
+	method.Requeue = bits&(1<<0) != 0
 
 	return
 }
@@ -1982,7 +2018,9 @@ func (method *BasicRecoverAsync) MethodIdentifier() uint16 {
 
 func (method *BasicRecoverAsync) Read(reader io.Reader) (err error) {
 
-	method.Requeue = true // @todo implement bits readers
+	bits, err := ReadOctet(reader)
+
+	method.Requeue = bits&(1<<0) != 0
 
 	return
 }
@@ -2013,7 +2051,9 @@ func (method *BasicRecover) MethodIdentifier() uint16 {
 
 func (method *BasicRecover) Read(reader io.Reader) (err error) {
 
-	method.Requeue = true // @todo implement bits readers
+	bits, err := ReadOctet(reader)
+
+	method.Requeue = bits&(1<<0) != 0
 
 	return
 }

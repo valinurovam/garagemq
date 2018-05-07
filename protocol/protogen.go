@@ -62,6 +62,7 @@ type Field struct {
 	GoType     string
 	ReaderFunc string
 	IsBit      bool
+	BitOrder   int
 }
 
 func (amqp Amqp) SaveConstants(wr io.Writer) {
@@ -93,8 +94,8 @@ import (
 type Method interface {
 	Name() string
 	FrameType() byte
-	ClassId() uint16
-	MethodId() uint16
+	ClassIdentifier() uint16
+	MethodIdentifier() uint16
 	Read(reader io.Reader) (err error)
 	Write(writer io.Writer) (err error)
 }
@@ -126,7 +127,10 @@ func (method *{{.GoName}}) MethodIdentifier() uint16 {
 func (method *{{.GoName}}) Read(reader io.Reader) (err error) {
 {{range .Fields}}
 	{{if .IsBit }}
-	method.{{.GoName}} = true // @todo implement bits readers
+	{{if eq .BitOrder 0}}
+	bits, err := ReadOctet(reader)
+	{{end}}
+	method.{{.GoName}} = bits&(1<<{{.BitOrder}}) != 0 
 	{{else}}
 	method.{{.GoName}}, err = {{.ReaderFunc}}(reader)
 	if err != nil {
@@ -153,25 +157,21 @@ func (method *{{.GoName}}) Write(writer io.Writer) (err error) {
 			domainAliases[domain.Name] = domain.Type
 		}
 	}
-	var domainKey string
 
 	for _, class := range amqp.Classes {
 		class.GoName = kebabToCamel(class.Name)
 		for _, method := range class.Methods {
 			method.GoName = kebabToCamel(class.Name + "-" + method.Name)
+			bitOrder := 0
 			for _, field := range method.Fields {
 				field.GoName = kebabToCamel(field.Name)
-				if field.Domain != "" {
-					domainKey = field.Domain
-				} else {
-					domainKey = field.Type
-				}
-
-				if dk, ok := domainAliases[field.Domain]; ok {
-					domainKey = dk
-				}
+				domainKey := calcDomainKey(field, domainAliases)
 				field.GoType = baseDomainsMap[domainKey]
 				field.IsBit = domainKey == "bit"
+				if field.IsBit {
+					field.BitOrder = bitOrder
+					bitOrder++
+				}
 
 				field.ReaderFunc = "Read" + kebabToCamel(domainKey)
 			}
@@ -179,6 +179,20 @@ func (method *{{.GoName}}) Write(writer io.Writer) (err error) {
 	}
 
 	t.Execute(wr, amqp.Classes)
+}
+
+func calcDomainKey(field *Field, domainAliases map[string]string) string {
+	var domainKey string
+
+	if field.Domain != "" {
+		domainKey = field.Domain
+	} else {
+		domainKey = field.Type
+	}
+	if dk, ok := domainAliases[field.Domain]; ok {
+		domainKey = dk
+	}
+	return domainKey
 }
 
 func main() {
