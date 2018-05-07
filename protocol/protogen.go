@@ -63,6 +63,7 @@ type Field struct {
 	ReaderFunc string
 	IsBit      bool
 	BitOrder   int
+	LastBit    bool
 }
 
 func (amqp Amqp) SaveConstants(wr io.Writer) {
@@ -104,8 +105,7 @@ type Method interface {
 // {{.GoName}} methods
 {{range .Methods}}
 type {{.GoName}} struct {
-{{range .Fields}}
-    {{.GoName}} {{.GoType}}
+{{range .Fields}}{{.GoName}} {{.GoType}}
 {{end}}
 }
 func (method *{{.GoName}}) Name() string {
@@ -132,7 +132,7 @@ func (method *{{.GoName}}) Read(reader io.Reader) (err error) {
 	{{end}}
 	method.{{.GoName}} = bits&(1<<{{.BitOrder}}) != 0 
 	{{else}}
-	method.{{.GoName}}, err = {{.ReaderFunc}}(reader)
+	method.{{.GoName}}, err = Read{{.ReaderFunc}}(reader)
 	if err != nil {
 		return err
 	}
@@ -143,7 +143,28 @@ func (method *{{.GoName}}) Read(reader io.Reader) (err error) {
 }
 
 func (method *{{.GoName}}) Write(writer io.Writer) (err error) {
-	return errors.New("to do")
+{{$bitFieldsStarted := false}}
+{{range .Fields}}
+	{{if .IsBit }}
+	{{$bitFieldsStarted := true}}
+	{{if eq .BitOrder 0}}
+	var bits byte
+	{{end}}
+	if method.{{.GoName}} {
+		bits |= 1 << {{.BitOrder}}
+	}
+	{{if .LastBit}}
+	if err = WriteOctet(writer, bits); err != nil {
+		return err
+	}
+	{{end}}
+	{{else}}
+	if err = Write{{.ReaderFunc}}(writer, method.{{.GoName}}); err != nil {
+		return err
+	}
+	{{end}}
+{{end}}
+	return
 }
 {{end}}
 {{end}}
@@ -163,7 +184,9 @@ func (method *{{.GoName}}) Write(writer io.Writer) (err error) {
 		for _, method := range class.Methods {
 			method.GoName = kebabToCamel(class.Name + "-" + method.Name)
 			bitOrder := 0
-			for _, field := range method.Fields {
+			methodsCount := len(method.Fields)
+			for idx, field := range method.Fields {
+				field.LastBit = false
 				field.GoName = kebabToCamel(field.Name)
 				domainKey := calcDomainKey(field, domainAliases)
 				field.GoType = baseDomainsMap[domainKey]
@@ -171,9 +194,17 @@ func (method *{{.GoName}}) Write(writer io.Writer) (err error) {
 				if field.IsBit {
 					field.BitOrder = bitOrder
 					bitOrder++
+				} else if bitOrder > 0 {
+					method.Fields[idx-1].LastBit = true
+					bitOrder = 0
 				}
 
-				field.ReaderFunc = "Read" + kebabToCamel(domainKey)
+				if field.IsBit && methodsCount == idx+1 {
+					method.Fields[idx].LastBit = true
+					bitOrder = 0
+				}
+
+				field.ReaderFunc = kebabToCamel(domainKey)
 			}
 		}
 	}

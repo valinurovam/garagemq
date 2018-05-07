@@ -17,15 +17,11 @@ type Method interface {
 // Connection methods
 
 type ConnectionStart struct {
-	VersionMajor byte
-
-	VersionMinor byte
-
+	VersionMajor     byte
+	VersionMinor     byte
 	ServerProperties *Table
-
-	Mechanisms []byte
-
-	Locales []byte
+	Mechanisms       []byte
+	Locales          []byte
 }
 
 func (method *ConnectionStart) Name() string {
@@ -75,17 +71,35 @@ func (method *ConnectionStart) Read(reader io.Reader) (err error) {
 }
 
 func (method *ConnectionStart) Write(writer io.Writer) (err error) {
-	return errors.New("to do")
+
+	if err = WriteOctet(writer, method.VersionMajor); err != nil {
+		return err
+	}
+
+	if err = WriteOctet(writer, method.VersionMinor); err != nil {
+		return err
+	}
+
+	if err = WriteTable(writer, method.ServerProperties); err != nil {
+		return err
+	}
+
+	if err = WriteLongstr(writer, method.Mechanisms); err != nil {
+		return err
+	}
+
+	if err = WriteLongstr(writer, method.Locales); err != nil {
+		return err
+	}
+
+	return
 }
 
 type ConnectionStartOk struct {
 	ClientProperties *Table
-
-	Mechanism string
-
-	Response []byte
-
-	Locale string
+	Mechanism        string
+	Response         []byte
+	Locale           string
 }
 
 func (method *ConnectionStartOk) Name() string {
@@ -130,7 +144,24 @@ func (method *ConnectionStartOk) Read(reader io.Reader) (err error) {
 }
 
 func (method *ConnectionStartOk) Write(writer io.Writer) (err error) {
-	return errors.New("to do")
+
+	if err = WriteTable(writer, method.ClientProperties); err != nil {
+		return err
+	}
+
+	if err = WriteShortstr(writer, method.Mechanism); err != nil {
+		return err
+	}
+
+	if err = WriteLongstr(writer, method.Response); err != nil {
+		return err
+	}
+
+	if err = WriteShortstr(writer, method.Locale); err != nil {
+		return err
+	}
+
+	return
 }
 
 type ConnectionSecure struct {
@@ -164,7 +195,12 @@ func (method *ConnectionSecure) Read(reader io.Reader) (err error) {
 }
 
 func (method *ConnectionSecure) Write(writer io.Writer) (err error) {
-	return errors.New("to do")
+
+	if err = WriteLongstr(writer, method.Challenge); err != nil {
+		return err
+	}
+
+	return
 }
 
 type ConnectionSecureOk struct {
@@ -198,15 +234,18 @@ func (method *ConnectionSecureOk) Read(reader io.Reader) (err error) {
 }
 
 func (method *ConnectionSecureOk) Write(writer io.Writer) (err error) {
-	return errors.New("to do")
+
+	if err = WriteLongstr(writer, method.Response); err != nil {
+		return err
+	}
+
+	return
 }
 
 type ConnectionTune struct {
 	ChannelMax uint16
-
-	FrameMax uint32
-
-	Heartbeat uint16
+	FrameMax   uint32
+	Heartbeat  uint16
 }
 
 func (method *ConnectionTune) Name() string {
@@ -246,15 +285,26 @@ func (method *ConnectionTune) Read(reader io.Reader) (err error) {
 }
 
 func (method *ConnectionTune) Write(writer io.Writer) (err error) {
-	return errors.New("to do")
+
+	if err = WriteShort(writer, method.ChannelMax); err != nil {
+		return err
+	}
+
+	if err = WriteLong(writer, method.FrameMax); err != nil {
+		return err
+	}
+
+	if err = WriteShort(writer, method.Heartbeat); err != nil {
+		return err
+	}
+
+	return
 }
 
 type ConnectionTuneOk struct {
 	ChannelMax uint16
-
-	FrameMax uint32
-
-	Heartbeat uint16
+	FrameMax   uint32
+	Heartbeat  uint16
 }
 
 func (method *ConnectionTuneOk) Name() string {
@@ -294,15 +344,26 @@ func (method *ConnectionTuneOk) Read(reader io.Reader) (err error) {
 }
 
 func (method *ConnectionTuneOk) Write(writer io.Writer) (err error) {
-	return errors.New("to do")
+
+	if err = WriteShort(writer, method.ChannelMax); err != nil {
+		return err
+	}
+
+	if err = WriteLong(writer, method.FrameMax); err != nil {
+		return err
+	}
+
+	if err = WriteShort(writer, method.Heartbeat); err != nil {
+		return err
+	}
+
+	return
 }
 
 type ConnectionOpen struct {
 	VirtualHost string
-
-	Reserved1 string
-
-	Reserved2 bool
+	Reserved1   string
+	Reserved2   bool
 }
 
 func (method *ConnectionOpen) Name() string {
@@ -341,7 +402,26 @@ func (method *ConnectionOpen) Read(reader io.Reader) (err error) {
 }
 
 func (method *ConnectionOpen) Write(writer io.Writer) (err error) {
-	return errors.New("to do")
+
+	if err = WriteShortstr(writer, method.VirtualHost); err != nil {
+		return err
+	}
+
+	if err = WriteShortstr(writer, method.Reserved1); err != nil {
+		return err
+	}
+
+	var bits byte
+
+	if method.Reserved2 {
+		bits |= 1 << 0
+	}
+
+	if err = WriteOctet(writer, bits); err != nil {
+		return err
+	}
+
+	return
 }
 
 type ConnectionOpenOk struct {
@@ -375,17 +455,19 @@ func (method *ConnectionOpenOk) Read(reader io.Reader) (err error) {
 }
 
 func (method *ConnectionOpenOk) Write(writer io.Writer) (err error) {
-	return errors.New("to do")
+
+	if err = WriteShortstr(writer, method.Reserved1); err != nil {
+		return err
+	}
+
+	return
 }
 
 type ConnectionClose struct {
 	ReplyCode uint16
-
 	ReplyText string
-
-	ClassId uint16
-
-	MethodId uint16
+	ClassId   uint16
+	MethodId  uint16
 }
 
 func (method *ConnectionClose) Name() string {
@@ -430,7 +512,24 @@ func (method *ConnectionClose) Read(reader io.Reader) (err error) {
 }
 
 func (method *ConnectionClose) Write(writer io.Writer) (err error) {
-	return errors.New("to do")
+
+	if err = WriteShort(writer, method.ReplyCode); err != nil {
+		return err
+	}
+
+	if err = WriteShortstr(writer, method.ReplyText); err != nil {
+		return err
+	}
+
+	if err = WriteShort(writer, method.ClassId); err != nil {
+		return err
+	}
+
+	if err = WriteShort(writer, method.MethodId); err != nil {
+		return err
+	}
+
+	return
 }
 
 type ConnectionCloseOk struct {
@@ -458,7 +557,8 @@ func (method *ConnectionCloseOk) Read(reader io.Reader) (err error) {
 }
 
 func (method *ConnectionCloseOk) Write(writer io.Writer) (err error) {
-	return errors.New("to do")
+
+	return
 }
 
 // Channel methods
@@ -494,7 +594,12 @@ func (method *ChannelOpen) Read(reader io.Reader) (err error) {
 }
 
 func (method *ChannelOpen) Write(writer io.Writer) (err error) {
-	return errors.New("to do")
+
+	if err = WriteShortstr(writer, method.Reserved1); err != nil {
+		return err
+	}
+
+	return
 }
 
 type ChannelOpenOk struct {
@@ -528,7 +633,12 @@ func (method *ChannelOpenOk) Read(reader io.Reader) (err error) {
 }
 
 func (method *ChannelOpenOk) Write(writer io.Writer) (err error) {
-	return errors.New("to do")
+
+	if err = WriteLongstr(writer, method.Reserved1); err != nil {
+		return err
+	}
+
+	return
 }
 
 type ChannelFlow struct {
@@ -561,7 +671,18 @@ func (method *ChannelFlow) Read(reader io.Reader) (err error) {
 }
 
 func (method *ChannelFlow) Write(writer io.Writer) (err error) {
-	return errors.New("to do")
+
+	var bits byte
+
+	if method.Active {
+		bits |= 1 << 0
+	}
+
+	if err = WriteOctet(writer, bits); err != nil {
+		return err
+	}
+
+	return
 }
 
 type ChannelFlowOk struct {
@@ -594,17 +715,25 @@ func (method *ChannelFlowOk) Read(reader io.Reader) (err error) {
 }
 
 func (method *ChannelFlowOk) Write(writer io.Writer) (err error) {
-	return errors.New("to do")
+
+	var bits byte
+
+	if method.Active {
+		bits |= 1 << 0
+	}
+
+	if err = WriteOctet(writer, bits); err != nil {
+		return err
+	}
+
+	return
 }
 
 type ChannelClose struct {
 	ReplyCode uint16
-
 	ReplyText string
-
-	ClassId uint16
-
-	MethodId uint16
+	ClassId   uint16
+	MethodId  uint16
 }
 
 func (method *ChannelClose) Name() string {
@@ -649,7 +778,24 @@ func (method *ChannelClose) Read(reader io.Reader) (err error) {
 }
 
 func (method *ChannelClose) Write(writer io.Writer) (err error) {
-	return errors.New("to do")
+
+	if err = WriteShort(writer, method.ReplyCode); err != nil {
+		return err
+	}
+
+	if err = WriteShortstr(writer, method.ReplyText); err != nil {
+		return err
+	}
+
+	if err = WriteShort(writer, method.ClassId); err != nil {
+		return err
+	}
+
+	if err = WriteShort(writer, method.MethodId); err != nil {
+		return err
+	}
+
+	return
 }
 
 type ChannelCloseOk struct {
@@ -677,28 +823,21 @@ func (method *ChannelCloseOk) Read(reader io.Reader) (err error) {
 }
 
 func (method *ChannelCloseOk) Write(writer io.Writer) (err error) {
-	return errors.New("to do")
+
+	return
 }
 
 // Exchange methods
 
 type ExchangeDeclare struct {
 	Reserved1 uint16
-
-	Exchange string
-
-	Type string
-
-	Passive bool
-
-	Durable bool
-
+	Exchange  string
+	Type      string
+	Passive   bool
+	Durable   bool
 	Reserved2 bool
-
 	Reserved3 bool
-
-	NoWait bool
-
+	NoWait    bool
 	Arguments *Table
 }
 
@@ -756,7 +895,50 @@ func (method *ExchangeDeclare) Read(reader io.Reader) (err error) {
 }
 
 func (method *ExchangeDeclare) Write(writer io.Writer) (err error) {
-	return errors.New("to do")
+
+	if err = WriteShort(writer, method.Reserved1); err != nil {
+		return err
+	}
+
+	if err = WriteShortstr(writer, method.Exchange); err != nil {
+		return err
+	}
+
+	if err = WriteShortstr(writer, method.Type); err != nil {
+		return err
+	}
+
+	var bits byte
+
+	if method.Passive {
+		bits |= 1 << 0
+	}
+
+	if method.Durable {
+		bits |= 1 << 1
+	}
+
+	if method.Reserved2 {
+		bits |= 1 << 2
+	}
+
+	if method.Reserved3 {
+		bits |= 1 << 3
+	}
+
+	if method.NoWait {
+		bits |= 1 << 4
+	}
+
+	if err = WriteOctet(writer, bits); err != nil {
+		return err
+	}
+
+	if err = WriteTable(writer, method.Arguments); err != nil {
+		return err
+	}
+
+	return
 }
 
 type ExchangeDeclareOk struct {
@@ -784,17 +966,15 @@ func (method *ExchangeDeclareOk) Read(reader io.Reader) (err error) {
 }
 
 func (method *ExchangeDeclareOk) Write(writer io.Writer) (err error) {
-	return errors.New("to do")
+
+	return
 }
 
 type ExchangeDelete struct {
 	Reserved1 uint16
-
-	Exchange string
-
-	IfUnused bool
-
-	NoWait bool
+	Exchange  string
+	IfUnused  bool
+	NoWait    bool
 }
 
 func (method *ExchangeDelete) Name() string {
@@ -835,7 +1015,30 @@ func (method *ExchangeDelete) Read(reader io.Reader) (err error) {
 }
 
 func (method *ExchangeDelete) Write(writer io.Writer) (err error) {
-	return errors.New("to do")
+
+	if err = WriteShort(writer, method.Reserved1); err != nil {
+		return err
+	}
+
+	if err = WriteShortstr(writer, method.Exchange); err != nil {
+		return err
+	}
+
+	var bits byte
+
+	if method.IfUnused {
+		bits |= 1 << 0
+	}
+
+	if method.NoWait {
+		bits |= 1 << 1
+	}
+
+	if err = WriteOctet(writer, bits); err != nil {
+		return err
+	}
+
+	return
 }
 
 type ExchangeDeleteOk struct {
@@ -863,27 +1066,21 @@ func (method *ExchangeDeleteOk) Read(reader io.Reader) (err error) {
 }
 
 func (method *ExchangeDeleteOk) Write(writer io.Writer) (err error) {
-	return errors.New("to do")
+
+	return
 }
 
 // Queue methods
 
 type QueueDeclare struct {
-	Reserved1 uint16
-
-	Queue string
-
-	Passive bool
-
-	Durable bool
-
-	Exclusive bool
-
+	Reserved1  uint16
+	Queue      string
+	Passive    bool
+	Durable    bool
+	Exclusive  bool
 	AutoDelete bool
-
-	NoWait bool
-
-	Arguments *Table
+	NoWait     bool
+	Arguments  *Table
 }
 
 func (method *QueueDeclare) Name() string {
@@ -935,14 +1132,51 @@ func (method *QueueDeclare) Read(reader io.Reader) (err error) {
 }
 
 func (method *QueueDeclare) Write(writer io.Writer) (err error) {
-	return errors.New("to do")
+
+	if err = WriteShort(writer, method.Reserved1); err != nil {
+		return err
+	}
+
+	if err = WriteShortstr(writer, method.Queue); err != nil {
+		return err
+	}
+
+	var bits byte
+
+	if method.Passive {
+		bits |= 1 << 0
+	}
+
+	if method.Durable {
+		bits |= 1 << 1
+	}
+
+	if method.Exclusive {
+		bits |= 1 << 2
+	}
+
+	if method.AutoDelete {
+		bits |= 1 << 3
+	}
+
+	if method.NoWait {
+		bits |= 1 << 4
+	}
+
+	if err = WriteOctet(writer, bits); err != nil {
+		return err
+	}
+
+	if err = WriteTable(writer, method.Arguments); err != nil {
+		return err
+	}
+
+	return
 }
 
 type QueueDeclareOk struct {
-	Queue string
-
-	MessageCount uint32
-
+	Queue         string
+	MessageCount  uint32
 	ConsumerCount uint32
 }
 
@@ -983,21 +1217,29 @@ func (method *QueueDeclareOk) Read(reader io.Reader) (err error) {
 }
 
 func (method *QueueDeclareOk) Write(writer io.Writer) (err error) {
-	return errors.New("to do")
+
+	if err = WriteShortstr(writer, method.Queue); err != nil {
+		return err
+	}
+
+	if err = WriteLong(writer, method.MessageCount); err != nil {
+		return err
+	}
+
+	if err = WriteLong(writer, method.ConsumerCount); err != nil {
+		return err
+	}
+
+	return
 }
 
 type QueueBind struct {
-	Reserved1 uint16
-
-	Queue string
-
-	Exchange string
-
+	Reserved1  uint16
+	Queue      string
+	Exchange   string
 	RoutingKey string
-
-	NoWait bool
-
-	Arguments *Table
+	NoWait     bool
+	Arguments  *Table
 }
 
 func (method *QueueBind) Name() string {
@@ -1051,7 +1293,38 @@ func (method *QueueBind) Read(reader io.Reader) (err error) {
 }
 
 func (method *QueueBind) Write(writer io.Writer) (err error) {
-	return errors.New("to do")
+
+	if err = WriteShort(writer, method.Reserved1); err != nil {
+		return err
+	}
+
+	if err = WriteShortstr(writer, method.Queue); err != nil {
+		return err
+	}
+
+	if err = WriteShortstr(writer, method.Exchange); err != nil {
+		return err
+	}
+
+	if err = WriteShortstr(writer, method.RoutingKey); err != nil {
+		return err
+	}
+
+	var bits byte
+
+	if method.NoWait {
+		bits |= 1 << 0
+	}
+
+	if err = WriteOctet(writer, bits); err != nil {
+		return err
+	}
+
+	if err = WriteTable(writer, method.Arguments); err != nil {
+		return err
+	}
+
+	return
 }
 
 type QueueBindOk struct {
@@ -1079,19 +1352,16 @@ func (method *QueueBindOk) Read(reader io.Reader) (err error) {
 }
 
 func (method *QueueBindOk) Write(writer io.Writer) (err error) {
-	return errors.New("to do")
+
+	return
 }
 
 type QueueUnbind struct {
-	Reserved1 uint16
-
-	Queue string
-
-	Exchange string
-
+	Reserved1  uint16
+	Queue      string
+	Exchange   string
 	RoutingKey string
-
-	Arguments *Table
+	Arguments  *Table
 }
 
 func (method *QueueUnbind) Name() string {
@@ -1141,7 +1411,28 @@ func (method *QueueUnbind) Read(reader io.Reader) (err error) {
 }
 
 func (method *QueueUnbind) Write(writer io.Writer) (err error) {
-	return errors.New("to do")
+
+	if err = WriteShort(writer, method.Reserved1); err != nil {
+		return err
+	}
+
+	if err = WriteShortstr(writer, method.Queue); err != nil {
+		return err
+	}
+
+	if err = WriteShortstr(writer, method.Exchange); err != nil {
+		return err
+	}
+
+	if err = WriteShortstr(writer, method.RoutingKey); err != nil {
+		return err
+	}
+
+	if err = WriteTable(writer, method.Arguments); err != nil {
+		return err
+	}
+
+	return
 }
 
 type QueueUnbindOk struct {
@@ -1169,15 +1460,14 @@ func (method *QueueUnbindOk) Read(reader io.Reader) (err error) {
 }
 
 func (method *QueueUnbindOk) Write(writer io.Writer) (err error) {
-	return errors.New("to do")
+
+	return
 }
 
 type QueuePurge struct {
 	Reserved1 uint16
-
-	Queue string
-
-	NoWait bool
+	Queue     string
+	NoWait    bool
 }
 
 func (method *QueuePurge) Name() string {
@@ -1216,7 +1506,26 @@ func (method *QueuePurge) Read(reader io.Reader) (err error) {
 }
 
 func (method *QueuePurge) Write(writer io.Writer) (err error) {
-	return errors.New("to do")
+
+	if err = WriteShort(writer, method.Reserved1); err != nil {
+		return err
+	}
+
+	if err = WriteShortstr(writer, method.Queue); err != nil {
+		return err
+	}
+
+	var bits byte
+
+	if method.NoWait {
+		bits |= 1 << 0
+	}
+
+	if err = WriteOctet(writer, bits); err != nil {
+		return err
+	}
+
+	return
 }
 
 type QueuePurgeOk struct {
@@ -1250,19 +1559,20 @@ func (method *QueuePurgeOk) Read(reader io.Reader) (err error) {
 }
 
 func (method *QueuePurgeOk) Write(writer io.Writer) (err error) {
-	return errors.New("to do")
+
+	if err = WriteLong(writer, method.MessageCount); err != nil {
+		return err
+	}
+
+	return
 }
 
 type QueueDelete struct {
 	Reserved1 uint16
-
-	Queue string
-
-	IfUnused bool
-
-	IfEmpty bool
-
-	NoWait bool
+	Queue     string
+	IfUnused  bool
+	IfEmpty   bool
+	NoWait    bool
 }
 
 func (method *QueueDelete) Name() string {
@@ -1305,7 +1615,34 @@ func (method *QueueDelete) Read(reader io.Reader) (err error) {
 }
 
 func (method *QueueDelete) Write(writer io.Writer) (err error) {
-	return errors.New("to do")
+
+	if err = WriteShort(writer, method.Reserved1); err != nil {
+		return err
+	}
+
+	if err = WriteShortstr(writer, method.Queue); err != nil {
+		return err
+	}
+
+	var bits byte
+
+	if method.IfUnused {
+		bits |= 1 << 0
+	}
+
+	if method.IfEmpty {
+		bits |= 1 << 1
+	}
+
+	if method.NoWait {
+		bits |= 1 << 2
+	}
+
+	if err = WriteOctet(writer, bits); err != nil {
+		return err
+	}
+
+	return
 }
 
 type QueueDeleteOk struct {
@@ -1339,17 +1676,20 @@ func (method *QueueDeleteOk) Read(reader io.Reader) (err error) {
 }
 
 func (method *QueueDeleteOk) Write(writer io.Writer) (err error) {
-	return errors.New("to do")
+
+	if err = WriteLong(writer, method.MessageCount); err != nil {
+		return err
+	}
+
+	return
 }
 
 // Basic methods
 
 type BasicQos struct {
-	PrefetchSize uint32
-
+	PrefetchSize  uint32
 	PrefetchCount uint16
-
-	Global bool
+	Global        bool
 }
 
 func (method *BasicQos) Name() string {
@@ -1388,7 +1728,26 @@ func (method *BasicQos) Read(reader io.Reader) (err error) {
 }
 
 func (method *BasicQos) Write(writer io.Writer) (err error) {
-	return errors.New("to do")
+
+	if err = WriteLong(writer, method.PrefetchSize); err != nil {
+		return err
+	}
+
+	if err = WriteShort(writer, method.PrefetchCount); err != nil {
+		return err
+	}
+
+	var bits byte
+
+	if method.Global {
+		bits |= 1 << 0
+	}
+
+	if err = WriteOctet(writer, bits); err != nil {
+		return err
+	}
+
+	return
 }
 
 type BasicQosOk struct {
@@ -1416,25 +1775,19 @@ func (method *BasicQosOk) Read(reader io.Reader) (err error) {
 }
 
 func (method *BasicQosOk) Write(writer io.Writer) (err error) {
-	return errors.New("to do")
+
+	return
 }
 
 type BasicConsume struct {
-	Reserved1 uint16
-
-	Queue string
-
+	Reserved1   uint16
+	Queue       string
 	ConsumerTag string
-
-	NoLocal bool
-
-	NoAck bool
-
-	Exclusive bool
-
-	NoWait bool
-
-	Arguments *Table
+	NoLocal     bool
+	NoAck       bool
+	Exclusive   bool
+	NoWait      bool
+	Arguments   *Table
 }
 
 func (method *BasicConsume) Name() string {
@@ -1489,7 +1842,46 @@ func (method *BasicConsume) Read(reader io.Reader) (err error) {
 }
 
 func (method *BasicConsume) Write(writer io.Writer) (err error) {
-	return errors.New("to do")
+
+	if err = WriteShort(writer, method.Reserved1); err != nil {
+		return err
+	}
+
+	if err = WriteShortstr(writer, method.Queue); err != nil {
+		return err
+	}
+
+	if err = WriteShortstr(writer, method.ConsumerTag); err != nil {
+		return err
+	}
+
+	var bits byte
+
+	if method.NoLocal {
+		bits |= 1 << 0
+	}
+
+	if method.NoAck {
+		bits |= 1 << 1
+	}
+
+	if method.Exclusive {
+		bits |= 1 << 2
+	}
+
+	if method.NoWait {
+		bits |= 1 << 3
+	}
+
+	if err = WriteOctet(writer, bits); err != nil {
+		return err
+	}
+
+	if err = WriteTable(writer, method.Arguments); err != nil {
+		return err
+	}
+
+	return
 }
 
 type BasicConsumeOk struct {
@@ -1523,13 +1915,17 @@ func (method *BasicConsumeOk) Read(reader io.Reader) (err error) {
 }
 
 func (method *BasicConsumeOk) Write(writer io.Writer) (err error) {
-	return errors.New("to do")
+
+	if err = WriteShortstr(writer, method.ConsumerTag); err != nil {
+		return err
+	}
+
+	return
 }
 
 type BasicCancel struct {
 	ConsumerTag string
-
-	NoWait bool
+	NoWait      bool
 }
 
 func (method *BasicCancel) Name() string {
@@ -1563,7 +1959,22 @@ func (method *BasicCancel) Read(reader io.Reader) (err error) {
 }
 
 func (method *BasicCancel) Write(writer io.Writer) (err error) {
-	return errors.New("to do")
+
+	if err = WriteShortstr(writer, method.ConsumerTag); err != nil {
+		return err
+	}
+
+	var bits byte
+
+	if method.NoWait {
+		bits |= 1 << 0
+	}
+
+	if err = WriteOctet(writer, bits); err != nil {
+		return err
+	}
+
+	return
 }
 
 type BasicCancelOk struct {
@@ -1597,19 +2008,20 @@ func (method *BasicCancelOk) Read(reader io.Reader) (err error) {
 }
 
 func (method *BasicCancelOk) Write(writer io.Writer) (err error) {
-	return errors.New("to do")
+
+	if err = WriteShortstr(writer, method.ConsumerTag); err != nil {
+		return err
+	}
+
+	return
 }
 
 type BasicPublish struct {
-	Reserved1 uint16
-
-	Exchange string
-
+	Reserved1  uint16
+	Exchange   string
 	RoutingKey string
-
-	Mandatory bool
-
-	Immediate bool
+	Mandatory  bool
+	Immediate  bool
 }
 
 func (method *BasicPublish) Name() string {
@@ -1655,16 +2067,40 @@ func (method *BasicPublish) Read(reader io.Reader) (err error) {
 }
 
 func (method *BasicPublish) Write(writer io.Writer) (err error) {
-	return errors.New("to do")
+
+	if err = WriteShort(writer, method.Reserved1); err != nil {
+		return err
+	}
+
+	if err = WriteShortstr(writer, method.Exchange); err != nil {
+		return err
+	}
+
+	if err = WriteShortstr(writer, method.RoutingKey); err != nil {
+		return err
+	}
+
+	var bits byte
+
+	if method.Mandatory {
+		bits |= 1 << 0
+	}
+
+	if method.Immediate {
+		bits |= 1 << 1
+	}
+
+	if err = WriteOctet(writer, bits); err != nil {
+		return err
+	}
+
+	return
 }
 
 type BasicReturn struct {
-	ReplyCode uint16
-
-	ReplyText string
-
-	Exchange string
-
+	ReplyCode  uint16
+	ReplyText  string
+	Exchange   string
 	RoutingKey string
 }
 
@@ -1710,19 +2146,32 @@ func (method *BasicReturn) Read(reader io.Reader) (err error) {
 }
 
 func (method *BasicReturn) Write(writer io.Writer) (err error) {
-	return errors.New("to do")
+
+	if err = WriteShort(writer, method.ReplyCode); err != nil {
+		return err
+	}
+
+	if err = WriteShortstr(writer, method.ReplyText); err != nil {
+		return err
+	}
+
+	if err = WriteShortstr(writer, method.Exchange); err != nil {
+		return err
+	}
+
+	if err = WriteShortstr(writer, method.RoutingKey); err != nil {
+		return err
+	}
+
+	return
 }
 
 type BasicDeliver struct {
 	ConsumerTag string
-
 	DeliveryTag uint64
-
 	Redelivered bool
-
-	Exchange string
-
-	RoutingKey string
+	Exchange    string
+	RoutingKey  string
 }
 
 func (method *BasicDeliver) Name() string {
@@ -1771,15 +2220,40 @@ func (method *BasicDeliver) Read(reader io.Reader) (err error) {
 }
 
 func (method *BasicDeliver) Write(writer io.Writer) (err error) {
-	return errors.New("to do")
+
+	if err = WriteShortstr(writer, method.ConsumerTag); err != nil {
+		return err
+	}
+
+	if err = WriteLonglong(writer, method.DeliveryTag); err != nil {
+		return err
+	}
+
+	var bits byte
+
+	if method.Redelivered {
+		bits |= 1 << 0
+	}
+
+	if err = WriteOctet(writer, bits); err != nil {
+		return err
+	}
+
+	if err = WriteShortstr(writer, method.Exchange); err != nil {
+		return err
+	}
+
+	if err = WriteShortstr(writer, method.RoutingKey); err != nil {
+		return err
+	}
+
+	return
 }
 
 type BasicGet struct {
 	Reserved1 uint16
-
-	Queue string
-
-	NoAck bool
+	Queue     string
+	NoAck     bool
 }
 
 func (method *BasicGet) Name() string {
@@ -1818,18 +2292,33 @@ func (method *BasicGet) Read(reader io.Reader) (err error) {
 }
 
 func (method *BasicGet) Write(writer io.Writer) (err error) {
-	return errors.New("to do")
+
+	if err = WriteShort(writer, method.Reserved1); err != nil {
+		return err
+	}
+
+	if err = WriteShortstr(writer, method.Queue); err != nil {
+		return err
+	}
+
+	var bits byte
+
+	if method.NoAck {
+		bits |= 1 << 0
+	}
+
+	if err = WriteOctet(writer, bits); err != nil {
+		return err
+	}
+
+	return
 }
 
 type BasicGetOk struct {
-	DeliveryTag uint64
-
-	Redelivered bool
-
-	Exchange string
-
-	RoutingKey string
-
+	DeliveryTag  uint64
+	Redelivered  bool
+	Exchange     string
+	RoutingKey   string
 	MessageCount uint32
 }
 
@@ -1879,7 +2368,34 @@ func (method *BasicGetOk) Read(reader io.Reader) (err error) {
 }
 
 func (method *BasicGetOk) Write(writer io.Writer) (err error) {
-	return errors.New("to do")
+
+	if err = WriteLonglong(writer, method.DeliveryTag); err != nil {
+		return err
+	}
+
+	var bits byte
+
+	if method.Redelivered {
+		bits |= 1 << 0
+	}
+
+	if err = WriteOctet(writer, bits); err != nil {
+		return err
+	}
+
+	if err = WriteShortstr(writer, method.Exchange); err != nil {
+		return err
+	}
+
+	if err = WriteShortstr(writer, method.RoutingKey); err != nil {
+		return err
+	}
+
+	if err = WriteLong(writer, method.MessageCount); err != nil {
+		return err
+	}
+
+	return
 }
 
 type BasicGetEmpty struct {
@@ -1913,13 +2429,17 @@ func (method *BasicGetEmpty) Read(reader io.Reader) (err error) {
 }
 
 func (method *BasicGetEmpty) Write(writer io.Writer) (err error) {
-	return errors.New("to do")
+
+	if err = WriteShortstr(writer, method.Reserved1); err != nil {
+		return err
+	}
+
+	return
 }
 
 type BasicAck struct {
 	DeliveryTag uint64
-
-	Multiple bool
+	Multiple    bool
 }
 
 func (method *BasicAck) Name() string {
@@ -1953,13 +2473,27 @@ func (method *BasicAck) Read(reader io.Reader) (err error) {
 }
 
 func (method *BasicAck) Write(writer io.Writer) (err error) {
-	return errors.New("to do")
+
+	if err = WriteLonglong(writer, method.DeliveryTag); err != nil {
+		return err
+	}
+
+	var bits byte
+
+	if method.Multiple {
+		bits |= 1 << 0
+	}
+
+	if err = WriteOctet(writer, bits); err != nil {
+		return err
+	}
+
+	return
 }
 
 type BasicReject struct {
 	DeliveryTag uint64
-
-	Requeue bool
+	Requeue     bool
 }
 
 func (method *BasicReject) Name() string {
@@ -1993,7 +2527,22 @@ func (method *BasicReject) Read(reader io.Reader) (err error) {
 }
 
 func (method *BasicReject) Write(writer io.Writer) (err error) {
-	return errors.New("to do")
+
+	if err = WriteLonglong(writer, method.DeliveryTag); err != nil {
+		return err
+	}
+
+	var bits byte
+
+	if method.Requeue {
+		bits |= 1 << 0
+	}
+
+	if err = WriteOctet(writer, bits); err != nil {
+		return err
+	}
+
+	return
 }
 
 type BasicRecoverAsync struct {
@@ -2026,7 +2575,18 @@ func (method *BasicRecoverAsync) Read(reader io.Reader) (err error) {
 }
 
 func (method *BasicRecoverAsync) Write(writer io.Writer) (err error) {
-	return errors.New("to do")
+
+	var bits byte
+
+	if method.Requeue {
+		bits |= 1 << 0
+	}
+
+	if err = WriteOctet(writer, bits); err != nil {
+		return err
+	}
+
+	return
 }
 
 type BasicRecover struct {
@@ -2059,7 +2619,18 @@ func (method *BasicRecover) Read(reader io.Reader) (err error) {
 }
 
 func (method *BasicRecover) Write(writer io.Writer) (err error) {
-	return errors.New("to do")
+
+	var bits byte
+
+	if method.Requeue {
+		bits |= 1 << 0
+	}
+
+	if err = WriteOctet(writer, bits); err != nil {
+		return err
+	}
+
+	return
 }
 
 type BasicRecoverOk struct {
@@ -2087,7 +2658,8 @@ func (method *BasicRecoverOk) Read(reader io.Reader) (err error) {
 }
 
 func (method *BasicRecoverOk) Write(writer io.Writer) (err error) {
-	return errors.New("to do")
+
+	return
 }
 
 // Tx methods
@@ -2117,7 +2689,8 @@ func (method *TxSelect) Read(reader io.Reader) (err error) {
 }
 
 func (method *TxSelect) Write(writer io.Writer) (err error) {
-	return errors.New("to do")
+
+	return
 }
 
 type TxSelectOk struct {
@@ -2145,7 +2718,8 @@ func (method *TxSelectOk) Read(reader io.Reader) (err error) {
 }
 
 func (method *TxSelectOk) Write(writer io.Writer) (err error) {
-	return errors.New("to do")
+
+	return
 }
 
 type TxCommit struct {
@@ -2173,7 +2747,8 @@ func (method *TxCommit) Read(reader io.Reader) (err error) {
 }
 
 func (method *TxCommit) Write(writer io.Writer) (err error) {
-	return errors.New("to do")
+
+	return
 }
 
 type TxCommitOk struct {
@@ -2201,7 +2776,8 @@ func (method *TxCommitOk) Read(reader io.Reader) (err error) {
 }
 
 func (method *TxCommitOk) Write(writer io.Writer) (err error) {
-	return errors.New("to do")
+
+	return
 }
 
 type TxRollback struct {
@@ -2229,7 +2805,8 @@ func (method *TxRollback) Read(reader io.Reader) (err error) {
 }
 
 func (method *TxRollback) Write(writer io.Writer) (err error) {
-	return errors.New("to do")
+
+	return
 }
 
 type TxRollbackOk struct {
@@ -2257,5 +2834,6 @@ func (method *TxRollbackOk) Read(reader io.Reader) (err error) {
 }
 
 func (method *TxRollbackOk) Write(writer io.Writer) (err error) {
-	return errors.New("to do")
+
+	return
 }
