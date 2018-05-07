@@ -3,7 +3,41 @@ package amqp
 import (
 	"encoding/binary"
 	"io"
+	"bytes"
+	"errors"
+	"fmt"
 )
+
+func ReadFrame(r io.Reader) (*Frame, error) {
+	// 7 bytes for type, channel and size
+	var header = make([]byte, 7)
+	if err := binary.Read(r, binary.BigEndian, header); err != nil {
+		return nil, err
+	}
+
+	frame := &Frame{}
+	headerBuf := bytes.NewBuffer(header)
+
+	frame.Type, _ = ReadOctet(headerBuf)
+	frame.ChannelId, _ = ReadShort(headerBuf)
+
+	payloadSize, _ := ReadLong(headerBuf)
+	var payload = make([]byte, payloadSize+1)
+	if err := binary.Read(r, binary.BigEndian, payload); err != nil {
+		return nil, err
+	}
+	frame.Payload = payload[0:payloadSize]
+
+	// check frame end
+	if payload[payloadSize] != FrameEnd {
+		return nil, errors.New(
+			fmt.Sprintf(
+				"The frame-end octet MUST always be the hexadecimal value 'xCE', %x given",
+				payload[payloadSize]))
+	}
+
+	return frame, nil
+}
 
 func ReadOctet(r io.Reader) (data byte, err error) {
 	err = binary.Read(r, binary.BigEndian, &data)
