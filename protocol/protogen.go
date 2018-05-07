@@ -89,8 +89,8 @@ package amqp
 import ( 
 	"io"
 	"errors"
+	"fmt"
 )
-
 
 type Method interface {
 	Name() string
@@ -168,6 +168,48 @@ func (method *{{.GoName}}) Write(writer io.Writer) (err error) {
 }
 {{end}}
 {{end}}
+
+func ReadMethod(reader io.Reader) (Method, error) {
+	classId, err := ReadShort(reader)
+	if err != nil {
+		return nil, err 
+	}
+
+	methodId, err := ReadShort(reader)
+	if err != nil {
+		return nil, err 
+	}
+	switch classId {
+		{{range .}}
+	case {{.Id}}:
+		switch methodId {
+			{{range .Methods}}
+		case {{.Id}}:
+			var method = &{{.GoName}}{}
+			if err := method.Read(reader); err != nil {
+				return nil, err
+			}
+			return method, nil{{end}}
+		}{{end}}
+	}
+
+	return nil, errors.New(fmt.Sprintf("Unknown classId and methodId: [%d. %d]", classId, methodId))
+}
+
+func WriteMethod(writer io.Writer, method Method) (err error) {
+	if err = WriteShort(writer, method.ClassIdentifier()); err != nil {
+		return err
+	}
+	if err = WriteShort(writer, method.MethodIdentifier()); err != nil {
+		return err
+	}
+
+	if err = method.Write(writer); err != nil {
+		return err
+	}
+	
+	return
+}
 `
 	t := template.Must(template.New("methodsTemplate").Parse(methodsTemplate))
 

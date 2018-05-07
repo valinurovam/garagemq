@@ -2,6 +2,7 @@ package amqp
 
 import (
 	"errors"
+	"fmt"
 	"io"
 )
 
@@ -2834,6 +2835,380 @@ func (method *TxRollbackOk) Read(reader io.Reader) (err error) {
 }
 
 func (method *TxRollbackOk) Write(writer io.Writer) (err error) {
+
+	return
+}
+
+func ReadMethod(reader io.Reader) (Method, error) {
+	classId, err := ReadShort(reader)
+	if err != nil {
+		return nil, err
+	}
+
+	methodId, err := ReadShort(reader)
+	if err != nil {
+		return nil, err
+	}
+	switch classId {
+
+	case 10:
+		switch methodId {
+
+		case 10:
+			var method = &ConnectionStart{}
+			if err := method.Read(reader); err != nil {
+				return nil, err
+			}
+			return method, nil
+		case 11:
+			var method = &ConnectionStartOk{}
+			if err := method.Read(reader); err != nil {
+				return nil, err
+			}
+			return method, nil
+		case 20:
+			var method = &ConnectionSecure{}
+			if err := method.Read(reader); err != nil {
+				return nil, err
+			}
+			return method, nil
+		case 21:
+			var method = &ConnectionSecureOk{}
+			if err := method.Read(reader); err != nil {
+				return nil, err
+			}
+			return method, nil
+		case 30:
+			var method = &ConnectionTune{}
+			if err := method.Read(reader); err != nil {
+				return nil, err
+			}
+			return method, nil
+		case 31:
+			var method = &ConnectionTuneOk{}
+			if err := method.Read(reader); err != nil {
+				return nil, err
+			}
+			return method, nil
+		case 40:
+			var method = &ConnectionOpen{}
+			if err := method.Read(reader); err != nil {
+				return nil, err
+			}
+			return method, nil
+		case 41:
+			var method = &ConnectionOpenOk{}
+			if err := method.Read(reader); err != nil {
+				return nil, err
+			}
+			return method, nil
+		case 50:
+			var method = &ConnectionClose{}
+			if err := method.Read(reader); err != nil {
+				return nil, err
+			}
+			return method, nil
+		case 51:
+			var method = &ConnectionCloseOk{}
+			if err := method.Read(reader); err != nil {
+				return nil, err
+			}
+			return method, nil
+		}
+	case 20:
+		switch methodId {
+
+		case 10:
+			var method = &ChannelOpen{}
+			if err := method.Read(reader); err != nil {
+				return nil, err
+			}
+			return method, nil
+		case 11:
+			var method = &ChannelOpenOk{}
+			if err := method.Read(reader); err != nil {
+				return nil, err
+			}
+			return method, nil
+		case 20:
+			var method = &ChannelFlow{}
+			if err := method.Read(reader); err != nil {
+				return nil, err
+			}
+			return method, nil
+		case 21:
+			var method = &ChannelFlowOk{}
+			if err := method.Read(reader); err != nil {
+				return nil, err
+			}
+			return method, nil
+		case 40:
+			var method = &ChannelClose{}
+			if err := method.Read(reader); err != nil {
+				return nil, err
+			}
+			return method, nil
+		case 41:
+			var method = &ChannelCloseOk{}
+			if err := method.Read(reader); err != nil {
+				return nil, err
+			}
+			return method, nil
+		}
+	case 40:
+		switch methodId {
+
+		case 10:
+			var method = &ExchangeDeclare{}
+			if err := method.Read(reader); err != nil {
+				return nil, err
+			}
+			return method, nil
+		case 11:
+			var method = &ExchangeDeclareOk{}
+			if err := method.Read(reader); err != nil {
+				return nil, err
+			}
+			return method, nil
+		case 20:
+			var method = &ExchangeDelete{}
+			if err := method.Read(reader); err != nil {
+				return nil, err
+			}
+			return method, nil
+		case 21:
+			var method = &ExchangeDeleteOk{}
+			if err := method.Read(reader); err != nil {
+				return nil, err
+			}
+			return method, nil
+		}
+	case 50:
+		switch methodId {
+
+		case 10:
+			var method = &QueueDeclare{}
+			if err := method.Read(reader); err != nil {
+				return nil, err
+			}
+			return method, nil
+		case 11:
+			var method = &QueueDeclareOk{}
+			if err := method.Read(reader); err != nil {
+				return nil, err
+			}
+			return method, nil
+		case 20:
+			var method = &QueueBind{}
+			if err := method.Read(reader); err != nil {
+				return nil, err
+			}
+			return method, nil
+		case 21:
+			var method = &QueueBindOk{}
+			if err := method.Read(reader); err != nil {
+				return nil, err
+			}
+			return method, nil
+		case 50:
+			var method = &QueueUnbind{}
+			if err := method.Read(reader); err != nil {
+				return nil, err
+			}
+			return method, nil
+		case 51:
+			var method = &QueueUnbindOk{}
+			if err := method.Read(reader); err != nil {
+				return nil, err
+			}
+			return method, nil
+		case 30:
+			var method = &QueuePurge{}
+			if err := method.Read(reader); err != nil {
+				return nil, err
+			}
+			return method, nil
+		case 31:
+			var method = &QueuePurgeOk{}
+			if err := method.Read(reader); err != nil {
+				return nil, err
+			}
+			return method, nil
+		case 40:
+			var method = &QueueDelete{}
+			if err := method.Read(reader); err != nil {
+				return nil, err
+			}
+			return method, nil
+		case 41:
+			var method = &QueueDeleteOk{}
+			if err := method.Read(reader); err != nil {
+				return nil, err
+			}
+			return method, nil
+		}
+	case 60:
+		switch methodId {
+
+		case 10:
+			var method = &BasicQos{}
+			if err := method.Read(reader); err != nil {
+				return nil, err
+			}
+			return method, nil
+		case 11:
+			var method = &BasicQosOk{}
+			if err := method.Read(reader); err != nil {
+				return nil, err
+			}
+			return method, nil
+		case 20:
+			var method = &BasicConsume{}
+			if err := method.Read(reader); err != nil {
+				return nil, err
+			}
+			return method, nil
+		case 21:
+			var method = &BasicConsumeOk{}
+			if err := method.Read(reader); err != nil {
+				return nil, err
+			}
+			return method, nil
+		case 30:
+			var method = &BasicCancel{}
+			if err := method.Read(reader); err != nil {
+				return nil, err
+			}
+			return method, nil
+		case 31:
+			var method = &BasicCancelOk{}
+			if err := method.Read(reader); err != nil {
+				return nil, err
+			}
+			return method, nil
+		case 40:
+			var method = &BasicPublish{}
+			if err := method.Read(reader); err != nil {
+				return nil, err
+			}
+			return method, nil
+		case 50:
+			var method = &BasicReturn{}
+			if err := method.Read(reader); err != nil {
+				return nil, err
+			}
+			return method, nil
+		case 60:
+			var method = &BasicDeliver{}
+			if err := method.Read(reader); err != nil {
+				return nil, err
+			}
+			return method, nil
+		case 70:
+			var method = &BasicGet{}
+			if err := method.Read(reader); err != nil {
+				return nil, err
+			}
+			return method, nil
+		case 71:
+			var method = &BasicGetOk{}
+			if err := method.Read(reader); err != nil {
+				return nil, err
+			}
+			return method, nil
+		case 72:
+			var method = &BasicGetEmpty{}
+			if err := method.Read(reader); err != nil {
+				return nil, err
+			}
+			return method, nil
+		case 80:
+			var method = &BasicAck{}
+			if err := method.Read(reader); err != nil {
+				return nil, err
+			}
+			return method, nil
+		case 90:
+			var method = &BasicReject{}
+			if err := method.Read(reader); err != nil {
+				return nil, err
+			}
+			return method, nil
+		case 100:
+			var method = &BasicRecoverAsync{}
+			if err := method.Read(reader); err != nil {
+				return nil, err
+			}
+			return method, nil
+		case 110:
+			var method = &BasicRecover{}
+			if err := method.Read(reader); err != nil {
+				return nil, err
+			}
+			return method, nil
+		case 111:
+			var method = &BasicRecoverOk{}
+			if err := method.Read(reader); err != nil {
+				return nil, err
+			}
+			return method, nil
+		}
+	case 90:
+		switch methodId {
+
+		case 10:
+			var method = &TxSelect{}
+			if err := method.Read(reader); err != nil {
+				return nil, err
+			}
+			return method, nil
+		case 11:
+			var method = &TxSelectOk{}
+			if err := method.Read(reader); err != nil {
+				return nil, err
+			}
+			return method, nil
+		case 20:
+			var method = &TxCommit{}
+			if err := method.Read(reader); err != nil {
+				return nil, err
+			}
+			return method, nil
+		case 21:
+			var method = &TxCommitOk{}
+			if err := method.Read(reader); err != nil {
+				return nil, err
+			}
+			return method, nil
+		case 30:
+			var method = &TxRollback{}
+			if err := method.Read(reader); err != nil {
+				return nil, err
+			}
+			return method, nil
+		case 31:
+			var method = &TxRollbackOk{}
+			if err := method.Read(reader); err != nil {
+				return nil, err
+			}
+			return method, nil
+		}
+	}
+
+	return nil, errors.New(fmt.Sprintf("Unknown classId and methodId: [%d. %d]", classId, methodId))
+}
+
+func WriteMethod(writer io.Writer, method Method) (err error) {
+	if err = WriteShort(writer, method.ClassIdentifier()); err != nil {
+		return err
+	}
+	if err = WriteShort(writer, method.MethodIdentifier()); err != nil {
+		return err
+	}
+
+	if err = method.Write(writer); err != nil {
+		return err
+	}
 
 	return
 }
