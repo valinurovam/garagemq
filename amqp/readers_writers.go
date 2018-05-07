@@ -39,6 +39,19 @@ func ReadFrame(r io.Reader) (*Frame, error) {
 	return frame, nil
 }
 
+func WriteFrame(writer io.Writer, frame *Frame) error {
+	var rawFrame = make([]byte, 0, 7+len(frame.Payload)+1)
+	frameBuffer := bytes.NewBuffer(rawFrame)
+	WriteOctet(frameBuffer, frame.Type)
+	WriteShort(frameBuffer, frame.ChannelId)
+	// size + payload
+	WriteLongstr(frameBuffer, frame.Payload)
+	WriteOctet(frameBuffer, FrameEnd)
+
+	fmt.Println(frameBuffer.Bytes())
+	return binary.Write(writer, binary.BigEndian, frameBuffer.Bytes())
+}
+
 func ReadOctet(r io.Reader) (data byte, err error) {
 	err = binary.Read(r, binary.BigEndian, &data)
 	return
@@ -135,7 +148,18 @@ func ReadTable(r io.Reader) (data *Table, err error) {
 	return
 }
 
-func WriteTable(wr io.Writer, data *Table) error {
-	// @todo implement WriteTable
-	return binary.Write(wr, binary.BigEndian, &data)
+func WriteTable(writer io.Writer, data *Table) (err error) {
+	var buf = bytes.NewBuffer(make([]byte, 0))
+	for key, v := range data.Data {
+		if err := WriteShortstr(buf, key); err != nil {
+			return err
+		}
+		switch value := v.(type) {
+		case string:
+			if err = WriteOctet(buf, byte('s')); err == nil {
+				err = WriteShortstr(buf, value)
+			}
+		}
+	}
+	return WriteLongstr(writer, buf.Bytes())
 }

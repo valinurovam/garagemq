@@ -6,6 +6,7 @@ import (
 	"bytes"
 	log "github.com/sirupsen/logrus"
 	"sync/atomic"
+	"github.com/valinurovam/garagemq/amqp"
 )
 
 const (
@@ -18,6 +19,7 @@ type Connection struct {
 	netConn  net.Conn
 	logger   *log.Entry
 	channels map[uint16]*Channel
+	outgoing chan *amqp.Frame
 }
 
 func NewConnection(server *Server, netConn net.Conn) (connection *Connection) {
@@ -26,6 +28,7 @@ func NewConnection(server *Server, netConn net.Conn) (connection *Connection) {
 		server:   server,
 		netConn:  netConn,
 		channels: make(map[uint16]*Channel),
+		outgoing: make(chan *amqp.Frame, 100),
 	}
 
 	connection.logger = log.WithFields(log.Fields{
@@ -57,4 +60,12 @@ func (conn *Connection) handleConnection() {
 
 	conn.channels[0] = NewChannel(0, conn)
 	conn.channels[0].start()
+	go conn.handleOutgoing()
+}
+
+func (conn *Connection) handleOutgoing() {
+	for {
+		var frame = <-conn.outgoing
+		amqp.WriteFrame(conn.netConn, frame)
+	}
 }
