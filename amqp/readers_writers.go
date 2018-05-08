@@ -12,7 +12,6 @@ import (
 const (
 	Proto091    = "amqp-0-9-1"
 	ProtoRabbit = "amqp-rabbit"
-	ProtoQpid   = "amqp-Qpid"
 )
 
 func ReadFrame(r io.Reader) (*Frame, error) {
@@ -158,15 +157,15 @@ func WriteLongstr(wr io.Writer, data []byte) error {
 	return binary.Write(wr, binary.BigEndian, data)
 }
 
-func ReadTable(r io.Reader) (data *Table, err error) {
+func ReadTable(r io.Reader, protoVersion string) (data *Table, err error) {
 	data = &Table{}
 	// @todo implement ReadTable
 	return data, nil
 }
 
-func WriteTable(writer io.Writer, table Table, protoVersion string) (err error) {
+func WriteTable(writer io.Writer, table *Table, protoVersion string) (err error) {
 	var buf = bytes.NewBuffer(make([]byte, 0))
-	for key, v := range table {
+	for key, v := range *table {
 		if err := WriteShortstr(buf, key); err != nil {
 			return err
 		}
@@ -183,8 +182,6 @@ func writeV(writer io.Writer, v interface{}, protoVersion string) (err error) {
 		return writeValue091(writer, v)
 	case ProtoRabbit:
 		return writeValueRabbit(writer, v)
-	case ProtoQpid:
-		return writeValueQpid(writer, v)
 	}
 
 	return errors.New(fmt.Sprintf("Unknown proto version [%s]", protoVersion))
@@ -287,7 +284,7 @@ func writeValue091(writer io.Writer, v interface{}) (err error) {
 
 	case Table:
 		if err = WriteOctet(writer, byte('F')); err == nil {
-			err = WriteTable(writer, value, Proto091)
+			err = WriteTable(writer, &value, Proto091)
 		}
 	case nil:
 		err = binary.Write(writer, binary.BigEndian, byte('V'))
@@ -389,7 +386,7 @@ func writeValueRabbit(writer io.Writer, v interface{}) (err error) {
 		}
 	case Table:
 		if err = WriteOctet(writer, byte('F')); err == nil {
-			err = WriteTable(writer, value, ProtoRabbit)
+			err = WriteTable(writer, &value, ProtoRabbit)
 		}
 	case nil:
 		err = binary.Write(writer, binary.BigEndian, byte('V'))
@@ -399,9 +396,6 @@ func writeValueRabbit(writer io.Writer, v interface{}) (err error) {
 
 	return
 }
-
-var writeValueQpid = writeValue091
-
 func writeArray(writer io.Writer, array []interface{}, protoVersion string) error {
 	var buf = bytes.NewBuffer([]byte{})
 	for _, v := range array {
@@ -411,3 +405,5 @@ func writeArray(writer io.Writer, array []interface{}, protoVersion string) erro
 	}
 	return WriteLongstr(writer, buf.Bytes())
 }
+
+

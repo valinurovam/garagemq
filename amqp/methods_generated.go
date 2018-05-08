@@ -11,8 +11,8 @@ type Method interface {
 	FrameType() byte
 	ClassIdentifier() uint16
 	MethodIdentifier() uint16
-	Read(reader io.Reader) (err error)
-	Write(writer io.Writer) (err error)
+	Read(reader io.Reader, protoVersion string) (err error)
+	Write(writer io.Writer, protoVersion string) (err error)
 }
 
 // Connection methods
@@ -41,7 +41,7 @@ func (method *ConnectionStart) MethodIdentifier() uint16 {
 	return 10
 }
 
-func (method *ConnectionStart) Read(reader io.Reader) (err error) {
+func (method *ConnectionStart) Read(reader io.Reader, protoVersion string) (err error) {
 
 	method.VersionMajor, err = ReadOctet(reader)
 	if err != nil {
@@ -53,7 +53,7 @@ func (method *ConnectionStart) Read(reader io.Reader) (err error) {
 		return err
 	}
 
-	method.ServerProperties, err = ReadTable(reader)
+	method.ServerProperties, err = ReadTable(reader, protoVersion)
 	if err != nil {
 		return err
 	}
@@ -71,7 +71,7 @@ func (method *ConnectionStart) Read(reader io.Reader) (err error) {
 	return
 }
 
-func (method *ConnectionStart) Write(writer io.Writer) (err error) {
+func (method *ConnectionStart) Write(writer io.Writer, protoVersion string) (err error) {
 
 	if err = WriteOctet(writer, method.VersionMajor); err != nil {
 		return err
@@ -81,7 +81,7 @@ func (method *ConnectionStart) Write(writer io.Writer) (err error) {
 		return err
 	}
 
-	if err = WriteTable(writer, method.ServerProperties); err != nil {
+	if err = WriteTable(writer, method.ServerProperties, protoVersion); err != nil {
 		return err
 	}
 
@@ -119,9 +119,9 @@ func (method *ConnectionStartOk) MethodIdentifier() uint16 {
 	return 11
 }
 
-func (method *ConnectionStartOk) Read(reader io.Reader) (err error) {
+func (method *ConnectionStartOk) Read(reader io.Reader, protoVersion string) (err error) {
 
-	method.ClientProperties, err = ReadTable(reader)
+	method.ClientProperties, err = ReadTable(reader, protoVersion)
 	if err != nil {
 		return err
 	}
@@ -144,9 +144,9 @@ func (method *ConnectionStartOk) Read(reader io.Reader) (err error) {
 	return
 }
 
-func (method *ConnectionStartOk) Write(writer io.Writer) (err error) {
+func (method *ConnectionStartOk) Write(writer io.Writer, protoVersion string) (err error) {
 
-	if err = WriteTable(writer, method.ClientProperties); err != nil {
+	if err = WriteTable(writer, method.ClientProperties, protoVersion); err != nil {
 		return err
 	}
 
@@ -185,7 +185,7 @@ func (method *ConnectionSecure) MethodIdentifier() uint16 {
 	return 20
 }
 
-func (method *ConnectionSecure) Read(reader io.Reader) (err error) {
+func (method *ConnectionSecure) Read(reader io.Reader, protoVersion string) (err error) {
 
 	method.Challenge, err = ReadLongstr(reader)
 	if err != nil {
@@ -195,7 +195,7 @@ func (method *ConnectionSecure) Read(reader io.Reader) (err error) {
 	return
 }
 
-func (method *ConnectionSecure) Write(writer io.Writer) (err error) {
+func (method *ConnectionSecure) Write(writer io.Writer, protoVersion string) (err error) {
 
 	if err = WriteLongstr(writer, method.Challenge); err != nil {
 		return err
@@ -224,7 +224,7 @@ func (method *ConnectionSecureOk) MethodIdentifier() uint16 {
 	return 21
 }
 
-func (method *ConnectionSecureOk) Read(reader io.Reader) (err error) {
+func (method *ConnectionSecureOk) Read(reader io.Reader, protoVersion string) (err error) {
 
 	method.Response, err = ReadLongstr(reader)
 	if err != nil {
@@ -234,7 +234,7 @@ func (method *ConnectionSecureOk) Read(reader io.Reader) (err error) {
 	return
 }
 
-func (method *ConnectionSecureOk) Write(writer io.Writer) (err error) {
+func (method *ConnectionSecureOk) Write(writer io.Writer, protoVersion string) (err error) {
 
 	if err = WriteLongstr(writer, method.Response); err != nil {
 		return err
@@ -265,7 +265,7 @@ func (method *ConnectionTune) MethodIdentifier() uint16 {
 	return 30
 }
 
-func (method *ConnectionTune) Read(reader io.Reader) (err error) {
+func (method *ConnectionTune) Read(reader io.Reader, protoVersion string) (err error) {
 
 	method.ChannelMax, err = ReadShort(reader)
 	if err != nil {
@@ -285,7 +285,7 @@ func (method *ConnectionTune) Read(reader io.Reader) (err error) {
 	return
 }
 
-func (method *ConnectionTune) Write(writer io.Writer) (err error) {
+func (method *ConnectionTune) Write(writer io.Writer, protoVersion string) (err error) {
 
 	if err = WriteShort(writer, method.ChannelMax); err != nil {
 		return err
@@ -324,7 +324,7 @@ func (method *ConnectionTuneOk) MethodIdentifier() uint16 {
 	return 31
 }
 
-func (method *ConnectionTuneOk) Read(reader io.Reader) (err error) {
+func (method *ConnectionTuneOk) Read(reader io.Reader, protoVersion string) (err error) {
 
 	method.ChannelMax, err = ReadShort(reader)
 	if err != nil {
@@ -344,7 +344,7 @@ func (method *ConnectionTuneOk) Read(reader io.Reader) (err error) {
 	return
 }
 
-func (method *ConnectionTuneOk) Write(writer io.Writer) (err error) {
+func (method *ConnectionTuneOk) Write(writer io.Writer, protoVersion string) (err error) {
 
 	if err = WriteShort(writer, method.ChannelMax); err != nil {
 		return err
@@ -383,7 +383,7 @@ func (method *ConnectionOpen) MethodIdentifier() uint16 {
 	return 40
 }
 
-func (method *ConnectionOpen) Read(reader io.Reader) (err error) {
+func (method *ConnectionOpen) Read(reader io.Reader, protoVersion string) (err error) {
 
 	method.VirtualHost, err = ReadShortstr(reader)
 	if err != nil {
@@ -402,7 +402,7 @@ func (method *ConnectionOpen) Read(reader io.Reader) (err error) {
 	return
 }
 
-func (method *ConnectionOpen) Write(writer io.Writer) (err error) {
+func (method *ConnectionOpen) Write(writer io.Writer, protoVersion string) (err error) {
 
 	if err = WriteShortstr(writer, method.VirtualHost); err != nil {
 		return err
@@ -445,7 +445,7 @@ func (method *ConnectionOpenOk) MethodIdentifier() uint16 {
 	return 41
 }
 
-func (method *ConnectionOpenOk) Read(reader io.Reader) (err error) {
+func (method *ConnectionOpenOk) Read(reader io.Reader, protoVersion string) (err error) {
 
 	method.Reserved1, err = ReadShortstr(reader)
 	if err != nil {
@@ -455,7 +455,7 @@ func (method *ConnectionOpenOk) Read(reader io.Reader) (err error) {
 	return
 }
 
-func (method *ConnectionOpenOk) Write(writer io.Writer) (err error) {
+func (method *ConnectionOpenOk) Write(writer io.Writer, protoVersion string) (err error) {
 
 	if err = WriteShortstr(writer, method.Reserved1); err != nil {
 		return err
@@ -487,7 +487,7 @@ func (method *ConnectionClose) MethodIdentifier() uint16 {
 	return 50
 }
 
-func (method *ConnectionClose) Read(reader io.Reader) (err error) {
+func (method *ConnectionClose) Read(reader io.Reader, protoVersion string) (err error) {
 
 	method.ReplyCode, err = ReadShort(reader)
 	if err != nil {
@@ -512,7 +512,7 @@ func (method *ConnectionClose) Read(reader io.Reader) (err error) {
 	return
 }
 
-func (method *ConnectionClose) Write(writer io.Writer) (err error) {
+func (method *ConnectionClose) Write(writer io.Writer, protoVersion string) (err error) {
 
 	if err = WriteShort(writer, method.ReplyCode); err != nil {
 		return err
@@ -552,12 +552,12 @@ func (method *ConnectionCloseOk) MethodIdentifier() uint16 {
 	return 51
 }
 
-func (method *ConnectionCloseOk) Read(reader io.Reader) (err error) {
+func (method *ConnectionCloseOk) Read(reader io.Reader, protoVersion string) (err error) {
 
 	return
 }
 
-func (method *ConnectionCloseOk) Write(writer io.Writer) (err error) {
+func (method *ConnectionCloseOk) Write(writer io.Writer, protoVersion string) (err error) {
 
 	return
 }
@@ -584,7 +584,7 @@ func (method *ChannelOpen) MethodIdentifier() uint16 {
 	return 10
 }
 
-func (method *ChannelOpen) Read(reader io.Reader) (err error) {
+func (method *ChannelOpen) Read(reader io.Reader, protoVersion string) (err error) {
 
 	method.Reserved1, err = ReadShortstr(reader)
 	if err != nil {
@@ -594,7 +594,7 @@ func (method *ChannelOpen) Read(reader io.Reader) (err error) {
 	return
 }
 
-func (method *ChannelOpen) Write(writer io.Writer) (err error) {
+func (method *ChannelOpen) Write(writer io.Writer, protoVersion string) (err error) {
 
 	if err = WriteShortstr(writer, method.Reserved1); err != nil {
 		return err
@@ -623,7 +623,7 @@ func (method *ChannelOpenOk) MethodIdentifier() uint16 {
 	return 11
 }
 
-func (method *ChannelOpenOk) Read(reader io.Reader) (err error) {
+func (method *ChannelOpenOk) Read(reader io.Reader, protoVersion string) (err error) {
 
 	method.Reserved1, err = ReadLongstr(reader)
 	if err != nil {
@@ -633,7 +633,7 @@ func (method *ChannelOpenOk) Read(reader io.Reader) (err error) {
 	return
 }
 
-func (method *ChannelOpenOk) Write(writer io.Writer) (err error) {
+func (method *ChannelOpenOk) Write(writer io.Writer, protoVersion string) (err error) {
 
 	if err = WriteLongstr(writer, method.Reserved1); err != nil {
 		return err
@@ -662,7 +662,7 @@ func (method *ChannelFlow) MethodIdentifier() uint16 {
 	return 20
 }
 
-func (method *ChannelFlow) Read(reader io.Reader) (err error) {
+func (method *ChannelFlow) Read(reader io.Reader, protoVersion string) (err error) {
 
 	bits, err := ReadOctet(reader)
 
@@ -671,7 +671,7 @@ func (method *ChannelFlow) Read(reader io.Reader) (err error) {
 	return
 }
 
-func (method *ChannelFlow) Write(writer io.Writer) (err error) {
+func (method *ChannelFlow) Write(writer io.Writer, protoVersion string) (err error) {
 
 	var bits byte
 
@@ -706,7 +706,7 @@ func (method *ChannelFlowOk) MethodIdentifier() uint16 {
 	return 21
 }
 
-func (method *ChannelFlowOk) Read(reader io.Reader) (err error) {
+func (method *ChannelFlowOk) Read(reader io.Reader, protoVersion string) (err error) {
 
 	bits, err := ReadOctet(reader)
 
@@ -715,7 +715,7 @@ func (method *ChannelFlowOk) Read(reader io.Reader) (err error) {
 	return
 }
 
-func (method *ChannelFlowOk) Write(writer io.Writer) (err error) {
+func (method *ChannelFlowOk) Write(writer io.Writer, protoVersion string) (err error) {
 
 	var bits byte
 
@@ -753,7 +753,7 @@ func (method *ChannelClose) MethodIdentifier() uint16 {
 	return 40
 }
 
-func (method *ChannelClose) Read(reader io.Reader) (err error) {
+func (method *ChannelClose) Read(reader io.Reader, protoVersion string) (err error) {
 
 	method.ReplyCode, err = ReadShort(reader)
 	if err != nil {
@@ -778,7 +778,7 @@ func (method *ChannelClose) Read(reader io.Reader) (err error) {
 	return
 }
 
-func (method *ChannelClose) Write(writer io.Writer) (err error) {
+func (method *ChannelClose) Write(writer io.Writer, protoVersion string) (err error) {
 
 	if err = WriteShort(writer, method.ReplyCode); err != nil {
 		return err
@@ -818,12 +818,12 @@ func (method *ChannelCloseOk) MethodIdentifier() uint16 {
 	return 41
 }
 
-func (method *ChannelCloseOk) Read(reader io.Reader) (err error) {
+func (method *ChannelCloseOk) Read(reader io.Reader, protoVersion string) (err error) {
 
 	return
 }
 
-func (method *ChannelCloseOk) Write(writer io.Writer) (err error) {
+func (method *ChannelCloseOk) Write(writer io.Writer, protoVersion string) (err error) {
 
 	return
 }
@@ -858,7 +858,7 @@ func (method *ExchangeDeclare) MethodIdentifier() uint16 {
 	return 10
 }
 
-func (method *ExchangeDeclare) Read(reader io.Reader) (err error) {
+func (method *ExchangeDeclare) Read(reader io.Reader, protoVersion string) (err error) {
 
 	method.Reserved1, err = ReadShort(reader)
 	if err != nil {
@@ -887,7 +887,7 @@ func (method *ExchangeDeclare) Read(reader io.Reader) (err error) {
 
 	method.NoWait = bits&(1<<4) != 0
 
-	method.Arguments, err = ReadTable(reader)
+	method.Arguments, err = ReadTable(reader, protoVersion)
 	if err != nil {
 		return err
 	}
@@ -895,7 +895,7 @@ func (method *ExchangeDeclare) Read(reader io.Reader) (err error) {
 	return
 }
 
-func (method *ExchangeDeclare) Write(writer io.Writer) (err error) {
+func (method *ExchangeDeclare) Write(writer io.Writer, protoVersion string) (err error) {
 
 	if err = WriteShort(writer, method.Reserved1); err != nil {
 		return err
@@ -935,7 +935,7 @@ func (method *ExchangeDeclare) Write(writer io.Writer) (err error) {
 		return err
 	}
 
-	if err = WriteTable(writer, method.Arguments); err != nil {
+	if err = WriteTable(writer, method.Arguments, protoVersion); err != nil {
 		return err
 	}
 
@@ -961,12 +961,12 @@ func (method *ExchangeDeclareOk) MethodIdentifier() uint16 {
 	return 11
 }
 
-func (method *ExchangeDeclareOk) Read(reader io.Reader) (err error) {
+func (method *ExchangeDeclareOk) Read(reader io.Reader, protoVersion string) (err error) {
 
 	return
 }
 
-func (method *ExchangeDeclareOk) Write(writer io.Writer) (err error) {
+func (method *ExchangeDeclareOk) Write(writer io.Writer, protoVersion string) (err error) {
 
 	return
 }
@@ -994,7 +994,7 @@ func (method *ExchangeDelete) MethodIdentifier() uint16 {
 	return 20
 }
 
-func (method *ExchangeDelete) Read(reader io.Reader) (err error) {
+func (method *ExchangeDelete) Read(reader io.Reader, protoVersion string) (err error) {
 
 	method.Reserved1, err = ReadShort(reader)
 	if err != nil {
@@ -1015,7 +1015,7 @@ func (method *ExchangeDelete) Read(reader io.Reader) (err error) {
 	return
 }
 
-func (method *ExchangeDelete) Write(writer io.Writer) (err error) {
+func (method *ExchangeDelete) Write(writer io.Writer, protoVersion string) (err error) {
 
 	if err = WriteShort(writer, method.Reserved1); err != nil {
 		return err
@@ -1061,12 +1061,12 @@ func (method *ExchangeDeleteOk) MethodIdentifier() uint16 {
 	return 21
 }
 
-func (method *ExchangeDeleteOk) Read(reader io.Reader) (err error) {
+func (method *ExchangeDeleteOk) Read(reader io.Reader, protoVersion string) (err error) {
 
 	return
 }
 
-func (method *ExchangeDeleteOk) Write(writer io.Writer) (err error) {
+func (method *ExchangeDeleteOk) Write(writer io.Writer, protoVersion string) (err error) {
 
 	return
 }
@@ -1100,7 +1100,7 @@ func (method *QueueDeclare) MethodIdentifier() uint16 {
 	return 10
 }
 
-func (method *QueueDeclare) Read(reader io.Reader) (err error) {
+func (method *QueueDeclare) Read(reader io.Reader, protoVersion string) (err error) {
 
 	method.Reserved1, err = ReadShort(reader)
 	if err != nil {
@@ -1124,7 +1124,7 @@ func (method *QueueDeclare) Read(reader io.Reader) (err error) {
 
 	method.NoWait = bits&(1<<4) != 0
 
-	method.Arguments, err = ReadTable(reader)
+	method.Arguments, err = ReadTable(reader, protoVersion)
 	if err != nil {
 		return err
 	}
@@ -1132,7 +1132,7 @@ func (method *QueueDeclare) Read(reader io.Reader) (err error) {
 	return
 }
 
-func (method *QueueDeclare) Write(writer io.Writer) (err error) {
+func (method *QueueDeclare) Write(writer io.Writer, protoVersion string) (err error) {
 
 	if err = WriteShort(writer, method.Reserved1); err != nil {
 		return err
@@ -1168,7 +1168,7 @@ func (method *QueueDeclare) Write(writer io.Writer) (err error) {
 		return err
 	}
 
-	if err = WriteTable(writer, method.Arguments); err != nil {
+	if err = WriteTable(writer, method.Arguments, protoVersion); err != nil {
 		return err
 	}
 
@@ -1197,7 +1197,7 @@ func (method *QueueDeclareOk) MethodIdentifier() uint16 {
 	return 11
 }
 
-func (method *QueueDeclareOk) Read(reader io.Reader) (err error) {
+func (method *QueueDeclareOk) Read(reader io.Reader, protoVersion string) (err error) {
 
 	method.Queue, err = ReadShortstr(reader)
 	if err != nil {
@@ -1217,7 +1217,7 @@ func (method *QueueDeclareOk) Read(reader io.Reader) (err error) {
 	return
 }
 
-func (method *QueueDeclareOk) Write(writer io.Writer) (err error) {
+func (method *QueueDeclareOk) Write(writer io.Writer, protoVersion string) (err error) {
 
 	if err = WriteShortstr(writer, method.Queue); err != nil {
 		return err
@@ -1259,7 +1259,7 @@ func (method *QueueBind) MethodIdentifier() uint16 {
 	return 20
 }
 
-func (method *QueueBind) Read(reader io.Reader) (err error) {
+func (method *QueueBind) Read(reader io.Reader, protoVersion string) (err error) {
 
 	method.Reserved1, err = ReadShort(reader)
 	if err != nil {
@@ -1285,7 +1285,7 @@ func (method *QueueBind) Read(reader io.Reader) (err error) {
 
 	method.NoWait = bits&(1<<0) != 0
 
-	method.Arguments, err = ReadTable(reader)
+	method.Arguments, err = ReadTable(reader, protoVersion)
 	if err != nil {
 		return err
 	}
@@ -1293,7 +1293,7 @@ func (method *QueueBind) Read(reader io.Reader) (err error) {
 	return
 }
 
-func (method *QueueBind) Write(writer io.Writer) (err error) {
+func (method *QueueBind) Write(writer io.Writer, protoVersion string) (err error) {
 
 	if err = WriteShort(writer, method.Reserved1); err != nil {
 		return err
@@ -1321,7 +1321,7 @@ func (method *QueueBind) Write(writer io.Writer) (err error) {
 		return err
 	}
 
-	if err = WriteTable(writer, method.Arguments); err != nil {
+	if err = WriteTable(writer, method.Arguments, protoVersion); err != nil {
 		return err
 	}
 
@@ -1347,12 +1347,12 @@ func (method *QueueBindOk) MethodIdentifier() uint16 {
 	return 21
 }
 
-func (method *QueueBindOk) Read(reader io.Reader) (err error) {
+func (method *QueueBindOk) Read(reader io.Reader, protoVersion string) (err error) {
 
 	return
 }
 
-func (method *QueueBindOk) Write(writer io.Writer) (err error) {
+func (method *QueueBindOk) Write(writer io.Writer, protoVersion string) (err error) {
 
 	return
 }
@@ -1381,7 +1381,7 @@ func (method *QueueUnbind) MethodIdentifier() uint16 {
 	return 50
 }
 
-func (method *QueueUnbind) Read(reader io.Reader) (err error) {
+func (method *QueueUnbind) Read(reader io.Reader, protoVersion string) (err error) {
 
 	method.Reserved1, err = ReadShort(reader)
 	if err != nil {
@@ -1403,7 +1403,7 @@ func (method *QueueUnbind) Read(reader io.Reader) (err error) {
 		return err
 	}
 
-	method.Arguments, err = ReadTable(reader)
+	method.Arguments, err = ReadTable(reader, protoVersion)
 	if err != nil {
 		return err
 	}
@@ -1411,7 +1411,7 @@ func (method *QueueUnbind) Read(reader io.Reader) (err error) {
 	return
 }
 
-func (method *QueueUnbind) Write(writer io.Writer) (err error) {
+func (method *QueueUnbind) Write(writer io.Writer, protoVersion string) (err error) {
 
 	if err = WriteShort(writer, method.Reserved1); err != nil {
 		return err
@@ -1429,7 +1429,7 @@ func (method *QueueUnbind) Write(writer io.Writer) (err error) {
 		return err
 	}
 
-	if err = WriteTable(writer, method.Arguments); err != nil {
+	if err = WriteTable(writer, method.Arguments, protoVersion); err != nil {
 		return err
 	}
 
@@ -1455,12 +1455,12 @@ func (method *QueueUnbindOk) MethodIdentifier() uint16 {
 	return 51
 }
 
-func (method *QueueUnbindOk) Read(reader io.Reader) (err error) {
+func (method *QueueUnbindOk) Read(reader io.Reader, protoVersion string) (err error) {
 
 	return
 }
 
-func (method *QueueUnbindOk) Write(writer io.Writer) (err error) {
+func (method *QueueUnbindOk) Write(writer io.Writer, protoVersion string) (err error) {
 
 	return
 }
@@ -1487,7 +1487,7 @@ func (method *QueuePurge) MethodIdentifier() uint16 {
 	return 30
 }
 
-func (method *QueuePurge) Read(reader io.Reader) (err error) {
+func (method *QueuePurge) Read(reader io.Reader, protoVersion string) (err error) {
 
 	method.Reserved1, err = ReadShort(reader)
 	if err != nil {
@@ -1506,7 +1506,7 @@ func (method *QueuePurge) Read(reader io.Reader) (err error) {
 	return
 }
 
-func (method *QueuePurge) Write(writer io.Writer) (err error) {
+func (method *QueuePurge) Write(writer io.Writer, protoVersion string) (err error) {
 
 	if err = WriteShort(writer, method.Reserved1); err != nil {
 		return err
@@ -1549,7 +1549,7 @@ func (method *QueuePurgeOk) MethodIdentifier() uint16 {
 	return 31
 }
 
-func (method *QueuePurgeOk) Read(reader io.Reader) (err error) {
+func (method *QueuePurgeOk) Read(reader io.Reader, protoVersion string) (err error) {
 
 	method.MessageCount, err = ReadLong(reader)
 	if err != nil {
@@ -1559,7 +1559,7 @@ func (method *QueuePurgeOk) Read(reader io.Reader) (err error) {
 	return
 }
 
-func (method *QueuePurgeOk) Write(writer io.Writer) (err error) {
+func (method *QueuePurgeOk) Write(writer io.Writer, protoVersion string) (err error) {
 
 	if err = WriteLong(writer, method.MessageCount); err != nil {
 		return err
@@ -1592,7 +1592,7 @@ func (method *QueueDelete) MethodIdentifier() uint16 {
 	return 40
 }
 
-func (method *QueueDelete) Read(reader io.Reader) (err error) {
+func (method *QueueDelete) Read(reader io.Reader, protoVersion string) (err error) {
 
 	method.Reserved1, err = ReadShort(reader)
 	if err != nil {
@@ -1615,7 +1615,7 @@ func (method *QueueDelete) Read(reader io.Reader) (err error) {
 	return
 }
 
-func (method *QueueDelete) Write(writer io.Writer) (err error) {
+func (method *QueueDelete) Write(writer io.Writer, protoVersion string) (err error) {
 
 	if err = WriteShort(writer, method.Reserved1); err != nil {
 		return err
@@ -1666,7 +1666,7 @@ func (method *QueueDeleteOk) MethodIdentifier() uint16 {
 	return 41
 }
 
-func (method *QueueDeleteOk) Read(reader io.Reader) (err error) {
+func (method *QueueDeleteOk) Read(reader io.Reader, protoVersion string) (err error) {
 
 	method.MessageCount, err = ReadLong(reader)
 	if err != nil {
@@ -1676,7 +1676,7 @@ func (method *QueueDeleteOk) Read(reader io.Reader) (err error) {
 	return
 }
 
-func (method *QueueDeleteOk) Write(writer io.Writer) (err error) {
+func (method *QueueDeleteOk) Write(writer io.Writer, protoVersion string) (err error) {
 
 	if err = WriteLong(writer, method.MessageCount); err != nil {
 		return err
@@ -1709,7 +1709,7 @@ func (method *BasicQos) MethodIdentifier() uint16 {
 	return 10
 }
 
-func (method *BasicQos) Read(reader io.Reader) (err error) {
+func (method *BasicQos) Read(reader io.Reader, protoVersion string) (err error) {
 
 	method.PrefetchSize, err = ReadLong(reader)
 	if err != nil {
@@ -1728,7 +1728,7 @@ func (method *BasicQos) Read(reader io.Reader) (err error) {
 	return
 }
 
-func (method *BasicQos) Write(writer io.Writer) (err error) {
+func (method *BasicQos) Write(writer io.Writer, protoVersion string) (err error) {
 
 	if err = WriteLong(writer, method.PrefetchSize); err != nil {
 		return err
@@ -1770,12 +1770,12 @@ func (method *BasicQosOk) MethodIdentifier() uint16 {
 	return 11
 }
 
-func (method *BasicQosOk) Read(reader io.Reader) (err error) {
+func (method *BasicQosOk) Read(reader io.Reader, protoVersion string) (err error) {
 
 	return
 }
 
-func (method *BasicQosOk) Write(writer io.Writer) (err error) {
+func (method *BasicQosOk) Write(writer io.Writer, protoVersion string) (err error) {
 
 	return
 }
@@ -1807,7 +1807,7 @@ func (method *BasicConsume) MethodIdentifier() uint16 {
 	return 20
 }
 
-func (method *BasicConsume) Read(reader io.Reader) (err error) {
+func (method *BasicConsume) Read(reader io.Reader, protoVersion string) (err error) {
 
 	method.Reserved1, err = ReadShort(reader)
 	if err != nil {
@@ -1834,7 +1834,7 @@ func (method *BasicConsume) Read(reader io.Reader) (err error) {
 
 	method.NoWait = bits&(1<<3) != 0
 
-	method.Arguments, err = ReadTable(reader)
+	method.Arguments, err = ReadTable(reader, protoVersion)
 	if err != nil {
 		return err
 	}
@@ -1842,7 +1842,7 @@ func (method *BasicConsume) Read(reader io.Reader) (err error) {
 	return
 }
 
-func (method *BasicConsume) Write(writer io.Writer) (err error) {
+func (method *BasicConsume) Write(writer io.Writer, protoVersion string) (err error) {
 
 	if err = WriteShort(writer, method.Reserved1); err != nil {
 		return err
@@ -1878,7 +1878,7 @@ func (method *BasicConsume) Write(writer io.Writer) (err error) {
 		return err
 	}
 
-	if err = WriteTable(writer, method.Arguments); err != nil {
+	if err = WriteTable(writer, method.Arguments, protoVersion); err != nil {
 		return err
 	}
 
@@ -1905,7 +1905,7 @@ func (method *BasicConsumeOk) MethodIdentifier() uint16 {
 	return 21
 }
 
-func (method *BasicConsumeOk) Read(reader io.Reader) (err error) {
+func (method *BasicConsumeOk) Read(reader io.Reader, protoVersion string) (err error) {
 
 	method.ConsumerTag, err = ReadShortstr(reader)
 	if err != nil {
@@ -1915,7 +1915,7 @@ func (method *BasicConsumeOk) Read(reader io.Reader) (err error) {
 	return
 }
 
-func (method *BasicConsumeOk) Write(writer io.Writer) (err error) {
+func (method *BasicConsumeOk) Write(writer io.Writer, protoVersion string) (err error) {
 
 	if err = WriteShortstr(writer, method.ConsumerTag); err != nil {
 		return err
@@ -1945,7 +1945,7 @@ func (method *BasicCancel) MethodIdentifier() uint16 {
 	return 30
 }
 
-func (method *BasicCancel) Read(reader io.Reader) (err error) {
+func (method *BasicCancel) Read(reader io.Reader, protoVersion string) (err error) {
 
 	method.ConsumerTag, err = ReadShortstr(reader)
 	if err != nil {
@@ -1959,7 +1959,7 @@ func (method *BasicCancel) Read(reader io.Reader) (err error) {
 	return
 }
 
-func (method *BasicCancel) Write(writer io.Writer) (err error) {
+func (method *BasicCancel) Write(writer io.Writer, protoVersion string) (err error) {
 
 	if err = WriteShortstr(writer, method.ConsumerTag); err != nil {
 		return err
@@ -1998,7 +1998,7 @@ func (method *BasicCancelOk) MethodIdentifier() uint16 {
 	return 31
 }
 
-func (method *BasicCancelOk) Read(reader io.Reader) (err error) {
+func (method *BasicCancelOk) Read(reader io.Reader, protoVersion string) (err error) {
 
 	method.ConsumerTag, err = ReadShortstr(reader)
 	if err != nil {
@@ -2008,7 +2008,7 @@ func (method *BasicCancelOk) Read(reader io.Reader) (err error) {
 	return
 }
 
-func (method *BasicCancelOk) Write(writer io.Writer) (err error) {
+func (method *BasicCancelOk) Write(writer io.Writer, protoVersion string) (err error) {
 
 	if err = WriteShortstr(writer, method.ConsumerTag); err != nil {
 		return err
@@ -2041,7 +2041,7 @@ func (method *BasicPublish) MethodIdentifier() uint16 {
 	return 40
 }
 
-func (method *BasicPublish) Read(reader io.Reader) (err error) {
+func (method *BasicPublish) Read(reader io.Reader, protoVersion string) (err error) {
 
 	method.Reserved1, err = ReadShort(reader)
 	if err != nil {
@@ -2067,7 +2067,7 @@ func (method *BasicPublish) Read(reader io.Reader) (err error) {
 	return
 }
 
-func (method *BasicPublish) Write(writer io.Writer) (err error) {
+func (method *BasicPublish) Write(writer io.Writer, protoVersion string) (err error) {
 
 	if err = WriteShort(writer, method.Reserved1); err != nil {
 		return err
@@ -2121,7 +2121,7 @@ func (method *BasicReturn) MethodIdentifier() uint16 {
 	return 50
 }
 
-func (method *BasicReturn) Read(reader io.Reader) (err error) {
+func (method *BasicReturn) Read(reader io.Reader, protoVersion string) (err error) {
 
 	method.ReplyCode, err = ReadShort(reader)
 	if err != nil {
@@ -2146,7 +2146,7 @@ func (method *BasicReturn) Read(reader io.Reader) (err error) {
 	return
 }
 
-func (method *BasicReturn) Write(writer io.Writer) (err error) {
+func (method *BasicReturn) Write(writer io.Writer, protoVersion string) (err error) {
 
 	if err = WriteShort(writer, method.ReplyCode); err != nil {
 		return err
@@ -2191,7 +2191,7 @@ func (method *BasicDeliver) MethodIdentifier() uint16 {
 	return 60
 }
 
-func (method *BasicDeliver) Read(reader io.Reader) (err error) {
+func (method *BasicDeliver) Read(reader io.Reader, protoVersion string) (err error) {
 
 	method.ConsumerTag, err = ReadShortstr(reader)
 	if err != nil {
@@ -2220,7 +2220,7 @@ func (method *BasicDeliver) Read(reader io.Reader) (err error) {
 	return
 }
 
-func (method *BasicDeliver) Write(writer io.Writer) (err error) {
+func (method *BasicDeliver) Write(writer io.Writer, protoVersion string) (err error) {
 
 	if err = WriteShortstr(writer, method.ConsumerTag); err != nil {
 		return err
@@ -2273,7 +2273,7 @@ func (method *BasicGet) MethodIdentifier() uint16 {
 	return 70
 }
 
-func (method *BasicGet) Read(reader io.Reader) (err error) {
+func (method *BasicGet) Read(reader io.Reader, protoVersion string) (err error) {
 
 	method.Reserved1, err = ReadShort(reader)
 	if err != nil {
@@ -2292,7 +2292,7 @@ func (method *BasicGet) Read(reader io.Reader) (err error) {
 	return
 }
 
-func (method *BasicGet) Write(writer io.Writer) (err error) {
+func (method *BasicGet) Write(writer io.Writer, protoVersion string) (err error) {
 
 	if err = WriteShort(writer, method.Reserved1); err != nil {
 		return err
@@ -2339,7 +2339,7 @@ func (method *BasicGetOk) MethodIdentifier() uint16 {
 	return 71
 }
 
-func (method *BasicGetOk) Read(reader io.Reader) (err error) {
+func (method *BasicGetOk) Read(reader io.Reader, protoVersion string) (err error) {
 
 	method.DeliveryTag, err = ReadLonglong(reader)
 	if err != nil {
@@ -2368,7 +2368,7 @@ func (method *BasicGetOk) Read(reader io.Reader) (err error) {
 	return
 }
 
-func (method *BasicGetOk) Write(writer io.Writer) (err error) {
+func (method *BasicGetOk) Write(writer io.Writer, protoVersion string) (err error) {
 
 	if err = WriteLonglong(writer, method.DeliveryTag); err != nil {
 		return err
@@ -2419,7 +2419,7 @@ func (method *BasicGetEmpty) MethodIdentifier() uint16 {
 	return 72
 }
 
-func (method *BasicGetEmpty) Read(reader io.Reader) (err error) {
+func (method *BasicGetEmpty) Read(reader io.Reader, protoVersion string) (err error) {
 
 	method.Reserved1, err = ReadShortstr(reader)
 	if err != nil {
@@ -2429,7 +2429,7 @@ func (method *BasicGetEmpty) Read(reader io.Reader) (err error) {
 	return
 }
 
-func (method *BasicGetEmpty) Write(writer io.Writer) (err error) {
+func (method *BasicGetEmpty) Write(writer io.Writer, protoVersion string) (err error) {
 
 	if err = WriteShortstr(writer, method.Reserved1); err != nil {
 		return err
@@ -2459,7 +2459,7 @@ func (method *BasicAck) MethodIdentifier() uint16 {
 	return 80
 }
 
-func (method *BasicAck) Read(reader io.Reader) (err error) {
+func (method *BasicAck) Read(reader io.Reader, protoVersion string) (err error) {
 
 	method.DeliveryTag, err = ReadLonglong(reader)
 	if err != nil {
@@ -2473,7 +2473,7 @@ func (method *BasicAck) Read(reader io.Reader) (err error) {
 	return
 }
 
-func (method *BasicAck) Write(writer io.Writer) (err error) {
+func (method *BasicAck) Write(writer io.Writer, protoVersion string) (err error) {
 
 	if err = WriteLonglong(writer, method.DeliveryTag); err != nil {
 		return err
@@ -2513,7 +2513,7 @@ func (method *BasicReject) MethodIdentifier() uint16 {
 	return 90
 }
 
-func (method *BasicReject) Read(reader io.Reader) (err error) {
+func (method *BasicReject) Read(reader io.Reader, protoVersion string) (err error) {
 
 	method.DeliveryTag, err = ReadLonglong(reader)
 	if err != nil {
@@ -2527,7 +2527,7 @@ func (method *BasicReject) Read(reader io.Reader) (err error) {
 	return
 }
 
-func (method *BasicReject) Write(writer io.Writer) (err error) {
+func (method *BasicReject) Write(writer io.Writer, protoVersion string) (err error) {
 
 	if err = WriteLonglong(writer, method.DeliveryTag); err != nil {
 		return err
@@ -2566,7 +2566,7 @@ func (method *BasicRecoverAsync) MethodIdentifier() uint16 {
 	return 100
 }
 
-func (method *BasicRecoverAsync) Read(reader io.Reader) (err error) {
+func (method *BasicRecoverAsync) Read(reader io.Reader, protoVersion string) (err error) {
 
 	bits, err := ReadOctet(reader)
 
@@ -2575,7 +2575,7 @@ func (method *BasicRecoverAsync) Read(reader io.Reader) (err error) {
 	return
 }
 
-func (method *BasicRecoverAsync) Write(writer io.Writer) (err error) {
+func (method *BasicRecoverAsync) Write(writer io.Writer, protoVersion string) (err error) {
 
 	var bits byte
 
@@ -2610,7 +2610,7 @@ func (method *BasicRecover) MethodIdentifier() uint16 {
 	return 110
 }
 
-func (method *BasicRecover) Read(reader io.Reader) (err error) {
+func (method *BasicRecover) Read(reader io.Reader, protoVersion string) (err error) {
 
 	bits, err := ReadOctet(reader)
 
@@ -2619,7 +2619,7 @@ func (method *BasicRecover) Read(reader io.Reader) (err error) {
 	return
 }
 
-func (method *BasicRecover) Write(writer io.Writer) (err error) {
+func (method *BasicRecover) Write(writer io.Writer, protoVersion string) (err error) {
 
 	var bits byte
 
@@ -2653,12 +2653,12 @@ func (method *BasicRecoverOk) MethodIdentifier() uint16 {
 	return 111
 }
 
-func (method *BasicRecoverOk) Read(reader io.Reader) (err error) {
+func (method *BasicRecoverOk) Read(reader io.Reader, protoVersion string) (err error) {
 
 	return
 }
 
-func (method *BasicRecoverOk) Write(writer io.Writer) (err error) {
+func (method *BasicRecoverOk) Write(writer io.Writer, protoVersion string) (err error) {
 
 	return
 }
@@ -2684,12 +2684,12 @@ func (method *TxSelect) MethodIdentifier() uint16 {
 	return 10
 }
 
-func (method *TxSelect) Read(reader io.Reader) (err error) {
+func (method *TxSelect) Read(reader io.Reader, protoVersion string) (err error) {
 
 	return
 }
 
-func (method *TxSelect) Write(writer io.Writer) (err error) {
+func (method *TxSelect) Write(writer io.Writer, protoVersion string) (err error) {
 
 	return
 }
@@ -2713,12 +2713,12 @@ func (method *TxSelectOk) MethodIdentifier() uint16 {
 	return 11
 }
 
-func (method *TxSelectOk) Read(reader io.Reader) (err error) {
+func (method *TxSelectOk) Read(reader io.Reader, protoVersion string) (err error) {
 
 	return
 }
 
-func (method *TxSelectOk) Write(writer io.Writer) (err error) {
+func (method *TxSelectOk) Write(writer io.Writer, protoVersion string) (err error) {
 
 	return
 }
@@ -2742,12 +2742,12 @@ func (method *TxCommit) MethodIdentifier() uint16 {
 	return 20
 }
 
-func (method *TxCommit) Read(reader io.Reader) (err error) {
+func (method *TxCommit) Read(reader io.Reader, protoVersion string) (err error) {
 
 	return
 }
 
-func (method *TxCommit) Write(writer io.Writer) (err error) {
+func (method *TxCommit) Write(writer io.Writer, protoVersion string) (err error) {
 
 	return
 }
@@ -2771,12 +2771,12 @@ func (method *TxCommitOk) MethodIdentifier() uint16 {
 	return 21
 }
 
-func (method *TxCommitOk) Read(reader io.Reader) (err error) {
+func (method *TxCommitOk) Read(reader io.Reader, protoVersion string) (err error) {
 
 	return
 }
 
-func (method *TxCommitOk) Write(writer io.Writer) (err error) {
+func (method *TxCommitOk) Write(writer io.Writer, protoVersion string) (err error) {
 
 	return
 }
@@ -2800,12 +2800,12 @@ func (method *TxRollback) MethodIdentifier() uint16 {
 	return 30
 }
 
-func (method *TxRollback) Read(reader io.Reader) (err error) {
+func (method *TxRollback) Read(reader io.Reader, protoVersion string) (err error) {
 
 	return
 }
 
-func (method *TxRollback) Write(writer io.Writer) (err error) {
+func (method *TxRollback) Write(writer io.Writer, protoVersion string) (err error) {
 
 	return
 }
@@ -2829,17 +2829,17 @@ func (method *TxRollbackOk) MethodIdentifier() uint16 {
 	return 31
 }
 
-func (method *TxRollbackOk) Read(reader io.Reader) (err error) {
+func (method *TxRollbackOk) Read(reader io.Reader, protoVersion string) (err error) {
 
 	return
 }
 
-func (method *TxRollbackOk) Write(writer io.Writer) (err error) {
+func (method *TxRollbackOk) Write(writer io.Writer, protoVersion string) (err error) {
 
 	return
 }
 
-func ReadMethod(reader io.Reader) (Method, error) {
+func ReadMethod(reader io.Reader, protoVersion string) (Method, error) {
 	classId, err := ReadShort(reader)
 	if err != nil {
 		return nil, err
@@ -2856,61 +2856,61 @@ func ReadMethod(reader io.Reader) (Method, error) {
 
 		case 10:
 			var method = &ConnectionStart{}
-			if err := method.Read(reader); err != nil {
+			if err := method.Read(reader, protoVersion); err != nil {
 				return nil, err
 			}
 			return method, nil
 		case 11:
 			var method = &ConnectionStartOk{}
-			if err := method.Read(reader); err != nil {
+			if err := method.Read(reader, protoVersion); err != nil {
 				return nil, err
 			}
 			return method, nil
 		case 20:
 			var method = &ConnectionSecure{}
-			if err := method.Read(reader); err != nil {
+			if err := method.Read(reader, protoVersion); err != nil {
 				return nil, err
 			}
 			return method, nil
 		case 21:
 			var method = &ConnectionSecureOk{}
-			if err := method.Read(reader); err != nil {
+			if err := method.Read(reader, protoVersion); err != nil {
 				return nil, err
 			}
 			return method, nil
 		case 30:
 			var method = &ConnectionTune{}
-			if err := method.Read(reader); err != nil {
+			if err := method.Read(reader, protoVersion); err != nil {
 				return nil, err
 			}
 			return method, nil
 		case 31:
 			var method = &ConnectionTuneOk{}
-			if err := method.Read(reader); err != nil {
+			if err := method.Read(reader, protoVersion); err != nil {
 				return nil, err
 			}
 			return method, nil
 		case 40:
 			var method = &ConnectionOpen{}
-			if err := method.Read(reader); err != nil {
+			if err := method.Read(reader, protoVersion); err != nil {
 				return nil, err
 			}
 			return method, nil
 		case 41:
 			var method = &ConnectionOpenOk{}
-			if err := method.Read(reader); err != nil {
+			if err := method.Read(reader, protoVersion); err != nil {
 				return nil, err
 			}
 			return method, nil
 		case 50:
 			var method = &ConnectionClose{}
-			if err := method.Read(reader); err != nil {
+			if err := method.Read(reader, protoVersion); err != nil {
 				return nil, err
 			}
 			return method, nil
 		case 51:
 			var method = &ConnectionCloseOk{}
-			if err := method.Read(reader); err != nil {
+			if err := method.Read(reader, protoVersion); err != nil {
 				return nil, err
 			}
 			return method, nil
@@ -2920,37 +2920,37 @@ func ReadMethod(reader io.Reader) (Method, error) {
 
 		case 10:
 			var method = &ChannelOpen{}
-			if err := method.Read(reader); err != nil {
+			if err := method.Read(reader, protoVersion); err != nil {
 				return nil, err
 			}
 			return method, nil
 		case 11:
 			var method = &ChannelOpenOk{}
-			if err := method.Read(reader); err != nil {
+			if err := method.Read(reader, protoVersion); err != nil {
 				return nil, err
 			}
 			return method, nil
 		case 20:
 			var method = &ChannelFlow{}
-			if err := method.Read(reader); err != nil {
+			if err := method.Read(reader, protoVersion); err != nil {
 				return nil, err
 			}
 			return method, nil
 		case 21:
 			var method = &ChannelFlowOk{}
-			if err := method.Read(reader); err != nil {
+			if err := method.Read(reader, protoVersion); err != nil {
 				return nil, err
 			}
 			return method, nil
 		case 40:
 			var method = &ChannelClose{}
-			if err := method.Read(reader); err != nil {
+			if err := method.Read(reader, protoVersion); err != nil {
 				return nil, err
 			}
 			return method, nil
 		case 41:
 			var method = &ChannelCloseOk{}
-			if err := method.Read(reader); err != nil {
+			if err := method.Read(reader, protoVersion); err != nil {
 				return nil, err
 			}
 			return method, nil
@@ -2960,25 +2960,25 @@ func ReadMethod(reader io.Reader) (Method, error) {
 
 		case 10:
 			var method = &ExchangeDeclare{}
-			if err := method.Read(reader); err != nil {
+			if err := method.Read(reader, protoVersion); err != nil {
 				return nil, err
 			}
 			return method, nil
 		case 11:
 			var method = &ExchangeDeclareOk{}
-			if err := method.Read(reader); err != nil {
+			if err := method.Read(reader, protoVersion); err != nil {
 				return nil, err
 			}
 			return method, nil
 		case 20:
 			var method = &ExchangeDelete{}
-			if err := method.Read(reader); err != nil {
+			if err := method.Read(reader, protoVersion); err != nil {
 				return nil, err
 			}
 			return method, nil
 		case 21:
 			var method = &ExchangeDeleteOk{}
-			if err := method.Read(reader); err != nil {
+			if err := method.Read(reader, protoVersion); err != nil {
 				return nil, err
 			}
 			return method, nil
@@ -2988,61 +2988,61 @@ func ReadMethod(reader io.Reader) (Method, error) {
 
 		case 10:
 			var method = &QueueDeclare{}
-			if err := method.Read(reader); err != nil {
+			if err := method.Read(reader, protoVersion); err != nil {
 				return nil, err
 			}
 			return method, nil
 		case 11:
 			var method = &QueueDeclareOk{}
-			if err := method.Read(reader); err != nil {
+			if err := method.Read(reader, protoVersion); err != nil {
 				return nil, err
 			}
 			return method, nil
 		case 20:
 			var method = &QueueBind{}
-			if err := method.Read(reader); err != nil {
+			if err := method.Read(reader, protoVersion); err != nil {
 				return nil, err
 			}
 			return method, nil
 		case 21:
 			var method = &QueueBindOk{}
-			if err := method.Read(reader); err != nil {
+			if err := method.Read(reader, protoVersion); err != nil {
 				return nil, err
 			}
 			return method, nil
 		case 50:
 			var method = &QueueUnbind{}
-			if err := method.Read(reader); err != nil {
+			if err := method.Read(reader, protoVersion); err != nil {
 				return nil, err
 			}
 			return method, nil
 		case 51:
 			var method = &QueueUnbindOk{}
-			if err := method.Read(reader); err != nil {
+			if err := method.Read(reader, protoVersion); err != nil {
 				return nil, err
 			}
 			return method, nil
 		case 30:
 			var method = &QueuePurge{}
-			if err := method.Read(reader); err != nil {
+			if err := method.Read(reader, protoVersion); err != nil {
 				return nil, err
 			}
 			return method, nil
 		case 31:
 			var method = &QueuePurgeOk{}
-			if err := method.Read(reader); err != nil {
+			if err := method.Read(reader, protoVersion); err != nil {
 				return nil, err
 			}
 			return method, nil
 		case 40:
 			var method = &QueueDelete{}
-			if err := method.Read(reader); err != nil {
+			if err := method.Read(reader, protoVersion); err != nil {
 				return nil, err
 			}
 			return method, nil
 		case 41:
 			var method = &QueueDeleteOk{}
-			if err := method.Read(reader); err != nil {
+			if err := method.Read(reader, protoVersion); err != nil {
 				return nil, err
 			}
 			return method, nil
@@ -3052,103 +3052,103 @@ func ReadMethod(reader io.Reader) (Method, error) {
 
 		case 10:
 			var method = &BasicQos{}
-			if err := method.Read(reader); err != nil {
+			if err := method.Read(reader, protoVersion); err != nil {
 				return nil, err
 			}
 			return method, nil
 		case 11:
 			var method = &BasicQosOk{}
-			if err := method.Read(reader); err != nil {
+			if err := method.Read(reader, protoVersion); err != nil {
 				return nil, err
 			}
 			return method, nil
 		case 20:
 			var method = &BasicConsume{}
-			if err := method.Read(reader); err != nil {
+			if err := method.Read(reader, protoVersion); err != nil {
 				return nil, err
 			}
 			return method, nil
 		case 21:
 			var method = &BasicConsumeOk{}
-			if err := method.Read(reader); err != nil {
+			if err := method.Read(reader, protoVersion); err != nil {
 				return nil, err
 			}
 			return method, nil
 		case 30:
 			var method = &BasicCancel{}
-			if err := method.Read(reader); err != nil {
+			if err := method.Read(reader, protoVersion); err != nil {
 				return nil, err
 			}
 			return method, nil
 		case 31:
 			var method = &BasicCancelOk{}
-			if err := method.Read(reader); err != nil {
+			if err := method.Read(reader, protoVersion); err != nil {
 				return nil, err
 			}
 			return method, nil
 		case 40:
 			var method = &BasicPublish{}
-			if err := method.Read(reader); err != nil {
+			if err := method.Read(reader, protoVersion); err != nil {
 				return nil, err
 			}
 			return method, nil
 		case 50:
 			var method = &BasicReturn{}
-			if err := method.Read(reader); err != nil {
+			if err := method.Read(reader, protoVersion); err != nil {
 				return nil, err
 			}
 			return method, nil
 		case 60:
 			var method = &BasicDeliver{}
-			if err := method.Read(reader); err != nil {
+			if err := method.Read(reader, protoVersion); err != nil {
 				return nil, err
 			}
 			return method, nil
 		case 70:
 			var method = &BasicGet{}
-			if err := method.Read(reader); err != nil {
+			if err := method.Read(reader, protoVersion); err != nil {
 				return nil, err
 			}
 			return method, nil
 		case 71:
 			var method = &BasicGetOk{}
-			if err := method.Read(reader); err != nil {
+			if err := method.Read(reader, protoVersion); err != nil {
 				return nil, err
 			}
 			return method, nil
 		case 72:
 			var method = &BasicGetEmpty{}
-			if err := method.Read(reader); err != nil {
+			if err := method.Read(reader, protoVersion); err != nil {
 				return nil, err
 			}
 			return method, nil
 		case 80:
 			var method = &BasicAck{}
-			if err := method.Read(reader); err != nil {
+			if err := method.Read(reader, protoVersion); err != nil {
 				return nil, err
 			}
 			return method, nil
 		case 90:
 			var method = &BasicReject{}
-			if err := method.Read(reader); err != nil {
+			if err := method.Read(reader, protoVersion); err != nil {
 				return nil, err
 			}
 			return method, nil
 		case 100:
 			var method = &BasicRecoverAsync{}
-			if err := method.Read(reader); err != nil {
+			if err := method.Read(reader, protoVersion); err != nil {
 				return nil, err
 			}
 			return method, nil
 		case 110:
 			var method = &BasicRecover{}
-			if err := method.Read(reader); err != nil {
+			if err := method.Read(reader, protoVersion); err != nil {
 				return nil, err
 			}
 			return method, nil
 		case 111:
 			var method = &BasicRecoverOk{}
-			if err := method.Read(reader); err != nil {
+			if err := method.Read(reader, protoVersion); err != nil {
 				return nil, err
 			}
 			return method, nil
@@ -3158,37 +3158,37 @@ func ReadMethod(reader io.Reader) (Method, error) {
 
 		case 10:
 			var method = &TxSelect{}
-			if err := method.Read(reader); err != nil {
+			if err := method.Read(reader, protoVersion); err != nil {
 				return nil, err
 			}
 			return method, nil
 		case 11:
 			var method = &TxSelectOk{}
-			if err := method.Read(reader); err != nil {
+			if err := method.Read(reader, protoVersion); err != nil {
 				return nil, err
 			}
 			return method, nil
 		case 20:
 			var method = &TxCommit{}
-			if err := method.Read(reader); err != nil {
+			if err := method.Read(reader, protoVersion); err != nil {
 				return nil, err
 			}
 			return method, nil
 		case 21:
 			var method = &TxCommitOk{}
-			if err := method.Read(reader); err != nil {
+			if err := method.Read(reader, protoVersion); err != nil {
 				return nil, err
 			}
 			return method, nil
 		case 30:
 			var method = &TxRollback{}
-			if err := method.Read(reader); err != nil {
+			if err := method.Read(reader, protoVersion); err != nil {
 				return nil, err
 			}
 			return method, nil
 		case 31:
 			var method = &TxRollbackOk{}
-			if err := method.Read(reader); err != nil {
+			if err := method.Read(reader, protoVersion); err != nil {
 				return nil, err
 			}
 			return method, nil
@@ -3198,7 +3198,7 @@ func ReadMethod(reader io.Reader) (Method, error) {
 	return nil, errors.New(fmt.Sprintf("Unknown classId and methodId: [%d. %d]", classId, methodId))
 }
 
-func WriteMethod(writer io.Writer, method Method) (err error) {
+func WriteMethod(writer io.Writer, method Method, protoVersion string) (err error) {
 	if err = WriteShort(writer, method.ClassIdentifier()); err != nil {
 		return err
 	}
@@ -3206,7 +3206,7 @@ func WriteMethod(writer io.Writer, method Method) (err error) {
 		return err
 	}
 
-	if err = method.Write(writer); err != nil {
+	if err = method.Write(writer, protoVersion); err != nil {
 		return err
 	}
 

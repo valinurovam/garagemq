@@ -7,18 +7,20 @@ import (
 )
 
 type Server struct {
-	host        string
-	port        string
-	listener    net.Listener
-	connSeq     int64
-	connections map[int64]*Connection
+	host         string
+	port         string
+	protoVersion string
+	listener     net.Listener
+	connSeq      int64
+	connections  map[int64]*Connection
 }
 
-func NewServer(host string, port string) (server *Server) {
+func NewServer(host string, port string, protoVersion string) (server *Server) {
 	server = &Server{
-		host: host,
-		port: port,
-		connections: make(map[int64]*Connection),
+		host:         host,
+		port:         port,
+		connections:  make(map[int64]*Connection),
+		protoVersion: protoVersion,
 	}
 	return
 }

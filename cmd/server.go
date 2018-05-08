@@ -4,6 +4,7 @@ import (
 	"github.com/valinurovam/garagemq/server"
 	log "github.com/sirupsen/logrus"
 	"os"
+	"github.com/valinurovam/garagemq/amqp"
 )
 
 func init() {
@@ -12,8 +13,8 @@ func init() {
 	log.SetLevel(log.InfoLevel)
 }
 
-func main()  {
-	srv := server.NewServer("localhost", "5672")
+func main() {
+	srv := server.NewServer("localhost", "5672", amqp.Proto091)
 	srv.Start()
 	defer srv.Stop()
 }

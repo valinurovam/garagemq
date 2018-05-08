@@ -97,8 +97,8 @@ type Method interface {
 	FrameType() byte
 	ClassIdentifier() uint16
 	MethodIdentifier() uint16
-	Read(reader io.Reader) (err error)
-	Write(writer io.Writer) (err error)
+	Read(reader io.Reader, protoVersion string) (err error)
+	Write(writer io.Writer, protoVersion string) (err error)
 }
 {{range .}}
 {{$classId := .Id}}
@@ -124,15 +124,15 @@ func (method *{{.GoName}}) MethodIdentifier() uint16 {
     return {{.Id}}
 }
 
-func (method *{{.GoName}}) Read(reader io.Reader) (err error) {
+func (method *{{.GoName}}) Read(reader io.Reader, protoVersion string) (err error) {
 {{range .Fields}}
 	{{if .IsBit }}
 	{{if eq .BitOrder 0}}
-	bits, err := ReadOctet(reader)
+		bits, err := ReadOctet(reader)
 	{{end}}
-	method.{{.GoName}} = bits&(1<<{{.BitOrder}}) != 0 
+		method.{{.GoName}} = bits&(1<<{{.BitOrder}}) != 0 
 	{{else}}
-	method.{{.GoName}}, err = Read{{.ReaderFunc}}(reader)
+	method.{{.GoName}}, err = Read{{.ReaderFunc}}(reader{{if eq .ReaderFunc "Table"}}, protoVersion{{end}})
 	if err != nil {
 		return err
 	}
@@ -142,7 +142,7 @@ func (method *{{.GoName}}) Read(reader io.Reader) (err error) {
 	return
 }
 
-func (method *{{.GoName}}) Write(writer io.Writer) (err error) {
+func (method *{{.GoName}}) Write(writer io.Writer, protoVersion string) (err error) {
 {{$bitFieldsStarted := false}}
 {{range .Fields}}
 	{{if .IsBit }}
@@ -159,7 +159,7 @@ func (method *{{.GoName}}) Write(writer io.Writer) (err error) {
 	}
 	{{end}}
 	{{else}}
-	if err = Write{{.ReaderFunc}}(writer, method.{{.GoName}}); err != nil {
+	if err = Write{{.ReaderFunc}}(writer, method.{{.GoName}}{{if eq .ReaderFunc "Table"}}, protoVersion{{end}}); err != nil {
 		return err
 	}
 	{{end}}
@@ -169,7 +169,7 @@ func (method *{{.GoName}}) Write(writer io.Writer) (err error) {
 {{end}}
 {{end}}
 
-func ReadMethod(reader io.Reader) (Method, error) {
+func ReadMethod(reader io.Reader, protoVersion string) (Method, error) {
 	classId, err := ReadShort(reader)
 	if err != nil {
 		return nil, err 
@@ -186,7 +186,7 @@ func ReadMethod(reader io.Reader) (Method, error) {
 			{{range .Methods}}
 		case {{.Id}}:
 			var method = &{{.GoName}}{}
-			if err := method.Read(reader); err != nil {
+			if err := method.Read(reader, protoVersion); err != nil {
 				return nil, err
 			}
 			return method, nil{{end}}
@@ -196,7 +196,7 @@ func ReadMethod(reader io.Reader) (Method, error) {
 	return nil, errors.New(fmt.Sprintf("Unknown classId and methodId: [%d. %d]", classId, methodId))
 }
 
-func WriteMethod(writer io.Writer, method Method) (err error) {
+func WriteMethod(writer io.Writer, method Method, protoVersion string) (err error) {
 	if err = WriteShort(writer, method.ClassIdentifier()); err != nil {
 		return err
 	}
@@ -204,7 +204,7 @@ func WriteMethod(writer io.Writer, method Method) (err error) {
 		return err
 	}
 
-	if err = method.Write(writer); err != nil {
+	if err = method.Write(writer, protoVersion); err != nil {
 		return err
 	}
 	

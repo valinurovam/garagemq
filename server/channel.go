@@ -32,7 +32,7 @@ func (channel *Channel) start() {
 
 func (channel *Channel) sendMethod(method amqp.Method) {
 	rawMethod := bytes.NewBuffer([]byte{})
-	if err := amqp.WriteMethod(rawMethod, method); err != nil {
+	if err := amqp.WriteMethod(rawMethod, method, channel.server.protoVersion); err != nil {
 		logrus.WithError(err).Error("Error")
 	}
 	channel.outgoing <- &amqp.Frame{Type: byte(amqp.FrameMethod), ChannelId: channel.id, Payload: rawMethod.Bytes()}
@@ -42,7 +42,8 @@ func (channel *Channel) connectionStart() {
 	//var capabilities = amqp.NewTable()
 	//capabilities.Set("publisher_confirms", false)
 	//capabilities.Set("basic.nack", true)
-	var serverProps = amqp.NewTable()
+	var serverProps = amqp.Table{}
+	serverProps["product"] = "garagemq"
 	//serverProps.Set("product", "garagemq")
 	//serverProps.Set("version", "0.1")
 	//serverProps.Set("copyright", "Alexander Valinurov, 2018")
@@ -57,6 +58,6 @@ func (channel *Channel) connectionStart() {
 
 	//serverProps.Set("information", []byte("http://dispatchd.org"))
 
-	var method = amqp.ConnectionStart{0, 9, serverProps, []byte("PLAIN"), []byte("en_US")}
+	var method = amqp.ConnectionStart{0, 9, &serverProps, []byte("PLAIN"), []byte("en_US")}
 	channel.sendMethod(&method)
 }
