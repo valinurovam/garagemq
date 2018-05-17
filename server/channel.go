@@ -4,6 +4,8 @@ import (
 	"github.com/valinurovam/garagemq/amqp"
 	"bytes"
 	"github.com/sirupsen/logrus"
+	"runtime"
+	"os"
 )
 
 type Channel struct {
@@ -39,24 +41,21 @@ func (channel *Channel) sendMethod(method amqp.Method) {
 }
 
 func (channel *Channel) connectionStart() {
-	//var capabilities = amqp.NewTable()
-	//capabilities.Set("publisher_confirms", false)
-	//capabilities.Set("basic.nack", true)
+	var capabilities = amqp.Table{}
+	capabilities["publisher_confirms"] = false
+	capabilities["basic.nack"] = true
 	var serverProps = amqp.Table{}
 	serverProps["product"] = "garagemq"
-	//serverProps.Set("product", "garagemq")
-	//serverProps.Set("version", "0.1")
-	//serverProps.Set("copyright", "Alexander Valinurov, 2018")
-	////serverProps.Set("capabilities", capabilities)
-	//serverProps.Set("platform", runtime.GOARCH)
-	//host, err := os.Hostname()
-	//if err != nil {
-	//	serverProps.Set("host", "UnknownHostError")
-	//} else {
-	//	serverProps.Set("host", host)
-	//}
-
-	//serverProps.Set("information", []byte("http://dispatchd.org"))
+	serverProps["version"] = "0.1"
+	serverProps["copyright"] = "Alexander Valinurov, 2018"
+	serverProps["platform"] = runtime.GOARCH
+	serverProps["capabilities"] = capabilities
+	host, err := os.Hostname()
+	if err != nil {
+		serverProps["host"] = "UnknownHostError"
+	} else {
+		serverProps["host"] = host
+	}
 
 	var method = amqp.ConnectionStart{0, 9, &serverProps, []byte("PLAIN"), []byte("en_US")}
 	channel.sendMethod(&method)

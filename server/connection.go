@@ -61,11 +61,30 @@ func (conn *Connection) handleConnection() {
 	conn.channels[0] = NewChannel(0, conn)
 	conn.channels[0].start()
 	go conn.handleOutgoing()
+	go conn.handleIncoming()
 }
 
 func (conn *Connection) handleOutgoing() {
 	for {
 		var frame = <-conn.outgoing
 		amqp.WriteFrame(conn.netConn, frame)
+	}
+}
+
+func (conn *Connection) handleIncoming() {
+	for {
+		frame, err := amqp.ReadFrame(conn.netConn)
+		if err != nil {
+			conn.logger.WithError(err).Error("Error")
+		}
+
+		buffer := bytes.NewReader(frame.Payload)
+		method, err := amqp.ReadMethod(buffer, conn.server.protoVersion)
+		if err != nil {
+			conn.logger.WithError(err).Error("Error")
+		}
+
+		// @todo handle method?
+		fmt.Println(method)
 	}
 }

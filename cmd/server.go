@@ -14,7 +14,7 @@ func init() {
 }
 
 func main() {
-	srv := server.NewServer("localhost", "5672", amqp.Proto091)
+	srv := server.NewServer("localhost", "5672", amqp.ProtoRabbit)
 	srv.Start()
 	defer srv.Stop()
 }

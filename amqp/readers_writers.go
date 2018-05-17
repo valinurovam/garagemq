@@ -158,9 +158,293 @@ func WriteLongstr(wr io.Writer, data []byte) error {
 }
 
 func ReadTable(r io.Reader, protoVersion string) (data *Table, err error) {
-	data = &Table{}
-	// @todo implement ReadTable
-	return data, nil
+	tmpData := Table{}
+	tableData, err := ReadLongstr(r)
+	if err != nil {
+		return nil, err
+	}
+
+	tableReader := bytes.NewReader(tableData)
+	for tableReader.Len() > 0 {
+		var key string
+		var value interface{}
+		if key, err = ReadShortstr(tableReader); err != nil {
+			return nil, errors.New("Unable to read key from table: " + err.Error())
+		}
+
+		if value, err = readV(tableReader, protoVersion); err != nil {
+			return nil, errors.New("Unable to read value from table: " + err.Error())
+		}
+
+		tmpData[key] = value
+	}
+
+	return &tmpData, nil
+}
+
+func readV(r io.Reader, protoVersion string) (data interface{}, err error) {
+	switch protoVersion {
+	case Proto091:
+		return readValue091(r)
+	case ProtoRabbit:
+		return readValueRabbit(r)
+	}
+
+	return nil, errors.New(fmt.Sprintf("Unknown proto version [%s]", protoVersion))
+}
+
+/*
+Standard amqp-0-9-1 table fields
+
+'t' bool			boolean
+'b' int8			short-short-int
+'B' uint8			short-short-uint
+'U' int16			short-int
+'u' uint16			short-uint
+'I' int32			long-int
+'i' uint32			long-uint
+'L' int64			long-long-int
+'l' uint64			long-long-uint
+'f' float			float
+'d' double			double
+'D' Decimal			decimal-value
+'s' string			short-string
+'S'	[]byte			long-string
+'A' []interface{} 	field-array
+'T' time.Time		timestamp
+'F' Table			field-table
+'V' nil				no-field
+*/
+func readValue091(r io.Reader) (data interface{}, err error) {
+	vType, err := ReadOctet(r)
+	if err != nil {
+		return nil, err
+	}
+
+	switch vType {
+	case 't':
+		rData, err := ReadOctet(r)
+		if err != nil {
+			return nil, err
+		}
+		data = rData != 0
+	case 'b':
+		var rData int8
+		if err := binary.Read(r, binary.BigEndian, &rData); err != nil {
+			return nil, err
+		}
+		return rData, nil
+	case 'B':
+		var rData uint8
+		if err := binary.Read(r, binary.BigEndian, &rData); err != nil {
+			return nil, err
+		}
+		return rData, nil
+	case 'U':
+		var rData int16
+		if err := binary.Read(r, binary.BigEndian, &rData); err != nil {
+			return nil, err
+		}
+		return rData, nil
+	case 'u':
+		var rData uint16
+		if err := binary.Read(r, binary.BigEndian, &rData); err != nil {
+			return nil, err
+		}
+		return rData, nil
+	case 'I':
+		var rData int32
+		if err := binary.Read(r, binary.BigEndian, &rData); err != nil {
+			return nil, err
+		}
+		return rData, nil
+	case 'i':
+		var rData uint32
+		if err := binary.Read(r, binary.BigEndian, &rData); err != nil {
+			return nil, err
+		}
+		return rData, nil
+	case 'L':
+		var rData int64
+		if err := binary.Read(r, binary.BigEndian, &rData); err != nil {
+			return nil, err
+		}
+		return rData, nil
+	case 'l':
+		var rData uint64
+		if err := binary.Read(r, binary.BigEndian, &rData); err != nil {
+			return nil, err
+		}
+		return rData, nil
+	case 'f':
+		var rData float32
+		if err := binary.Read(r, binary.BigEndian, &rData); err != nil {
+			return nil, err
+		}
+		return rData, nil
+	case 'd':
+		var rData float64
+		if err := binary.Read(r, binary.BigEndian, &rData); err != nil {
+			return nil, err
+		}
+		return rData, nil
+	case 'D':
+		var rData = Decimal{0, 0}
+
+		if err := binary.Read(r, binary.BigEndian, &rData.Scale); err != nil {
+			return nil, err
+		}
+		if err := binary.Read(r, binary.BigEndian, &rData.Value); err != nil {
+			return nil, err
+		}
+		return rData, nil
+	case 's':
+		var rData string
+		if rData, err = ReadShortstr(r); err == nil {
+			return nil, err
+		}
+
+		return rData, nil
+	case 'S':
+		var rData []byte
+		if rData, err = ReadLongstr(r); err == nil {
+			return nil, err
+		}
+
+		return rData, nil
+	case 'T':
+		var rData time.Time
+		if rData, err = ReadTimestamp(r); err == nil {
+			return nil, err
+		}
+
+		return rData, nil
+	case 'A':
+		var rData []interface{}
+		if rData, err = readArray(r, Proto091); err == nil {
+			return nil, err
+		}
+		return rData, nil
+	case 'F':
+		var rData *Table
+		if rData, err = ReadTable(r, Proto091); err == nil {
+			return nil, err
+		}
+		return rData, nil
+	case 'V':
+		return nil, nil
+	}
+
+	return nil, errors.New(fmt.Sprintf("Unsupported type by %s protocol", Proto091))
+}
+
+/*
+Rabbitmq table fields
+
+'t' bool			boolean
+'b' int8			short-short-int
+'s'	int16			short-int
+'I' int32			long-int
+'l' int64			long-long-int
+'f' float			float
+'d' double			double
+'D' Decimal			decimal-value
+'S'	[]byte			long-string
+'T' time.Time		timestamp
+'F' Table			field-table
+'V' nil				no-field
+'x' []interface{} 	field-array
+*/
+func readValueRabbit(r io.Reader) (data interface{}, err error) {
+	vType, err := ReadOctet(r)
+	if err != nil {
+		return nil, err
+	}
+
+	switch vType {
+	case 't':
+		rData, err := ReadOctet(r)
+		if err != nil {
+			return nil, err
+		}
+		return rData != 0, nil
+	case 'b':
+		var rData int8
+		if err := binary.Read(r, binary.BigEndian, &rData); err != nil {
+			return nil, err
+		}
+		return rData, nil
+	case 's':
+		var rData int16
+		if err := binary.Read(r, binary.BigEndian, &rData); err != nil {
+			return nil, err
+		}
+		return rData, nil
+	case 'I':
+		var rData int32
+		if err := binary.Read(r, binary.BigEndian, &rData); err != nil {
+			return nil, err
+		}
+		return rData, nil
+	case 'l':
+		var rData int64
+		if err := binary.Read(r, binary.BigEndian, &rData); err != nil {
+			return nil, err
+		}
+		return rData, nil
+	case 'f':
+		var rData float32
+		if err := binary.Read(r, binary.BigEndian, &rData); err != nil {
+			return nil, err
+		}
+		return rData, nil
+	case 'd':
+		var rData float64
+		if err := binary.Read(r, binary.BigEndian, &rData); err != nil {
+			return nil, err
+		}
+		return rData, nil
+	case 'D':
+		var rData = Decimal{0, 0}
+
+		if err := binary.Read(r, binary.BigEndian, &rData.Scale); err != nil {
+			return nil, err
+		}
+		if err := binary.Read(r, binary.BigEndian, &rData.Value); err != nil {
+			return nil, err
+		}
+		return rData, nil
+	case 'S':
+		var rData []byte
+		if rData, err = ReadLongstr(r); err != nil {
+			return nil, err
+		}
+
+		return string(rData), nil
+	case 'T':
+		var rData time.Time
+		if rData, err = ReadTimestamp(r); err != nil {
+			return nil, err
+		}
+
+		return rData, nil
+	case 'x':
+		var rData []interface{}
+		if rData, err = readArray(r, ProtoRabbit); err != nil {
+			return nil, err
+		}
+		return rData, nil
+	case 'F':
+		var rData *Table
+		if rData, err = ReadTable(r, ProtoRabbit); err != nil {
+			return nil, err
+		}
+		return rData, nil
+	case 'V':
+		return nil, nil
+	}
+
+	return nil, errors.New(fmt.Sprintf("Unsupported type %c (%s) by %s protocol", vType, ProtoRabbit))
 }
 
 func WriteTable(writer io.Writer, table *Table, protoVersion string) (err error) {
@@ -396,6 +680,7 @@ func writeValueRabbit(writer io.Writer, v interface{}) (err error) {
 
 	return
 }
+
 func writeArray(writer io.Writer, array []interface{}, protoVersion string) error {
 	var buf = bytes.NewBuffer([]byte{})
 	for _, v := range array {
@@ -406,4 +691,22 @@ func writeArray(writer io.Writer, array []interface{}, protoVersion string) erro
 	return WriteLongstr(writer, buf.Bytes())
 }
 
+func readArray(r io.Reader, protoVersion string) (data []interface{}, err error) {
+	data = make([]interface{}, 0, 0)
+	var arrayData []byte
+	if arrayData, err = ReadLongstr(r); err != nil {
+		return nil, err
+	}
 
+	arrayBuffer := bytes.NewBuffer(arrayData)
+	for arrayBuffer.Len() > 0 {
+		var itemV interface{}
+		if itemV, err = readV(arrayBuffer, protoVersion); err != nil {
+			return nil, err
+		}
+
+		data = append(data, itemV)
+	}
+
+	return data, nil
+}
