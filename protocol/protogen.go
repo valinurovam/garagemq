@@ -75,6 +75,11 @@ const {{.GoName}} = {{.Value}}
 `
 	t := template.Must(template.New("constTemplate").Parse(constTemplate))
 
+	for _, class := range amqp.Classes {
+		constant := &Constant{Name: "class-" + class.Name, Value: class.Id}
+		amqp.Constants = append(amqp.Constants, constant)
+	}
+
 	for _, constant := range amqp.Constants {
 		constant.GoName = kebabToCamel(constant.Name)
 	}
@@ -269,7 +274,7 @@ func calcDomainKey(field *Field, domainAliases map[string]string) string {
 }
 
 func main() {
-	file, _ := ioutil.ReadFile("protocol/amqp0-9-1.xml")
+	file, _ := ioutil.ReadFile("protocol/amqp0-9-1.extended.xml")
 	var amqp Amqp
 	xml.Unmarshal(file, &amqp)
 

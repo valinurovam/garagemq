@@ -47,3 +47,17 @@ const NotAllowed = 530
 const NotImplemented = 540
 
 const InternalError = 541
+
+const ClassConnection = 10
+
+const ClassChannel = 20
+
+const ClassExchange = 40
+
+const ClassQueue = 50
+
+const ClassBasic = 60
+
+const ClassTx = 90
+
+const ClassConfirm = 85

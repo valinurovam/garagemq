@@ -4,6 +4,7 @@ import (
 	"net"
 	"os"
 	log "github.com/sirupsen/logrus"
+	"github.com/valinurovam/garagemq/auth"
 )
 
 type Server struct {
@@ -13,15 +14,21 @@ type Server struct {
 	listener     net.Listener
 	connSeq      int64
 	connections  map[int64]*Connection
+	config       *ServerConfig
+	users        map[string]string
 }
 
-func NewServer(host string, port string, protoVersion string) (server *Server) {
+func NewServer(host string, port string, protoVersion string, config *ServerConfig) (server *Server) {
 	server = &Server{
 		host:         host,
 		port:         port,
 		connections:  make(map[int64]*Connection),
 		protoVersion: protoVersion,
+		config:       config,
+		users:        make(map[string]string),
 	}
+
+	server.initUsers()
 	return
 }
 
@@ -65,4 +72,21 @@ func (srv *Server) acceptConnection(conn net.Conn) {
 	connection := NewConnection(srv, conn)
 	srv.connections[connection.id] = connection
 	srv.connections[connection.id].handleConnection()
+}
+
+func (srv *Server) checkAuth(saslData auth.SaslData) bool {
+	for userName, passwordHash := range srv.users {
+		if userName != saslData.Username {
+			continue
+		}
+
+		return auth.CheckPasswordHash(saslData.Password, passwordHash);
+	}
+	return false
+}
+
+func (srv *Server) initUsers() {
+	for _, user := range srv.config.Users {
+		srv.users[user.Username] = user.Password
+	}
 }

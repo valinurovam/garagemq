@@ -5,6 +5,8 @@ import (
 	log "github.com/sirupsen/logrus"
 	"os"
 	"github.com/valinurovam/garagemq/amqp"
+	"io/ioutil"
+	"gopkg.in/yaml.v2"
 )
 
 func init() {
@@ -14,7 +16,11 @@ func init() {
 }
 
 func main() {
-	srv := server.NewServer("localhost", "5672", amqp.ProtoRabbit)
+	config := server.ServerConfig{}
+	file, _ := ioutil.ReadFile("etc/config.yaml")
+	yaml.Unmarshal(file, &config)
+
+	srv := server.NewServer("localhost", "5672", amqp.ProtoRabbit, &config)
 	srv.Start()
 	defer srv.Stop()
 }

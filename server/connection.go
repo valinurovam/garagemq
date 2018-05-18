@@ -10,25 +10,40 @@ import (
 )
 
 const (
-	ConnStart = iota
+	ConnStart    = iota
+	ConnStartOK
+	ConnSecure
+	ConnSecureOK
+	ConnTune
+	ConnTuneOK
+	ConnOpen
+	ConnOpenOK
+	ConnClosing
+	ConnClosed
 )
 
 type Connection struct {
-	id       int64
-	server   *Server
-	netConn  net.Conn
-	logger   *log.Entry
-	channels map[uint16]*Channel
-	outgoing chan *amqp.Frame
+	id               int64
+	server           *Server
+	netConn          net.Conn
+	logger           *log.Entry
+	channels         map[uint16]*Channel
+	outgoing         chan *amqp.Frame
+	clientProperties *amqp.Table
+	maxChannels      uint16
+	maxFrameSize     uint32
+	status           int
 }
 
 func NewConnection(server *Server, netConn net.Conn) (connection *Connection) {
 	connection = &Connection{
-		id:       atomic.AddInt64(&server.connSeq, 1),
-		server:   server,
-		netConn:  netConn,
-		channels: make(map[uint16]*Channel),
-		outgoing: make(chan *amqp.Frame, 100),
+		id:           atomic.AddInt64(&server.connSeq, 1),
+		server:       server,
+		netConn:      netConn,
+		channels:     make(map[uint16]*Channel),
+		outgoing:     make(chan *amqp.Frame, 100),
+		maxChannels:  4096,
+		maxFrameSize: 65536,
 	}
 
 	connection.logger = log.WithFields(log.Fields{
@@ -36,6 +51,11 @@ func NewConnection(server *Server, netConn net.Conn) (connection *Connection) {
 	})
 
 	return
+}
+
+func (conn *Connection) close() {
+	conn.status = ConnClosed
+	conn.netConn.Close()
 }
 
 func (conn *Connection) handleConnection() {
@@ -54,7 +74,7 @@ func (conn *Connection) handleConnection() {
 			"supported": supported,
 		}).Warn("Unsupported protocol")
 		conn.netConn.Write(supported)
-		conn.netConn.Close()
+		conn.close()
 		return
 	}
 
@@ -66,25 +86,43 @@ func (conn *Connection) handleConnection() {
 
 func (conn *Connection) handleOutgoing() {
 	for {
+		if conn.status == ConnClosed {
+			break
+		}
+
 		var frame = <-conn.outgoing
-		amqp.WriteFrame(conn.netConn, frame)
+		if err := amqp.WriteFrame(conn.netConn, frame); err != nil {
+			conn.logger.WithError(err).Error(err.Error())
+		}
 	}
 }
 
 func (conn *Connection) handleIncoming() {
 	for {
+		if conn.status == ConnClosed {
+			break
+		}
+
 		frame, err := amqp.ReadFrame(conn.netConn)
 		if err != nil {
-			conn.logger.WithError(err).Error("Error")
+			conn.logger.WithError(err).Error("Error on reading frame. May be connection already closed.")
+			conn.close()
+			break
 		}
 
-		buffer := bytes.NewReader(frame.Payload)
-		method, err := amqp.ReadMethod(buffer, conn.server.protoVersion)
-		if err != nil {
-			conn.logger.WithError(err).Error("Error")
+		if conn.status < ConnOpen && frame.ChannelId != 0 {
+			conn.logger.WithError(err).Error("Frame not allowed for unopened connection")
+			conn.close()
+			return
 		}
 
-		// @todo handle method?
-		fmt.Println(method)
+		channel, ok := conn.channels[frame.ChannelId]
+		if (!ok) {
+			channel = NewChannel(frame.ChannelId, conn)
+			conn.channels[frame.ChannelId] = channel
+			conn.channels[frame.ChannelId].start()
+		}
+
+		channel.incoming <- frame
 	}
 }

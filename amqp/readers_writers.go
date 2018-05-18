@@ -54,7 +54,6 @@ func WriteFrame(writer io.Writer, frame *Frame) error {
 	WriteLongstr(frameBuffer, frame.Payload)
 	WriteOctet(frameBuffer, FrameEnd)
 
-	fmt.Println(frameBuffer.Bytes())
 	return binary.Write(writer, binary.BigEndian, frameBuffer.Bytes())
 }
 
