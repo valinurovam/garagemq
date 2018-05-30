@@ -12,13 +12,13 @@ func (channel *Channel) channelRoute(method amqp.Method) *amqp.Error {
 		return channel.channelClose(method)
 	}
 
-	return amqp.NewConnectionError(amqp.NotImplemented, "Unable to route channel method", method.ClassIdentifier(), method.MethodIdentifier())
+	return amqp.NewConnectionError(amqp.NotImplemented, "unable to route channel method "+method.Name(), method.ClassIdentifier(), method.MethodIdentifier())
 }
 
 func (channel *Channel) channelOpen(method *amqp.ChannelOpen) (err *amqp.Error) {
 	// The client MUST NOT use this method on an already­opened channel
 	if channel.status == ChannelOpen {
-		return amqp.NewConnectionError(amqp.ChannelError, "Channel already open", method.ClassIdentifier(), method.MethodIdentifier())
+		return amqp.NewConnectionError(amqp.ChannelError, "channel already open", method.ClassIdentifier(), method.MethodIdentifier())
 	}
 
 	channel.sendMethod(&amqp.ChannelOpenOk{})
@@ -28,6 +28,7 @@ func (channel *Channel) channelOpen(method *amqp.ChannelOpen) (err *amqp.Error) 
 }
 
 func (channel *Channel) channelClose(method *amqp.ChannelClose) (err *amqp.Error) {
+	channel.status = ChannelClosed
 	channel.sendMethod(&amqp.ChannelCloseOk{})
 	return nil
 }

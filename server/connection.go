@@ -7,6 +7,7 @@ import (
 	log "github.com/sirupsen/logrus"
 	"sync/atomic"
 	"github.com/valinurovam/garagemq/amqp"
+	"github.com/valinurovam/garagemq/vhost"
 )
 
 const (
@@ -18,6 +19,7 @@ const (
 	ConnTuneOK
 	ConnOpen
 	ConnOpenOK
+	ConnCloseOK
 	ConnClosing
 	ConnClosed
 )
@@ -33,6 +35,7 @@ type Connection struct {
 	maxChannels      uint16
 	maxFrameSize     uint32
 	status           int
+	virtualHost      string
 }
 
 func NewConnection(server *Server, netConn net.Conn) (connection *Connection) {
@@ -94,6 +97,10 @@ func (conn *Connection) handleOutgoing() {
 		if err := amqp.WriteFrame(conn.netConn, frame); err != nil {
 			conn.logger.WithError(err).Error(err.Error())
 		}
+
+		if frame.CloseAfter {
+			conn.close()
+		}
 	}
 }
 
@@ -125,4 +132,8 @@ func (conn *Connection) handleIncoming() {
 
 		channel.incoming <- frame
 	}
+}
+
+func (conn *Connection) getVhost() *vhost.VirtualHost {
+	return conn.server.vhosts[conn.virtualHost]
 }

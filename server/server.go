@@ -5,6 +5,7 @@ import (
 	"os"
 	log "github.com/sirupsen/logrus"
 	"github.com/valinurovam/garagemq/auth"
+	"github.com/valinurovam/garagemq/vhost"
 )
 
 type Server struct {
@@ -16,6 +17,7 @@ type Server struct {
 	connections  map[int64]*Connection
 	config       *ServerConfig
 	users        map[string]string
+	vhosts       map[string]*vhost.VirtualHost
 }
 
 func NewServer(host string, port string, protoVersion string, config *ServerConfig) (server *Server) {
@@ -26,9 +28,11 @@ func NewServer(host string, port string, protoVersion string, config *ServerConf
 		protoVersion: protoVersion,
 		config:       config,
 		users:        make(map[string]string),
+		vhosts:       make(map[string]*vhost.VirtualHost),
 	}
 
 	server.initUsers()
+	server.initVirtualHosts()
 	return
 }
 
@@ -89,4 +93,8 @@ func (srv *Server) initUsers() {
 	for _, user := range srv.config.Users {
 		srv.users[user.Username] = user.Password
 	}
+}
+
+func (srv *Server) initVirtualHosts() {
+	srv.vhosts["/"] = vhost.New("/", true)
 }

@@ -10,7 +10,7 @@ import (
 )
 
 func init() {
-	log.SetFormatter(&log.TextFormatter{})
+	log.SetFormatter(&log.TextFormatter{FullTimestamp: true})
 	log.SetOutput(os.Stdout)
 	log.SetLevel(log.InfoLevel)
 }
@@ -20,7 +20,7 @@ func main() {
 	file, _ := ioutil.ReadFile("etc/config.yaml")
 	yaml.Unmarshal(file, &config)
 
-	srv := server.NewServer("localhost", "5672", amqp.ProtoRabbit, &config)
+	srv := server.NewServer("", "5672", amqp.ProtoRabbit, &config)
 	srv.Start()
 	defer srv.Stop()
 }

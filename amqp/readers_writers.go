@@ -709,3 +709,26 @@ func readArray(r io.Reader, protoVersion string) (data []interface{}, err error)
 
 	return data, nil
 }
+
+func ReadContentHeader(r io.Reader, protoVersion string) (*ContentHeader, error) {
+	// 14 bytes for class-id | weight | body size | property flags
+	var header = make([]byte, 14)
+	if err := binary.Read(r, binary.BigEndian, header); err != nil {
+		return nil, err
+	}
+
+	contentHeader := &ContentHeader{}
+	headerBuf := bytes.NewBuffer(header)
+
+	contentHeader.ClassId, _ = ReadShort(headerBuf)
+	contentHeader.Weight, _ = ReadShort(headerBuf)
+	contentHeader.BodySize, _ = ReadLonglong(headerBuf)
+	contentHeader.PropertyFlags, _ = ReadShort(headerBuf)
+
+	contentHeader.PropertyList = &BasicPropertyList{}
+	if err := contentHeader.PropertyList.Read(r, contentHeader.PropertyFlags, protoVersion); err != nil {
+		return nil, err
+	}
+
+	return contentHeader, nil
+}

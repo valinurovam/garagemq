@@ -1,3 +1,3 @@
 users:
-  - username: guest1
+  - username: guest
     password: $2a$14$OR8Od7QJ4yjck89RNWM0TeYJrQSIZLQ13ptktd3n.bStXuhZTcnuq # guest

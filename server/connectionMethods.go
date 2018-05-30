@@ -2,9 +2,9 @@ package server
 
 import (
 	"github.com/valinurovam/garagemq/amqp"
-	"github.com/valinurovam/garagemq/auth"
 	"runtime"
 	"os"
+	"github.com/valinurovam/garagemq/auth"
 )
 
 func (channel *Channel) connectionRoute(method amqp.Method) *amqp.Error {
@@ -27,9 +27,8 @@ func (channel *Channel) connectionRoute(method amqp.Method) *amqp.Error {
 		return channel.connectionUnblocked(method)
 	}
 
-	return amqp.NewConnectionError(amqp.NotImplemented, "Unable to route connection method", method.ClassIdentifier(), method.MethodIdentifier())
+	return amqp.NewConnectionError(amqp.NotImplemented, "unable to route connection method", method.ClassIdentifier(), method.MethodIdentifier())
 }
-
 
 func (channel *Channel) connectionStart() {
 	var capabilities = amqp.Table{}
@@ -54,14 +53,13 @@ func (channel *Channel) connectionStart() {
 	channel.conn.status = ConnStart
 }
 
-
 func (channel *Channel) connectionStartOk(method *amqp.ConnectionStartOk) *amqp.Error {
 	channel.conn.status = ConnStartOK
 
 	var saslData auth.SaslData
 	var err error
 	if saslData, err = auth.ParsePlain(method.Response); err != nil {
-		return amqp.NewConnectionError(amqp.NotAllowed, "Authorization failed", method.ClassIdentifier(), method.MethodIdentifier())
+		return amqp.NewConnectionError(amqp.NotAllowed, "login failure", method.ClassIdentifier(), method.MethodIdentifier())
 	}
 
 	if method.Mechanism != auth.SaslPlain {
@@ -69,7 +67,7 @@ func (channel *Channel) connectionStartOk(method *amqp.ConnectionStartOk) *amqp.
 	}
 
 	if !channel.server.checkAuth(saslData) {
-		return amqp.NewConnectionError(amqp.NotAllowed, "Authorization failed", method.ClassIdentifier(), method.MethodIdentifier())
+		return amqp.NewConnectionError(amqp.NotAllowed, "login failure", method.ClassIdentifier(), method.MethodIdentifier())
 	}
 
 	channel.conn.clientProperties = method.ClientProperties
@@ -101,14 +99,18 @@ func (channel *Channel) connectionTuneOk(method *amqp.ConnectionTuneOk) *amqp.Er
 
 func (channel *Channel) connectionOpen(method *amqp.ConnectionOpen) *amqp.Error {
 	channel.conn.status = ConnOpen
-	channel.sendMethod(&amqp.ConnectionOpenOk{""})
+	if _, ok := channel.server.vhosts[method.VirtualHost]; !ok {
+		return amqp.NewConnectionError(amqp.InvalidPath, "vhost '"+method.VirtualHost+"' does not exist", method.ClassIdentifier(), method.MethodIdentifier())
+	}
+
+	channel.conn.virtualHost = method.VirtualHost
+	channel.sendMethod(&amqp.ConnectionOpenOk{})
 	channel.conn.status = ConnOpenOK
 	return nil
 }
 
 func (channel *Channel) connectionClose(method *amqp.ConnectionClose) *amqp.Error {
 	channel.sendMethod(&amqp.ConnectionCloseOk{})
-	channel.conn.close()
 	return nil
 }
 
@@ -118,13 +120,13 @@ func (channel *Channel) connectionCloseOk(method *amqp.ConnectionCloseOk) *amqp.
 }
 
 func (channel *Channel) connectionSecureOk(method *amqp.ConnectionSecureOk) *amqp.Error {
-	return amqp.NewConnectionError(amqp.NotImplemented, "Method ConnectionSecureOk does not implemented yet", method.ClassIdentifier(), method.MethodIdentifier())
+	return amqp.NewConnectionError(amqp.NotImplemented, "method ConnectionSecureOk does not implemented yet", method.ClassIdentifier(), method.MethodIdentifier())
 }
 
 func (channel *Channel) connectionBlocked(method *amqp.ConnectionBlocked) *amqp.Error {
-	return amqp.NewConnectionError(amqp.NotImplemented, "Method ConnectionBlocked does not implemented yet", method.ClassIdentifier(), method.MethodIdentifier())
+	return amqp.NewConnectionError(amqp.NotImplemented, "method ConnectionBlocked does not implemented yet", method.ClassIdentifier(), method.MethodIdentifier())
 }
 
 func (channel *Channel) connectionUnblocked(method *amqp.ConnectionUnblocked) *amqp.Error {
-	return amqp.NewConnectionError(amqp.NotImplemented, "Method ConnectionUnblocked does not implemented yet", method.ClassIdentifier(), method.MethodIdentifier())
+	return amqp.NewConnectionError(amqp.NotImplemented, "method ConnectionUnblocked does not implemented yet", method.ClassIdentifier(), method.MethodIdentifier())
 }
