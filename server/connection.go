@@ -8,6 +8,9 @@ import (
 	"sync/atomic"
 	"github.com/valinurovam/garagemq/amqp"
 	"github.com/valinurovam/garagemq/vhost"
+	"github.com/valinurovam/garagemq/qos"
+	"bufio"
+	"sync"
 )
 
 const (
@@ -27,18 +30,20 @@ const (
 type Connection struct {
 	id               int64
 	server           *Server
-	netConn          net.Conn
+	netConn          *net.TCPConn
 	logger           *log.Entry
 	channels         map[uint16]*Channel
 	outgoing         chan *amqp.Frame
 	clientProperties *amqp.Table
 	maxChannels      uint16
 	maxFrameSize     uint32
+	statusLock       sync.RWMutex
 	status           int
-	virtualHost      string
+	qos              *qos.Qos
+	virtualHost      *vhost.VirtualHost
 }
 
-func NewConnection(server *Server, netConn net.Conn) (connection *Connection) {
+func NewConnection(server *Server, netConn *net.TCPConn) (connection *Connection) {
 	connection = &Connection{
 		id:           atomic.AddInt64(&server.connSeq, 1),
 		server:       server,
@@ -47,18 +52,40 @@ func NewConnection(server *Server, netConn net.Conn) (connection *Connection) {
 		outgoing:     make(chan *amqp.Frame, 100),
 		maxChannels:  4096,
 		maxFrameSize: 65536,
+		qos:          qos.New(0, 0),
 	}
 
 	connection.logger = log.WithFields(log.Fields{
-		"conn_id": connection.id,
+		"connectionId": connection.id,
 	})
 
 	return
 }
 
 func (conn *Connection) close() {
-	conn.status = ConnClosed
+	if conn.getStatus() == ConnClosed {
+		return
+	}
+
+	conn.setStatus(ConnClosed)
+	for _, channel := range conn.channels {
+		channel.close()
+	}
 	conn.netConn.Close()
+	conn.server.removeConnection(conn.id)
+	conn.logger.Info("AMQP connection closed")
+}
+
+func (conn *Connection) setStatus(status int) {
+	conn.statusLock.Lock()
+	defer conn.statusLock.Unlock()
+	conn.status = status
+}
+
+func (conn *Connection) getStatus() int {
+	conn.statusLock.RLock()
+	defer conn.statusLock.RUnlock()
+	return conn.status
 }
 
 func (conn *Connection) handleConnection() {
@@ -88,36 +115,49 @@ func (conn *Connection) handleConnection() {
 }
 
 func (conn *Connection) handleOutgoing() {
+	buffer := bufio.NewWriter(conn.netConn)
 	for {
-		if conn.status == ConnClosed {
+		if conn.getStatus() >= ConnClosing {
 			break
 		}
 
 		var frame = <-conn.outgoing
-		if err := amqp.WriteFrame(conn.netConn, frame); err != nil {
-			conn.logger.WithError(err).Error(err.Error())
+		if err := amqp.WriteFrame(buffer, frame); err != nil {
+			conn.logger.WithError(err).Warn("writing frame")
+			conn.setStatus(ConnClosing)
+			break
 		}
 
 		if frame.CloseAfter {
-			conn.close()
+			conn.setStatus(ConnClosing)
+			break
 		}
+
+		buffer.Flush()
 	}
+
+	buffer.Flush()
+	conn.close()
 }
 
 func (conn *Connection) handleIncoming() {
+	buffer := bufio.NewReader(conn.netConn)
+
 	for {
-		if conn.status == ConnClosed {
+		if conn.getStatus() >= ConnClosing {
 			break
 		}
 
-		frame, err := amqp.ReadFrame(conn.netConn)
+		frame, err := amqp.ReadFrame(buffer)
 		if err != nil {
-			conn.logger.WithError(err).Error("Error on reading frame. May be connection already closed.")
+			if err.Error() != "EOF" && conn.getStatus() < ConnClosing {
+				conn.logger.WithError(err).Warn("reading frame")
+			}
 			conn.close()
 			break
 		}
 
-		if conn.status < ConnOpen && frame.ChannelId != 0 {
+		if frame.ChannelId != 0 && conn.getStatus() < ConnOpen {
 			conn.logger.WithError(err).Error("Frame not allowed for unopened connection")
 			conn.close()
 			return
@@ -134,6 +174,6 @@ func (conn *Connection) handleIncoming() {
 	}
 }
 
-func (conn *Connection) getVhost() *vhost.VirtualHost {
-	return conn.server.vhosts[conn.virtualHost]
+func (conn *Connection) getVirtualHost() *vhost.VirtualHost {
+	return conn.virtualHost
 }

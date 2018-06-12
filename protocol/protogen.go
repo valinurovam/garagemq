@@ -131,13 +131,28 @@ type Method interface {
 
 {{ if .Fields }}
 type {{.GoName}}PropertyList struct {
-{{range .Fields}}{{.GoName}} {{.GoType}}
+{{range .Fields}}{{.GoName}} {{if ne .GoType "*Table"}}*{{end}}{{.GoType}}
 {{end}}
 }
 func (pList *{{.GoName}}PropertyList) Read(reader io.Reader, propertyFlags uint16, protoVersion string) (err error) {
 {{range .Fields}}
 	if propertyFlags&(1<<{{.HeaderIndex}}) != 0 {
-		pList.{{.GoName}}, err = Read{{.ReaderFunc}}(reader{{if eq .ReaderFunc "Table"}}, protoVersion{{end}})
+		value, err := Read{{.ReaderFunc}}(reader{{if eq .ReaderFunc "Table"}}, protoVersion{{end}})
+		if err != nil {
+			return err
+		}
+		pList.{{.GoName}} = {{if ne .GoType "*Table"}}&{{end}}value
+	}
+{{end}}
+	return
+}
+func (pList *{{.GoName}}PropertyList) Write(writer io.Writer, protoVersion string) (propertyFlags uint16, err error) {
+{{range .Fields}}
+	if pList.{{.GoName}} != nil {
+		propertyFlags |= 1 << {{.HeaderIndex}}
+		if err = Write{{.ReaderFunc}}(writer, {{if ne .GoType "*Table"}}*{{end}}pList.{{.GoName}}{{if eq .ReaderFunc "Table"}}, protoVersion{{end}}); err != nil {
+			return
+		}
 	}
 {{end}}
 	return

@@ -69,8 +69,8 @@ func New(name string, exType int, durable bool, autoDelete bool, internal bool, 
 func (ex *Exchange) AppendBinding(binding *binding.Binding) {
 	// @todo check binding already exists with same arguments
 	ex.bindLock.Lock()
-	defer ex.bindLock.Unlock()
 	ex.bindings = append(ex.bindings, binding)
+	ex.bindLock.Unlock()
 }
 
 func (ex *Exchange) GetMatchedQueues(message *amqp.Message) (matchedQueues []string) {
@@ -98,6 +98,27 @@ func (ex *Exchange) GetMatchedQueues(message *amqp.Message) (matchedQueues []str
 	return
 }
 
-func (ex *Exchange) Equal(exchange *Exchange) {
-	return
+func (exA *Exchange) EqualWithErr(exB *Exchange) error {
+	errTemplate := "inequivalent arg '%s' for exchange '%s': received '%s' but current is '%s'"
+	if exA.ExType != exB.ExType {
+		aliasA, _ := GetExchangeTypeAlias(exA.ExType)
+		aliasB, _ := GetExchangeTypeAlias(exB.ExType)
+		return errors.New(fmt.Sprintf(
+			errTemplate,
+			"type",
+			exA.Name,
+			aliasB,
+			aliasA,
+		))
+	}
+	if exA.durable != exB.durable {
+		return errors.New(fmt.Sprintf(errTemplate, "durable", exA.Name, exB.durable, exA.durable))
+	}
+	if exA.autoDelete != exB.autoDelete {
+		return errors.New(fmt.Sprintf(errTemplate, "autoDelete", exA.Name, exB.autoDelete, exA.autoDelete))
+	}
+	if exA.internal != exB.internal {
+		return errors.New(fmt.Sprintf(errTemplate, "internal", exA.Name, exB.internal, exA.internal))
+	}
+	return nil
 }

@@ -2,9 +2,13 @@ package server
 
 import (
 	"github.com/valinurovam/garagemq/amqp"
+	"github.com/valinurovam/garagemq/consumer"
+	"github.com/valinurovam/garagemq/qos"
 	"bytes"
 	"github.com/sirupsen/logrus"
 	log "github.com/sirupsen/logrus"
+	"sync"
+	"sync/atomic"
 )
 
 const (
@@ -24,6 +28,10 @@ type Channel struct {
 	status         int
 	protoVersion   string
 	currentMessage *amqp.Message
+	cmrLock        sync.Mutex
+	consumers      map[string]*consumer.Consumer
+	qos            *qos.Qos
+	deliveryTag    uint64
 }
 
 func NewChannel(id uint16, conn *Connection) (*Channel) {
@@ -35,11 +43,13 @@ func NewChannel(id uint16, conn *Connection) (*Channel) {
 		outgoing:     conn.outgoing,
 		status:       ChannelNew,
 		protoVersion: conn.server.protoVersion,
+		consumers:    make(map[string]*consumer.Consumer),
+		qos:          qos.New(0, 0),
 	}
 
 	channel.logger = log.WithFields(log.Fields{
-		"conn_id":    conn.id,
-		"channel_id": id,
+		"connectionId": conn.id,
+		"channelId":    id,
 	})
 
 	return channel
@@ -148,31 +158,25 @@ func (channel *Channel) handleContentBody(bodyFrame *amqp.Frame) *amqp.Error {
 		return nil
 	}
 
-	vhost := channel.conn.getVhost()
+	vhost := channel.conn.getVirtualHost()
 	message := channel.currentMessage
-
 	exchange := vhost.GetExchange(message.Exchange)
 	matchedQueues := exchange.GetMatchedQueues(message)
+
 	if len(matchedQueues) == 0 && message.Mandatory {
-		// handle error, not only method. method + header + content
-		// message go back to client
-		channel.sendMethod(&amqp.BasicReturn{amqp.NoConsumers, "No route", message.Exchange, message.RoutingKey})
+		channel.SendContent(
+			&amqp.BasicReturn{amqp.NoConsumers, "No route", message.Exchange, message.RoutingKey},
+			message,
+		)
 		return nil
 	}
 
 	for _, queueName := range matchedQueues {
-		queue, _ := channel.conn.getVhost().GetQueue(queueName)
-		queue.Messages = append(queue.Messages, channel.currentMessage)
-		if len(queue.Messages) % 1000 == 0 {
-			channel.logger.WithFields(log.Fields{
-				"queueName": queue.Name,
-				"length": len(queue.Messages),
-			}).Debug("Current queue length")
-		}
-
+		queue := channel.conn.getVirtualHost().GetQueue(queueName)
+		queue.Push(channel.currentMessage)
 	}
 
-	//channel.logger.Debug("Incoming body <- ", bodyFrame)
+	channel.logger.Debug("Incoming body <- ", bodyFrame)
 	return nil
 }
 
@@ -182,8 +186,47 @@ func (channel *Channel) sendMethod(method amqp.Method) {
 		logrus.WithError(err).Error("Error")
 	}
 
-	//channel.logger.Debug("Outgoing -> " + method.Name())
-
 	closeAfter := method.ClassIdentifier() == amqp.ClassConnection && method.MethodIdentifier() == amqp.MethodConnectionCloseOk
+
+	channel.logger.Debug("Outgoing -> " + method.Name())
 	channel.outgoing <- &amqp.Frame{Type: byte(amqp.FrameMethod), ChannelId: channel.id, Payload: rawMethod.Bytes(), CloseAfter: closeAfter}
+}
+
+func (channel *Channel) SendContent(method amqp.Method, message *amqp.Message) {
+	channel.sendMethod(method)
+
+	rawHeader := bytes.NewBuffer([]byte{})
+	amqp.WriteContentHeader(rawHeader, message.Header, channel.server.protoVersion)
+	channel.outgoing <- &amqp.Frame{Type: byte(amqp.FrameHeader), ChannelId: channel.id, Payload: rawHeader.Bytes(), CloseAfter: false}
+
+	for _, payload := range message.Body {
+		payload.ChannelId = channel.id
+		channel.outgoing <- payload
+	}
+}
+func (channel *Channel) addConsumer(cmr *consumer.Consumer) {
+	channel.cmrLock.Lock()
+	channel.consumers[cmr.ConsumerTag] = cmr
+	channel.cmrLock.Unlock()
+}
+
+func (channel *Channel) close() {
+	channel.cmrLock.Lock()
+	for _, cmr := range channel.consumers {
+		cmr.Stop()
+		delete(channel.consumers, cmr.ConsumerTag)
+		channel.logger.WithFields(log.Fields{
+			"consumerTag": cmr.ConsumerTag,
+		}).Info("Consumer stopped")
+	}
+	channel.cmrLock.Unlock()
+
+}
+
+func (channel *Channel) updateQos(prefetchSize uint32, prefetchCount uint16, global bool) {
+
+}
+
+func (channel *Channel) NextDeliveryTag() uint64 {
+	return atomic.AddUint64(&channel.deliveryTag, 1)
 }

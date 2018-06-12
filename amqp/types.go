@@ -18,7 +18,7 @@ type ContentHeader struct {
 	ClassId       uint16
 	Weight        uint16
 	BodySize      uint64
-	PropertyFlags uint16
+	propertyFlags uint16
 	PropertyList  *BasicPropertyList
 }
 

@@ -48,11 +48,8 @@ func (vhost *VirtualHost) initSystemExchanges() {
 	vhost.AppendExchange(systemExchange)
 }
 
-func (vhost *VirtualHost) GetQueue(name string) (queue *queue.Queue, ok bool) {
-	if queue, ok = vhost.queues[name]; !ok {
-		return nil, ok
-	}
-	return
+func (vhost *VirtualHost) GetQueue(name string) *queue.Queue {
+	return vhost.queues[name]
 }
 
 func (vhost *VirtualHost) GetExchange(name string) *exchange.Exchange {

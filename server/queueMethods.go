@@ -19,8 +19,21 @@ func (channel *Channel) queueRoute(method amqp.Method) *amqp.Error {
 }
 
 func (channel *Channel) queueDeclare(method *amqp.QueueDeclare) *amqp.Error {
-	vhost := channel.conn.getVhost()
-	vhost.AppendQueue(&queue.Queue{Name: method.Queue})
+	vhost := channel.conn.getVirtualHost()
+
+	queueExisting := vhost.GetQueue(method.Queue)
+	if queueExisting != nil {
+		channel.sendMethod(&amqp.QueueDeclareOk{
+			Queue:         method.Queue,
+			MessageCount:  uint32(queueExisting.Length()),
+			ConsumerCount: 0,
+		})
+		return nil
+	}
+
+	q := queue.NewQueue(method.Queue)
+	q.Start()
+	vhost.AppendQueue(q)
 	channel.sendMethod(&amqp.QueueDeclareOk{
 		Queue:         method.Queue,
 		MessageCount:  0,
@@ -32,7 +45,7 @@ func (channel *Channel) queueDeclare(method *amqp.QueueDeclare) *amqp.Error {
 
 func (channel *Channel) queueBind(method *amqp.QueueBind) *amqp.Error {
 	// @todo check queue already exists
-	vhost := channel.conn.getVhost()
+	vhost := channel.conn.getVirtualHost()
 	ex := vhost.GetExchange(method.Exchange)
 	bind := binding.New(method.Queue, method.Exchange, method.RoutingKey, method.Arguments, ex.ExType == exchange.EX_TYPE_TOPIC)
 	ex.AppendBinding(bind)

@@ -99,13 +99,15 @@ func (channel *Channel) connectionTuneOk(method *amqp.ConnectionTuneOk) *amqp.Er
 
 func (channel *Channel) connectionOpen(method *amqp.ConnectionOpen) *amqp.Error {
 	channel.conn.status = ConnOpen
-	if _, ok := channel.server.vhosts[method.VirtualHost]; !ok {
-		return amqp.NewConnectionError(amqp.InvalidPath, "vhost '"+method.VirtualHost+"' does not exist", method.ClassIdentifier(), method.MethodIdentifier())
+	var vhostFound bool
+	if channel.conn.virtualHost, vhostFound = channel.server.vhosts[method.VirtualHost]; !vhostFound {
+		return amqp.NewConnectionError(amqp.InvalidPath, "virtualHost '"+method.VirtualHost+"' does not exist", method.ClassIdentifier(), method.MethodIdentifier())
 	}
 
-	channel.conn.virtualHost = method.VirtualHost
 	channel.sendMethod(&amqp.ConnectionOpenOk{})
 	channel.conn.status = ConnOpenOK
+
+	channel.logger.Info("AMQP connection open")
 	return nil
 }
 

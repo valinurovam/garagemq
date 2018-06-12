@@ -22,7 +22,7 @@ func (channel *Channel) exchangeDeclare(method *amqp.ExchangeDeclare) *amqp.Erro
 		return amqp.NewChannelError(amqp.NotImplemented, err.Error(), method.ClassIdentifier(), method.MethodIdentifier())
 	}
 
-	existingExchange := channel.conn.getVhost().GetExchange(method.Exchange)
+	existingExchange := channel.conn.getVirtualHost().GetExchange(method.Exchange)
 	if method.Passive {
 		if method.NoWait {
 			return nil
@@ -42,8 +42,6 @@ func (channel *Channel) exchangeDeclare(method *amqp.ExchangeDeclare) *amqp.Erro
 		return nil
 	}
 
-	// @todo check exchanges are equal
-
 	if method.Exchange == "" {
 		return amqp.NewChannelError(
 			amqp.CommandInvalid,
@@ -62,11 +60,6 @@ func (channel *Channel) exchangeDeclare(method *amqp.ExchangeDeclare) *amqp.Erro
 		)
 	}
 
-	if existingExchange != nil {
-		channel.sendMethod(&amqp.ExchangeDeclareOk{})
-		return nil
-	}
-
 	ex := exchange.New(
 		method.Exchange,
 		exTypeId,
@@ -77,7 +70,20 @@ func (channel *Channel) exchangeDeclare(method *amqp.ExchangeDeclare) *amqp.Erro
 		method.Arguments,
 	)
 
-	channel.conn.getVhost().AppendExchange(ex)
+	if existingExchange != nil {
+		if err := existingExchange.EqualWithErr(ex); err != nil {
+			return amqp.NewChannelError(
+				amqp.PreconditionFailed,
+				err.Error(),
+				method.ClassIdentifier(),
+				method.MethodIdentifier(),
+			)
+		}
+		channel.sendMethod(&amqp.ExchangeDeclareOk{})
+		return nil
+	}
+
+	channel.conn.getVirtualHost().AppendExchange(ex)
 	channel.sendMethod(&amqp.ExchangeDeclareOk{})
 
 	return nil

@@ -2004,78 +2004,236 @@ func (method *QueueDeleteOk) Write(writer io.Writer, protoVersion string) (err e
 // Basic methods
 
 type BasicPropertyList struct {
-	ContentType     string
-	ContentEncoding string
+	ContentType     *string
+	ContentEncoding *string
 	Headers         *Table
-	DeliveryMode    byte
-	Priority        byte
-	CorrelationId   string
-	ReplyTo         string
-	Expiration      string
-	MessageId       string
-	Timestamp       time.Time
-	Type            string
-	UserId          string
-	AppId           string
-	Reserved        string
+	DeliveryMode    *byte
+	Priority        *byte
+	CorrelationId   *string
+	ReplyTo         *string
+	Expiration      *string
+	MessageId       *string
+	Timestamp       *time.Time
+	Type            *string
+	UserId          *string
+	AppId           *string
+	Reserved        *string
 }
 
 func (pList *BasicPropertyList) Read(reader io.Reader, propertyFlags uint16, protoVersion string) (err error) {
 
 	if propertyFlags&(1<<15) != 0 {
-		pList.ContentType, err = ReadShortstr(reader)
+		value, err := ReadShortstr(reader)
+		if err != nil {
+			return err
+		}
+		pList.ContentType = &value
 	}
 
 	if propertyFlags&(1<<14) != 0 {
-		pList.ContentEncoding, err = ReadShortstr(reader)
+		value, err := ReadShortstr(reader)
+		if err != nil {
+			return err
+		}
+		pList.ContentEncoding = &value
 	}
 
 	if propertyFlags&(1<<13) != 0 {
-		pList.Headers, err = ReadTable(reader, protoVersion)
+		value, err := ReadTable(reader, protoVersion)
+		if err != nil {
+			return err
+		}
+		pList.Headers = value
 	}
 
 	if propertyFlags&(1<<12) != 0 {
-		pList.DeliveryMode, err = ReadOctet(reader)
+		value, err := ReadOctet(reader)
+		if err != nil {
+			return err
+		}
+		pList.DeliveryMode = &value
 	}
 
 	if propertyFlags&(1<<11) != 0 {
-		pList.Priority, err = ReadOctet(reader)
+		value, err := ReadOctet(reader)
+		if err != nil {
+			return err
+		}
+		pList.Priority = &value
 	}
 
 	if propertyFlags&(1<<10) != 0 {
-		pList.CorrelationId, err = ReadShortstr(reader)
+		value, err := ReadShortstr(reader)
+		if err != nil {
+			return err
+		}
+		pList.CorrelationId = &value
 	}
 
 	if propertyFlags&(1<<9) != 0 {
-		pList.ReplyTo, err = ReadShortstr(reader)
+		value, err := ReadShortstr(reader)
+		if err != nil {
+			return err
+		}
+		pList.ReplyTo = &value
 	}
 
 	if propertyFlags&(1<<8) != 0 {
-		pList.Expiration, err = ReadShortstr(reader)
+		value, err := ReadShortstr(reader)
+		if err != nil {
+			return err
+		}
+		pList.Expiration = &value
 	}
 
 	if propertyFlags&(1<<7) != 0 {
-		pList.MessageId, err = ReadShortstr(reader)
+		value, err := ReadShortstr(reader)
+		if err != nil {
+			return err
+		}
+		pList.MessageId = &value
 	}
 
 	if propertyFlags&(1<<6) != 0 {
-		pList.Timestamp, err = ReadTimestamp(reader)
+		value, err := ReadTimestamp(reader)
+		if err != nil {
+			return err
+		}
+		pList.Timestamp = &value
 	}
 
 	if propertyFlags&(1<<5) != 0 {
-		pList.Type, err = ReadShortstr(reader)
+		value, err := ReadShortstr(reader)
+		if err != nil {
+			return err
+		}
+		pList.Type = &value
 	}
 
 	if propertyFlags&(1<<4) != 0 {
-		pList.UserId, err = ReadShortstr(reader)
+		value, err := ReadShortstr(reader)
+		if err != nil {
+			return err
+		}
+		pList.UserId = &value
 	}
 
 	if propertyFlags&(1<<3) != 0 {
-		pList.AppId, err = ReadShortstr(reader)
+		value, err := ReadShortstr(reader)
+		if err != nil {
+			return err
+		}
+		pList.AppId = &value
 	}
 
 	if propertyFlags&(1<<2) != 0 {
-		pList.Reserved, err = ReadShortstr(reader)
+		value, err := ReadShortstr(reader)
+		if err != nil {
+			return err
+		}
+		pList.Reserved = &value
+	}
+
+	return
+}
+func (pList *BasicPropertyList) Write(writer io.Writer, protoVersion string) (propertyFlags uint16, err error) {
+
+	if pList.ContentType != nil {
+		propertyFlags |= 1 << 15
+		if err = WriteShortstr(writer, *pList.ContentType); err != nil {
+			return
+		}
+	}
+
+	if pList.ContentEncoding != nil {
+		propertyFlags |= 1 << 14
+		if err = WriteShortstr(writer, *pList.ContentEncoding); err != nil {
+			return
+		}
+	}
+
+	if pList.Headers != nil {
+		propertyFlags |= 1 << 13
+		if err = WriteTable(writer, pList.Headers, protoVersion); err != nil {
+			return
+		}
+	}
+
+	if pList.DeliveryMode != nil {
+		propertyFlags |= 1 << 12
+		if err = WriteOctet(writer, *pList.DeliveryMode); err != nil {
+			return
+		}
+	}
+
+	if pList.Priority != nil {
+		propertyFlags |= 1 << 11
+		if err = WriteOctet(writer, *pList.Priority); err != nil {
+			return
+		}
+	}
+
+	if pList.CorrelationId != nil {
+		propertyFlags |= 1 << 10
+		if err = WriteShortstr(writer, *pList.CorrelationId); err != nil {
+			return
+		}
+	}
+
+	if pList.ReplyTo != nil {
+		propertyFlags |= 1 << 9
+		if err = WriteShortstr(writer, *pList.ReplyTo); err != nil {
+			return
+		}
+	}
+
+	if pList.Expiration != nil {
+		propertyFlags |= 1 << 8
+		if err = WriteShortstr(writer, *pList.Expiration); err != nil {
+			return
+		}
+	}
+
+	if pList.MessageId != nil {
+		propertyFlags |= 1 << 7
+		if err = WriteShortstr(writer, *pList.MessageId); err != nil {
+			return
+		}
+	}
+
+	if pList.Timestamp != nil {
+		propertyFlags |= 1 << 6
+		if err = WriteTimestamp(writer, *pList.Timestamp); err != nil {
+			return
+		}
+	}
+
+	if pList.Type != nil {
+		propertyFlags |= 1 << 5
+		if err = WriteShortstr(writer, *pList.Type); err != nil {
+			return
+		}
+	}
+
+	if pList.UserId != nil {
+		propertyFlags |= 1 << 4
+		if err = WriteShortstr(writer, *pList.UserId); err != nil {
+			return
+		}
+	}
+
+	if pList.AppId != nil {
+		propertyFlags |= 1 << 3
+		if err = WriteShortstr(writer, *pList.AppId); err != nil {
+			return
+		}
+	}
+
+	if pList.Reserved != nil {
+		propertyFlags |= 1 << 2
+		if err = WriteShortstr(writer, *pList.Reserved); err != nil {
+			return
+		}
 	}
 
 	return

@@ -14,20 +14,19 @@ const (
 	ProtoRabbit = "amqp-rabbit"
 )
 
-func ReadFrame(r io.Reader) (*Frame, error) {
-	// 7 bytes for type, channel and size
-	var header = make([]byte, 7)
-	if err := binary.Read(r, binary.BigEndian, header); err != nil {
+func ReadFrame(r io.Reader) (frame *Frame, err error) {
+	frame = &Frame{}
+	if frame.Type, err = ReadOctet(r); err != nil {
+		return nil, err
+	}
+	if frame.ChannelId, err = ReadShort(r); err != nil {
+		return nil, err
+	}
+	var payloadSize uint32
+	if payloadSize, err = ReadLong(r); err != nil {
 		return nil, err
 	}
 
-	frame := &Frame{}
-	headerBuf := bytes.NewBuffer(header)
-
-	frame.Type, _ = ReadOctet(headerBuf)
-	frame.ChannelId, _ = ReadShort(headerBuf)
-
-	payloadSize, _ := ReadLong(headerBuf)
 	var payload = make([]byte, payloadSize+1)
 	if err := binary.Read(r, binary.BigEndian, payload); err != nil {
 		return nil, err
@@ -45,16 +44,26 @@ func ReadFrame(r io.Reader) (*Frame, error) {
 	return frame, nil
 }
 
-func WriteFrame(writer io.Writer, frame *Frame) error {
-	var rawFrame = make([]byte, 0, 7+len(frame.Payload)+1)
-	frameBuffer := bytes.NewBuffer(rawFrame)
-	WriteOctet(frameBuffer, frame.Type)
-	WriteShort(frameBuffer, frame.ChannelId)
-	// size + payload
-	WriteLongstr(frameBuffer, frame.Payload)
-	WriteOctet(frameBuffer, FrameEnd)
+func WriteFrame(wr io.Writer, frame *Frame) (err error) {
+	if err = WriteOctet(wr, frame.Type); err != nil {
+		return err
+	}
+	if err = WriteShort(wr, frame.ChannelId); err != nil {
+		return err
+	}
 
-	return binary.Write(writer, binary.BigEndian, frameBuffer.Bytes())
+	// size + payload
+	if err = WriteLongstr(wr, frame.Payload); err != nil {
+		return err
+	}
+	// frame end
+	if err = WriteOctet(wr, FrameEnd); err != nil {
+		return err
+	}
+
+	return nil
+
+	//return binary.Write(wr, binary.BigEndian, frameBuffer.Bytes())
 }
 
 func ReadOctet(r io.Reader) (data byte, err error) {
@@ -723,12 +732,32 @@ func ReadContentHeader(r io.Reader, protoVersion string) (*ContentHeader, error)
 	contentHeader.ClassId, _ = ReadShort(headerBuf)
 	contentHeader.Weight, _ = ReadShort(headerBuf)
 	contentHeader.BodySize, _ = ReadLonglong(headerBuf)
-	contentHeader.PropertyFlags, _ = ReadShort(headerBuf)
+	contentHeader.propertyFlags, _ = ReadShort(headerBuf)
 
 	contentHeader.PropertyList = &BasicPropertyList{}
-	if err := contentHeader.PropertyList.Read(r, contentHeader.PropertyFlags, protoVersion); err != nil {
+	if err := contentHeader.PropertyList.Read(r, contentHeader.propertyFlags, protoVersion); err != nil {
 		return nil, err
 	}
 
 	return contentHeader, nil
+}
+
+func WriteContentHeader(writer io.Writer, header *ContentHeader, protoVersion string) (err error) {
+	//var headerBuf = bytes.NewBuffer(make([]byte, 0, 14))
+	WriteShort(writer, header.ClassId)
+	WriteShort(writer, header.Weight)
+	WriteLonglong(writer, header.BodySize)
+
+	var propertyBuf = bytes.NewBuffer(make([]byte, 0))
+	properyFlags, err := header.PropertyList.Write(propertyBuf, protoVersion);
+	if err != nil {
+		return err
+	}
+
+	header.propertyFlags = properyFlags
+	WriteShort(writer, header.propertyFlags)
+	writer.Write(propertyBuf.Bytes())
+	//writer.Write(headerBuf.Bytes())
+
+	return
 }
