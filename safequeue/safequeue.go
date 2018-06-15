@@ -15,8 +15,7 @@ type SafeQueue struct {
 	headIdx   int
 	head      []interface{}
 	headPos   int
-
-	length int64
+	length    uint64
 }
 
 func NewSafeQueue(shardSize int) *SafeQueue {
@@ -82,7 +81,7 @@ func (queue *SafeQueue) DirtyPop() (item interface{}) {
 	return
 }
 
-func (queue *SafeQueue) Length() int64 {
+func (queue *SafeQueue) Length() uint64 {
 	queue.Lock()
 	defer queue.Unlock()
 	return queue.length

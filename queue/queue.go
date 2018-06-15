@@ -21,11 +21,12 @@ type Queue struct {
 	consumers   []*consumer.Consumer
 	call        chan bool
 	wasConsumed bool
+	shardSize   int
 }
 
-func NewQueue(name string, connId uint64, exclusive bool, autoDelete bool, durable bool) *Queue {
+func NewQueue(name string, connId uint64, exclusive bool, autoDelete bool, durable bool, shardSize int) *Queue {
 	return &Queue{
-		SafeQueue:   *safequeue.NewSafeQueue(8192),
+		SafeQueue:   *safequeue.NewSafeQueue(shardSize),
 		Name:        name,
 		connId:      connId,
 		exclusive:   exclusive,
@@ -33,6 +34,7 @@ func NewQueue(name string, connId uint64, exclusive bool, autoDelete bool, durab
 		durable:     durable,
 		call:        make(chan bool, 1),
 		wasConsumed: false,
+		shardSize:   shardSize,
 	}
 }
 
@@ -84,6 +86,18 @@ func (queue *Queue) PopQos(qosList []*qos.AmqpQos) *amqp.Message {
 	return nil
 }
 
+func (queue *Queue) Purge() (length uint64) {
+	queue.SafeQueue.Lock()
+	length = queue.SafeQueue.Length()
+	defer queue.SafeQueue.Unlock()
+	queue.dirtyPurge()
+	return
+}
+
+func (queue *Queue) dirtyPurge() {
+	queue.SafeQueue = *safequeue.NewSafeQueue(queue.shardSize)
+}
+
 func (queue *Queue) AddConsumer(consumer *consumer.Consumer) {
 	queue.wasConsumed = true
 	queue.cmrLock.Lock()
@@ -100,7 +114,7 @@ func (queue *Queue) RemoveConsumer(cTag string) {
 		}
 	}
 
-	if len(queue.consumers) == 0 && queue.wasConsumed && queue.autoDelete{
+	if len(queue.consumers) == 0 && queue.wasConsumed && queue.autoDelete {
 		// TODO deleteQueue
 	}
 	queue.cmrLock.Unlock()
@@ -113,7 +127,7 @@ func (queue *Queue) callConsumers() {
 	}
 }
 
-func (queue *Queue) Length() int64 {
+func (queue *Queue) Length() uint64 {
 	return queue.SafeQueue.Length();
 }
 

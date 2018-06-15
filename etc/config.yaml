@@ -5,3 +5,5 @@ tcp:
   nodelay: false
   readBufSize: 196608
   writeBufSize: 196608
+queue:
+  shardSize: 8192

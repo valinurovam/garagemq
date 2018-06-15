@@ -62,7 +62,14 @@ func (channel *Channel) queueDeclare(method *amqp.QueueDeclare) *amqp.Error {
 		return nil
 	}
 
-	newQueue := queue.NewQueue(method.Queue, channel.conn.id, method.Exclusive, method.AutoDelete, method.Durable)
+	newQueue := queue.NewQueue(
+		method.Queue,
+		channel.conn.id,
+		method.Exclusive,
+		method.AutoDelete,
+		method.Durable,
+		channel.server.config.Queue.ShardSize,
+	)
 
 	if existingQueue != nil {
 		if existingQueue.IsExclusive() && existingQueue.ConnId() != channel.conn.id {
@@ -118,7 +125,7 @@ func (channel *Channel) queueBind(method *amqp.QueueBind) *amqp.Error {
 	if queue == nil {
 		return amqp.NewChannelError(
 			amqp.NotFound,
-			fmt.Sprintf("queue '%s' not found", method.Exchange),
+			fmt.Sprintf("queue '%s' not found", method.Queue),
 			method.ClassIdentifier(),
 			method.MethodIdentifier(),
 		)
@@ -159,7 +166,7 @@ func (channel *Channel) queueUnbind(method *amqp.QueueUnbind) *amqp.Error {
 	if queue == nil {
 		return amqp.NewChannelError(
 			amqp.NotFound,
-			fmt.Sprintf("queue '%s' not found", method.Exchange),
+			fmt.Sprintf("queue '%s' not found", method.Queue),
 			method.ClassIdentifier(),
 			method.MethodIdentifier(),
 		)
@@ -183,7 +190,31 @@ func (channel *Channel) queueUnbind(method *amqp.QueueUnbind) *amqp.Error {
 }
 
 func (channel *Channel) queuePurge(method *amqp.QueuePurge) *amqp.Error {
-	return amqp.NewChannelError(amqp.NotImplemented, method.Name(), method.ClassIdentifier(), method.MethodIdentifier())
+	vhost := channel.conn.getVirtualHost()
+	queue := vhost.GetQueue(method.Queue)
+	if queue == nil {
+		return amqp.NewChannelError(
+			amqp.NotFound,
+			fmt.Sprintf("queue '%s' not found", method.Queue),
+			method.ClassIdentifier(),
+			method.MethodIdentifier(),
+		)
+	}
+
+	if queue.IsExclusive() && queue.ConnId() != channel.conn.id {
+		return amqp.NewChannelError(
+			amqp.ResourceLocked,
+			fmt.Sprintf("queue '%s' is locked to another connection", method.Queue),
+			method.ClassIdentifier(),
+			method.MethodIdentifier(),
+		)
+	}
+
+	msgCnt := queue.Purge()
+	if !method.NoWait {
+		channel.sendMethod(&amqp.QueuePurgeOk{MessageCount: uint32(msgCnt)})
+	}
+	return nil
 }
 
 func (channel *Channel) queueDelete(method *amqp.QueueDelete) *amqp.Error {
