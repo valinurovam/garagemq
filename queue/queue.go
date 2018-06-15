@@ -6,6 +6,8 @@ import (
 	"github.com/valinurovam/garagemq/consumer"
 	"sync"
 	"github.com/valinurovam/garagemq/qos"
+	"errors"
+	"fmt"
 )
 
 type MessagesQueue interface {
@@ -16,17 +18,25 @@ type MessagesQueue interface {
 
 type Queue struct {
 	safequeue.SafeQueue
-	cmrLock   sync.Mutex
-	consumers []*consumer.Consumer
-	Name      string
-	call      chan bool
+	Name       string
+	connId     uint64
+	exclusive  bool
+	autoDelete bool
+	durable    bool
+	cmrLock    sync.Mutex
+	consumers  []*consumer.Consumer
+	call       chan bool
 }
 
-func NewQueue(name string) *Queue {
+func NewQueue(name string, connId uint64, exclusive bool, autoDelete bool, durable bool) *Queue {
 	return &Queue{
-		SafeQueue: *safequeue.NewSafeQueue(8192),
-		Name:      name,
-		call:      make(chan bool, 1),
+		SafeQueue:  *safequeue.NewSafeQueue(8192),
+		Name:       name,
+		connId:     connId,
+		exclusive:  exclusive,
+		autoDelete: autoDelete,
+		durable:    durable,
+		call:       make(chan bool, 1),
 	}
 }
 
@@ -92,6 +102,8 @@ func (queue *Queue) RemoveConsumer(id uint64) {
 			queue.consumers = append(queue.consumers[:i], queue.consumers[i+1:]...)
 		}
 	}
+
+	// TODO Implement autoDelete if it was any consumers
 	queue.cmrLock.Unlock()
 }
 
@@ -104,4 +116,31 @@ func (queue *Queue) callConsumers() {
 
 func (queue *Queue) Length() int64 {
 	return queue.SafeQueue.Length();
+}
+
+func (queue *Queue) ConsumersCount() int {
+	queue.cmrLock.Lock()
+	defer queue.cmrLock.Unlock()
+	return len(queue.consumers)
+}
+
+func (qA *Queue) EqualWithErr(qB *Queue) error {
+	errTemplate := "inequivalent arg '%s' for queue '%s': received '%s' but current is '%s'"
+	if qA.durable != qB.durable {
+		return errors.New(fmt.Sprintf(errTemplate, "durable", qA.Name, qB.durable, qA.durable))
+	}
+	if qA.autoDelete != qB.autoDelete {
+		return errors.New(fmt.Sprintf(errTemplate, "autoDelete", qA.Name, qB.autoDelete, qA.autoDelete))
+	}
+	if qA.exclusive != qB.exclusive {
+		return errors.New(fmt.Sprintf(errTemplate, "exclusive", qA.Name, qB.exclusive, qA.exclusive))
+	}
+	return nil
+}
+
+func (q *Queue) IsExclusive() bool {
+	return q.exclusive
+}
+func (q *Queue) ConnId() uint64 {
+	return q.connId
 }

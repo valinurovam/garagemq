@@ -28,7 +28,7 @@ const (
 )
 
 type Connection struct {
-	id               int64
+	id               uint64
 	server           *Server
 	netConn          *net.TCPConn
 	logger           *log.Entry
@@ -45,7 +45,7 @@ type Connection struct {
 
 func NewConnection(server *Server, netConn *net.TCPConn) (connection *Connection) {
 	connection = &Connection{
-		id:           atomic.AddInt64(&server.connSeq, 1),
+		id:           atomic.AddUint64(&server.connSeq, 1),
 		server:       server,
 		netConn:      netConn,
 		channels:     make(map[uint16]*Channel),

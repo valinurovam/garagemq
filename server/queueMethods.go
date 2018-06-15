@@ -5,6 +5,7 @@ import (
 	"github.com/valinurovam/garagemq/queue"
 	"github.com/valinurovam/garagemq/binding"
 	"github.com/valinurovam/garagemq/exchange"
+	"fmt"
 )
 
 func (channel *Channel) queueRoute(method amqp.Method) *amqp.Error {
@@ -21,19 +22,61 @@ func (channel *Channel) queueRoute(method amqp.Method) *amqp.Error {
 func (channel *Channel) queueDeclare(method *amqp.QueueDeclare) *amqp.Error {
 	vhost := channel.conn.getVirtualHost()
 
-	queueExisting := vhost.GetQueue(method.Queue)
-	if queueExisting != nil {
+	existingQueue := vhost.GetQueue(method.Queue)
+	if method.Passive {
+		if method.NoWait {
+			return nil
+		}
+
+		if existingQueue == nil {
+			return amqp.NewChannelError(
+				amqp.NotFound,
+				fmt.Sprintf("queue '%s' not found", method.Queue),
+				method.ClassIdentifier(),
+				method.MethodIdentifier(),
+			)
+		} else {
+			channel.sendMethod(&amqp.QueueDeclareOk{
+				Queue:         method.Queue,
+				MessageCount:  uint32(existingQueue.Length()),
+				ConsumerCount: uint32(existingQueue.ConsumersCount()),
+			})
+		}
+
+		return nil
+	}
+
+	newQueue := queue.NewQueue(method.Queue, channel.conn.id, method.Exclusive, method.AutoDelete, method.Durable)
+
+	if existingQueue != nil {
+		if existingQueue.IsExclusive() && existingQueue.ConnId() != channel.conn.id {
+			return amqp.NewChannelError(
+				amqp.ResourceLocked,
+				fmt.Sprintf("queue '%s' is locked to another connection", method.Queue),
+				method.ClassIdentifier(),
+				method.MethodIdentifier(),
+			)
+		}
+
+		if err := existingQueue.EqualWithErr(newQueue); err != nil {
+			return amqp.NewChannelError(
+				amqp.PreconditionFailed,
+				err.Error(),
+				method.ClassIdentifier(),
+				method.MethodIdentifier(),
+			)
+		}
+
 		channel.sendMethod(&amqp.QueueDeclareOk{
 			Queue:         method.Queue,
-			MessageCount:  uint32(queueExisting.Length()),
-			ConsumerCount: 0,
+			MessageCount:  uint32(existingQueue.Length()),
+			ConsumerCount: uint32(existingQueue.ConsumersCount()),
 		})
 		return nil
 	}
 
-	q := queue.NewQueue(method.Queue)
-	q.Start()
-	vhost.AppendQueue(q)
+	newQueue.Start()
+	vhost.AppendQueue(newQueue)
 	channel.sendMethod(&amqp.QueueDeclareOk{
 		Queue:         method.Queue,
 		MessageCount:  0,

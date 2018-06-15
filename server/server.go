@@ -14,9 +14,9 @@ type Server struct {
 	port         string
 	protoVersion string
 	listener     *net.TCPListener
-	connSeq      int64
+	connSeq      uint64
 	connLock     sync.Mutex
-	connections  map[int64]*Connection
+	connections  map[uint64]*Connection
 	config       *ServerConfig
 	users        map[string]string
 	vhosts       map[string]*vhost.VirtualHost
@@ -26,7 +26,7 @@ func NewServer(host string, port string, protoVersion string, config *ServerConf
 	server = &Server{
 		host:         host,
 		port:         port,
-		connections:  make(map[int64]*Connection),
+		connections:  make(map[uint64]*Connection),
 		protoVersion: protoVersion,
 		config:       config,
 		users:        make(map[string]string),
@@ -84,7 +84,7 @@ func (srv *Server) acceptConnection(conn *net.TCPConn) {
 	go connection.handleConnection()
 }
 
-func (srv *Server) removeConnection(connId int64) {
+func (srv *Server) removeConnection(connId uint64) {
 	srv.connLock.Lock()
 	delete(srv.connections, connId)
 	srv.connLock.Unlock()

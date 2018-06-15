@@ -60,7 +60,7 @@ func (channel *Channel) exchangeDeclare(method *amqp.ExchangeDeclare) *amqp.Erro
 		)
 	}
 
-	ex := exchange.New(
+	newExchange := exchange.New(
 		method.Exchange,
 		exTypeId,
 		method.Durable,
@@ -71,7 +71,7 @@ func (channel *Channel) exchangeDeclare(method *amqp.ExchangeDeclare) *amqp.Erro
 	)
 
 	if existingExchange != nil {
-		if err := existingExchange.EqualWithErr(ex); err != nil {
+		if err := existingExchange.EqualWithErr(newExchange); err != nil {
 			return amqp.NewChannelError(
 				amqp.PreconditionFailed,
 				err.Error(),
@@ -83,7 +83,7 @@ func (channel *Channel) exchangeDeclare(method *amqp.ExchangeDeclare) *amqp.Erro
 		return nil
 	}
 
-	channel.conn.getVirtualHost().AppendExchange(ex)
+	channel.conn.getVirtualHost().AppendExchange(newExchange)
 	channel.sendMethod(&amqp.ExchangeDeclareOk{})
 
 	return nil
