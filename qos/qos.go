@@ -2,7 +2,7 @@ package qos
 
 import "sync"
 
-type Qos struct {
+type AmqpQos struct {
 	sync.Mutex
 	prefetchCount uint16
 	prefetchSize  uint32
@@ -10,18 +10,23 @@ type Qos struct {
 	currentSize   uint32
 }
 
-func New(prefetchCount uint16, prefetchSize uint32) *Qos {
-	return &Qos{
+func New(prefetchCount uint16, prefetchSize uint32) *AmqpQos {
+	return &AmqpQos{
 		prefetchCount: prefetchCount,
 		prefetchSize:  prefetchSize,
 	}
 }
 
-func (qos *Qos) IsActive() bool {
-	return qos.prefetchCount == 0 && qos.prefetchSize == 0
+func (qos *AmqpQos) Update(prefetchCount uint16, prefetchSize uint32) {
+	qos.prefetchCount = prefetchCount
+	qos.prefetchSize = prefetchSize
 }
 
-func (qos *Qos) Inc(count uint16, size uint32) bool {
+func (qos *AmqpQos) IsActive() bool {
+	return qos.prefetchCount != 0 || qos.prefetchSize != 0
+}
+
+func (qos *AmqpQos) Inc(count uint16, size uint32) bool {
 	qos.Lock()
 	defer qos.Unlock()
 
@@ -37,7 +42,7 @@ func (qos *Qos) Inc(count uint16, size uint32) bool {
 	return false
 }
 
-func (qos *Qos) Dec(count uint16, size uint32) {
+func (qos *AmqpQos) Dec(count uint16, size uint32) {
 	qos.Lock()
 	defer qos.Unlock()
 
@@ -45,7 +50,7 @@ func (qos *Qos) Dec(count uint16, size uint32) {
 	qos.currentSize = qos.currentSize - size
 }
 
-func (qos *Qos) Release() {
+func (qos *AmqpQos) Release() {
 	qos.Lock()
 	defer qos.Unlock()
 	qos.currentCount = 0

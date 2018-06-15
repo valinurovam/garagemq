@@ -24,11 +24,11 @@ type Consumer struct {
 	channel     interfaces.Channel
 	queue       interfaces.AmqpQueue
 	status      int
-	qos         []*qos.Qos
+	qos         []*qos.AmqpQos
 	consume     chan bool
 }
 
-func New(queueName string, consumerTag string, noAck bool, channel interfaces.Channel, queue interfaces.AmqpQueue, qos []*qos.Qos) *Consumer {
+func New(queueName string, consumerTag string, noAck bool, channel interfaces.Channel, queue interfaces.AmqpQueue, qos []*qos.AmqpQos) *Consumer {
 	id := atomic.AddUint64(&cid, 1)
 	if consumerTag == "" {
 		consumerTag = generateTag(id)
@@ -59,13 +59,19 @@ func (consumer *Consumer) startConsume() {
 		if consumer.status != Started {
 			break
 		}
-		message := consumer.queue.Pop()
+		message := consumer.queue.PopQos(consumer.qos)
 		if message == nil {
 			continue
 		}
+
+		dTag := consumer.channel.NextDeliveryTag()
+		if !consumer.noAck {
+			consumer.channel.AddUnackedMessage(dTag, consumer.ConsumerTag, message)
+		}
+
 		consumer.channel.SendContent(&amqp.BasicDeliver{
 			ConsumerTag: consumer.ConsumerTag,
-			DeliveryTag: consumer.channel.NextDeliveryTag(),
+			DeliveryTag: dTag,
 			Redelivered: false,
 			Exchange:    message.Exchange,
 			RoutingKey:  message.RoutingKey,

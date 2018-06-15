@@ -5,7 +5,7 @@ import (
 )
 
 // TODO Is that implementation faster? test simple slice queue
-type safeQueue struct {
+type SafeQueue struct {
 	sync.Mutex
 	shards    [][]interface{}
 	shardSize int
@@ -19,8 +19,8 @@ type safeQueue struct {
 	length int64
 }
 
-func NewSafeQueue(shardSize int) *safeQueue {
-	queue := &safeQueue{
+func NewSafeQueue(shardSize int) *SafeQueue {
+	queue := &SafeQueue{
 		shardSize: shardSize,
 		shards:    [][]interface{}{make([]interface{}, shardSize)},
 	}
@@ -32,7 +32,7 @@ func NewSafeQueue(shardSize int) *safeQueue {
 	return queue
 }
 
-func (queue *safeQueue) Push(item interface{}) {
+func (queue *SafeQueue) Push(item interface{}) {
 	queue.Lock()
 
 	queue.tail[queue.tailPos] = item
@@ -53,13 +53,18 @@ func (queue *safeQueue) Push(item interface{}) {
 	queue.Unlock()
 }
 
-func (queue *safeQueue) Pop() (res interface{}) {
+func (queue *SafeQueue) Pop() (item interface{}) {
 	queue.Lock()
+	item = queue.DirtyPop()
+	queue.Unlock()
+	return
+}
 
-	res, queue.head[queue.headPos] = queue.head[queue.headPos], nil
-	if res == nil {
+func (queue *SafeQueue) DirtyPop() (item interface{}) {
+	item, queue.head[queue.headPos] = queue.head[queue.headPos], nil
+	if item == nil {
 		queue.Unlock()
-		return res
+		return item
 	}
 	queue.headPos++
 	queue.length--
@@ -74,12 +79,15 @@ func (queue *safeQueue) Pop() (res interface{}) {
 		queue.tailIdx--
 		queue.head = queue.shards[queue.headIdx]
 	}
-	queue.Unlock()
 	return
 }
 
-func (queue *safeQueue) Length() int64 {
+func (queue *SafeQueue) Length() int64 {
 	queue.Lock()
 	defer queue.Unlock()
 	return queue.length
+}
+
+func (queue *SafeQueue) HeadItem() (res interface{}) {
+	return queue.head[queue.headPos]
 }

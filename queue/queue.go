@@ -5,6 +5,7 @@ import (
 	"github.com/valinurovam/garagemq/amqp"
 	"github.com/valinurovam/garagemq/consumer"
 	"sync"
+	"github.com/valinurovam/garagemq/qos"
 )
 
 type MessagesQueue interface {
@@ -14,7 +15,7 @@ type MessagesQueue interface {
 }
 
 type Queue struct {
-	messages  MessagesQueue
+	safequeue.SafeQueue
 	cmrLock   sync.Mutex
 	consumers []*consumer.Consumer
 	Name      string
@@ -23,9 +24,9 @@ type Queue struct {
 
 func NewQueue(name string) *Queue {
 	return &Queue{
-		messages: safequeue.NewSafeQueue(8192),
-		Name:     name,
-		call:     make(chan bool, 1),
+		SafeQueue: *safequeue.NewSafeQueue(8192),
+		Name:      name,
+		call:      make(chan bool, 1),
 	}
 }
 
@@ -40,13 +41,38 @@ func (queue *Queue) Start() {
 }
 
 func (queue *Queue) Push(message *amqp.Message) {
-	queue.messages.Push(message)
+	queue.SafeQueue.Push(message)
 	queue.callConsumers()
 }
 
 func (queue *Queue) Pop() *amqp.Message {
-	if message := queue.messages.Pop(); message != nil {
+	if message := queue.SafeQueue.Pop(); message != nil {
 		return message.(*amqp.Message)
+	}
+
+	return nil
+}
+
+func (queue *Queue) PopQos(qosList []*qos.AmqpQos) *amqp.Message {
+	queue.SafeQueue.Lock()
+	defer queue.SafeQueue.Unlock()
+	if headItem := queue.SafeQueue.HeadItem(); headItem != nil {
+		message := headItem.(*amqp.Message)
+		allowed := true
+		for _, q := range qosList {
+			if !q.IsActive() {
+				continue
+			}
+			if !q.Inc(1, uint32(message.BodySize)) {
+				allowed = false
+				break
+			}
+		}
+
+		if allowed {
+			queue.SafeQueue.DirtyPop()
+			return message
+		}
 	}
 
 	return nil
@@ -77,5 +103,5 @@ func (queue *Queue) callConsumers() {
 }
 
 func (queue *Queue) Length() int64 {
-	return queue.messages.Length();
+	return queue.SafeQueue.Length();
 }

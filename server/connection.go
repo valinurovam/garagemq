@@ -39,7 +39,7 @@ type Connection struct {
 	maxFrameSize     uint32
 	statusLock       sync.RWMutex
 	status           int
-	qos              *qos.Qos
+	qos              *qos.AmqpQos
 	virtualHost      *vhost.VirtualHost
 }
 

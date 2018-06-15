@@ -9,6 +9,7 @@ import (
 	log "github.com/sirupsen/logrus"
 	"sync"
 	"sync/atomic"
+	"fmt"
 )
 
 const (
@@ -30,8 +31,15 @@ type Channel struct {
 	currentMessage *amqp.Message
 	cmrLock        sync.Mutex
 	consumers      map[string]*consumer.Consumer
-	qos            *qos.Qos
+	qos            *qos.AmqpQos
 	deliveryTag    uint64
+	ackLock        sync.Mutex
+	ackStore       map[uint64]*UnackedMessage
+}
+
+type UnackedMessage struct {
+	cTag string
+	size uint64
 }
 
 func NewChannel(id uint16, conn *Connection) (*Channel) {
@@ -45,6 +53,7 @@ func NewChannel(id uint16, conn *Connection) (*Channel) {
 		protoVersion: conn.server.protoVersion,
 		consumers:    make(map[string]*consumer.Consumer),
 		qos:          qos.New(0, 0),
+		ackStore:     make(map[uint64]*UnackedMessage),
 	}
 
 	channel.logger = log.WithFields(log.Fields{
@@ -223,10 +232,45 @@ func (channel *Channel) close() {
 
 }
 
-func (channel *Channel) updateQos(prefetchSize uint32, prefetchCount uint16, global bool) {
-
+func (channel *Channel) updateQos(prefetchCount uint16, prefetchSize uint32, global bool) {
+	if global {
+		channel.qos.Update(prefetchCount, prefetchSize)
+	} else {
+		channel.conn.qos.Update(prefetchCount, prefetchSize)
+	}
 }
 
 func (channel *Channel) NextDeliveryTag() uint64 {
 	return atomic.AddUint64(&channel.deliveryTag, 1)
+}
+
+func (channel *Channel) AddUnackedMessage(dTag uint64, cTag string, message *amqp.Message) {
+	channel.ackLock.Lock()
+	channel.ackStore[dTag] = &UnackedMessage{
+		cTag: cTag,
+		size: message.BodySize,
+	}
+	channel.ackLock.Unlock()
+}
+
+func (channel *Channel) handleAck(method *amqp.BasicAck) *amqp.Error {
+	channel.ackLock.Lock()
+	var uMsg *UnackedMessage
+	var msgFound bool
+
+	if uMsg, msgFound = channel.ackStore[method.DeliveryTag]; !msgFound {
+		return amqp.NewChannelError(406, fmt.Sprintf("Delivery tag [%d] not found", method.DeliveryTag), method.ClassIdentifier(), method.MethodIdentifier())
+	}
+
+	delete(channel.ackStore, method.DeliveryTag)
+	channel.ackLock.Unlock()
+
+	channel.qos.Dec(1, uint32(uMsg.size))
+	channel.conn.qos.Dec(1, uint32(uMsg.size))
+
+	if cmr, ok := channel.consumers[uMsg.cTag]; ok {
+		cmr.Consume()
+	}
+
+	return nil
 }
