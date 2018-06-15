@@ -180,7 +180,7 @@ func (channel *Channel) handleContentBody(bodyFrame *amqp.Frame) *amqp.Error {
 		return nil
 	}
 
-	for _, queueName := range matchedQueues {
+	for queueName, _ := range matchedQueues {
 		queue := channel.conn.getVirtualHost().GetQueue(queueName)
 		queue.Push(channel.currentMessage)
 	}
@@ -217,6 +217,15 @@ func (channel *Channel) addConsumer(cmr *consumer.Consumer) {
 	channel.cmrLock.Lock()
 	channel.consumers[cmr.ConsumerTag] = cmr
 	channel.cmrLock.Unlock()
+}
+
+func (channel *Channel) removeConsumer(cTag string)  {
+	channel.cmrLock.Lock()
+	defer channel.cmrLock.Unlock()
+	if cmr, ok := channel.consumers[cTag]; ok {
+		cmr.Stop()
+		delete(channel.consumers, cmr.ConsumerTag)
+	}
 }
 
 func (channel *Channel) close() {

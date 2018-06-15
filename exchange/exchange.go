@@ -66,32 +66,48 @@ func New(name string, exType int, durable bool, autoDelete bool, internal bool, 
 	}
 }
 
-func (ex *Exchange) AppendBinding(binding *binding.Binding) {
-	// @todo check binding already exists with same arguments
+func (ex *Exchange) AppendBinding(newBind *binding.Binding) {
 	ex.bindLock.Lock()
-	ex.bindings = append(ex.bindings, binding)
-	ex.bindLock.Unlock()
+	defer ex.bindLock.Unlock()
+	for _, bind := range ex.bindings {
+		if bind.Equal(newBind) {
+			return
+		}
+	}
+	ex.bindings = append(ex.bindings, newBind)
 }
 
-func (ex *Exchange) GetMatchedQueues(message *amqp.Message) (matchedQueues []string) {
+func (ex *Exchange) RemoveBiding(rmBind *binding.Binding) {
+	ex.bindLock.Lock()
+	defer ex.bindLock.Unlock()
+	for i, bind := range ex.bindings {
+		if bind.Equal(rmBind) {
+			ex.bindings = append(ex.bindings[:i], ex.bindings[i+1:]...)
+			return
+		}
+	}
+}
+
+func (ex *Exchange) GetMatchedQueues(message *amqp.Message) (matchedQueues map[string]bool) {
+	matchedQueues = make(map[string]bool)
 	switch ex.ExType {
 	case EX_TYPE_DIRECT:
 		for _, bind := range ex.bindings {
 			if bind.MatchDirect(message.Exchange, message.RoutingKey) {
-				matchedQueues = append(matchedQueues, bind.Queue)
+				matchedQueues[bind.Queue] = true
 				return
 			}
 		}
 	case EX_TYPE_FANOUT:
 		for _, bind := range ex.bindings {
 			if bind.MatchFanout(message.Exchange) {
-				matchedQueues = append(matchedQueues, bind.Queue)
+				matchedQueues[bind.Queue] = true
 			}
 		}
 	case EX_TYPE_TOPIC:
 		for _, bind := range ex.bindings {
 			if bind.MatchTopic(message.Exchange, message.RoutingKey) {
-				matchedQueues = append(matchedQueues, bind.Queue)
+				matchedQueues[bind.Queue] = true
 			}
 		}
 	}

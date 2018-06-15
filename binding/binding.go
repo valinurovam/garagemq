@@ -84,3 +84,9 @@ func (b *Binding) MatchFanout(exchange string) bool {
 func (b *Binding) MatchTopic(exchange string, routingKey string) bool {
 	return b.Exchange == exchange && b.regexp.MatchString(routingKey)
 }
+
+func (bA *Binding) Equal(bB *Binding) bool {
+	return bA.Exchange == bB.Exchange &&
+		bA.Queue == bB.Queue &&
+		bA.RoutingKey == bB.RoutingKey
+}

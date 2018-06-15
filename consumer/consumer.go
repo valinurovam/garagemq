@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"time"
 	"sync/atomic"
+	"sync"
 )
 
 const (
@@ -26,6 +27,7 @@ type Consumer struct {
 	status      int
 	qos         []*qos.AmqpQos
 	consume     chan bool
+	stopLock    sync.Mutex
 }
 
 func New(queueName string, consumerTag string, noAck bool, channel interfaces.Channel, queue interfaces.AmqpQueue, qos []*qos.AmqpQos) *Consumer {
@@ -82,6 +84,12 @@ func (consumer *Consumer) startConsume() {
 }
 
 func (consumer *Consumer) Consume() {
+	consumer.stopLock.Lock()
+	defer consumer.stopLock.Unlock()
+	if consumer.status == Stopped {
+		return
+	}
+
 	select {
 	case consumer.consume <- true:
 	default:
@@ -89,5 +97,12 @@ func (consumer *Consumer) Consume() {
 }
 
 func (consumer *Consumer) Stop() {
+	consumer.stopLock.Lock()
+	defer consumer.stopLock.Unlock()
+	if consumer.status == Stopped {
+		return
+	}
 	consumer.status = Stopped
+	consumer.queue.RemoveConsumer(consumer.ConsumerTag)
+	close(consumer.consume)
 }

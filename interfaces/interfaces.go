@@ -15,6 +15,7 @@ type AmqpQueue interface {
 	Push(message *amqp.Message)
 	Pop() *amqp.Message
 	PopQos(qosList []*qos.AmqpQos) *amqp.Message
+	RemoveConsumer(cTag string)
 }
 
 type Channel interface {

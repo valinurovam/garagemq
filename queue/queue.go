@@ -10,33 +10,29 @@ import (
 	"fmt"
 )
 
-type MessagesQueue interface {
-	Push(item interface{})
-	Pop() (res interface{})
-	Length() int64
-}
-
 type Queue struct {
 	safequeue.SafeQueue
-	Name       string
-	connId     uint64
-	exclusive  bool
-	autoDelete bool
-	durable    bool
-	cmrLock    sync.Mutex
-	consumers  []*consumer.Consumer
-	call       chan bool
+	Name        string
+	connId      uint64
+	exclusive   bool
+	autoDelete  bool
+	durable     bool
+	cmrLock     sync.Mutex
+	consumers   []*consumer.Consumer
+	call        chan bool
+	wasConsumed bool
 }
 
 func NewQueue(name string, connId uint64, exclusive bool, autoDelete bool, durable bool) *Queue {
 	return &Queue{
-		SafeQueue:  *safequeue.NewSafeQueue(8192),
-		Name:       name,
-		connId:     connId,
-		exclusive:  exclusive,
-		autoDelete: autoDelete,
-		durable:    durable,
-		call:       make(chan bool, 1),
+		SafeQueue:   *safequeue.NewSafeQueue(8192),
+		Name:        name,
+		connId:      connId,
+		exclusive:   exclusive,
+		autoDelete:  autoDelete,
+		durable:     durable,
+		call:        make(chan bool, 1),
+		wasConsumed: false,
 	}
 }
 
@@ -89,21 +85,24 @@ func (queue *Queue) PopQos(qosList []*qos.AmqpQos) *amqp.Message {
 }
 
 func (queue *Queue) AddConsumer(consumer *consumer.Consumer) {
+	queue.wasConsumed = true
 	queue.cmrLock.Lock()
 	queue.consumers = append(queue.consumers, consumer)
 	queue.cmrLock.Unlock()
 	queue.callConsumers()
 }
 
-func (queue *Queue) RemoveConsumer(id uint64) {
+func (queue *Queue) RemoveConsumer(cTag string) {
 	queue.cmrLock.Lock()
 	for i, cmr := range queue.consumers {
-		if cmr.Id == id {
+		if cmr.ConsumerTag == cTag {
 			queue.consumers = append(queue.consumers[:i], queue.consumers[i+1:]...)
 		}
 	}
 
-	// TODO Implement autoDelete if it was any consumers
+	if len(queue.consumers) == 0 && queue.wasConsumed && queue.autoDelete{
+		// TODO deleteQueue
+	}
 	queue.cmrLock.Unlock()
 }
 
