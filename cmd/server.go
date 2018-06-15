@@ -32,7 +32,7 @@ func main() {
 	file, _ := ioutil.ReadFile("etc/config.yaml")
 	yaml.Unmarshal(file, &config)
 
-	srv := server.NewServer("", "5672", amqp.ProtoRabbit, &config)
+	srv := server.NewServer("localhost", "5672", amqp.ProtoRabbit, &config)
 	srv.Start()
 	defer srv.Stop()
 }

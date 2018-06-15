@@ -35,18 +35,40 @@ func New(queue string, exchange string, routingKey string, arguments *amqp.Table
 // @see http://www.rabbitmq.com/blog/2010/09/14/very-fast-and-scalable-topic-routing-part-1/
 // @see http://www.rabbitmq.com/blog/2011/03/28/very-fast-and-scalable-topic-routing-part-2/
 func buildRegexp(routingKey string) (*regexp.Regexp, error) {
+	routingKey = strings.TrimSpace(routingKey)
 	routingParts := strings.Split(routingKey, ".")
+
 	for idx, routingPart := range routingParts {
-		if routingPart == "#" {
-			routingParts[idx] = `[^\.]+`
-		} else if routingPart == "*" {
-			routingParts[idx] = `.*`
+		if routingPart == "*" {
+			routingParts[idx] = "*"
+		} else if routingPart == "#" {
+			routingParts[idx] = "#"
 		} else {
 			routingParts[idx] = regexp.QuoteMeta(routingPart)
 		}
 	}
 
-	pattern := "^" + strings.Join(routingParts, `\.`) + "$"
+	routingKey = strings.Join(routingParts, "\\.")
+	routingKey = strings.Replace(routingKey, "*", `([^\.]+)`, -1)
+
+	for strings.HasPrefix(routingKey, "#\\.") {
+		routingKey = strings.TrimPrefix(routingKey, "#\\.")
+		if strings.HasPrefix(routingKey, "#\\.") {
+			continue
+		}
+		routingKey = `(.*\.?)+` + routingKey
+	}
+
+	for strings.HasSuffix(routingKey, "\\.#") {
+		routingKey = strings.TrimSuffix(routingKey, "\\.#")
+		if (strings.HasSuffix(routingKey, "\\.#")) {
+			continue
+		}
+		routingKey = routingKey + `(.*\.?)+`
+	}
+	routingKey = strings.Replace(routingKey, "\\.#\\.", `(.*\.?)+`, -1)
+	routingKey = strings.Replace(routingKey, "#", `(.*\.?)+`, -1)
+	pattern := "^" + routingKey + "$"
 
 	return regexp.Compile(pattern)
 }

@@ -1,42 +1,47 @@
-package safequeue
+package safequeue_test
 
 import (
 	"testing"
-	"runtime"
-	"fmt"
+	"github.com/valinurovam/garagemq/safequeue"
 )
 
-var queue = NewSafeQueue(4096)
+const SIZE = 4096
+
+var safeQueueTest = safequeue.NewSafeQueue(SIZE)
 
 func BenchmarkSafeQueue_Push(b *testing.B) {
 	for n := 0; n < b.N; n++ {
-		queue.Push(n)
+		safeQueueTest.Push(n)
 	}
 }
 
 func BenchmarkSafeQueue_Pop(b *testing.B) {
 	for n := 0; n < b.N; n++ {
-		queue.Pop()
+		safeQueueTest.Pop()
 	}
 }
 
-//func BenchmarkList(b *testing.B) {
-//	var l = list.List{}
-//	for n := 0; n < b.N; n++ {
-//		l.PushBack(n)
-//	}
-//}
+func TestSafeQueue(t *testing.T) {
+	queue := safequeue.NewSafeQueue(SIZE)
+	queueLength := SIZE * 8
+	for item := 0; item < queueLength; item++ {
+		queue.Push(item)
+	}
 
-func PrintMemUsage() {
-	var m runtime.MemStats
-	runtime.ReadMemStats(&m)
-	// For info on each, see: https://golang.org/pkg/runtime/#MemStats
-	fmt.Printf("Alloc = %v MiB", bToMb(m.Alloc))
-	fmt.Printf("\tTotalAlloc = %v MiB", bToMb(m.TotalAlloc))
-	fmt.Printf("\tSys = %v MiB", bToMb(m.Sys))
-	fmt.Printf("\tNumGC = %v\n", m.NumGC)
-}
+	if queue.Length() != int64(queueLength) {
+		t.Fatalf("expected %d elements, have %d", queueLength, queue.Length())
+	}
 
-func bToMb(b uint64) uint64 {
-	return b / 1024 / 1024
+	for item := 0; item < queueLength; item++ {
+		pop := queue.Pop()
+		if item != pop {
+			t.Fatalf("Pop: expected %d, actual %d", item, pop)
+		}
+	}
+
+	if queue.Length() != 0 {
+		t.Fatalf("expected %d elements, have %d", 0, queue.Length())
+	}
+
+
 }
