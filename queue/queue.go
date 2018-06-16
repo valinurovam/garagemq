@@ -106,7 +106,7 @@ func (queue *Queue) AddConsumer(consumer interfaces.Consumer, exclusive bool) er
 	queue.wasConsumed = true
 	queue.cmrLock.Lock()
 	if exclusive && len(queue.consumers) != 0 {
-		return errors.New("queue is busy by exclusive consumer")
+		return errors.New(fmt.Sprintf("queue is busy by %d consumers", len(queue.consumers)))
 	}
 	queue.consumers = append(queue.consumers, consumer)
 	queue.cmrLock.Unlock()
