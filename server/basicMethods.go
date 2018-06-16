@@ -4,6 +4,7 @@ import (
 	"github.com/valinurovam/garagemq/amqp"
 	"github.com/valinurovam/garagemq/consumer"
 	"github.com/valinurovam/garagemq/qos"
+	"github.com/valinurovam/garagemq/queue"
 )
 
 func (channel *Channel) basicRoute(method amqp.Method) *amqp.Error {
@@ -40,10 +41,8 @@ func (channel *Channel) basicPublish(method *amqp.BasicPublish) (err *amqp.Error
 		return amqp.NewChannelError(amqp.NotImplemented, "Immediate = true", method.ClassIdentifier(), method.MethodIdentifier())
 	}
 
-	vhost := channel.conn.getVirtualHost()
-
-	if vhost.GetExchange(method.Exchange) == nil {
-		return amqp.NewChannelError(amqp.NotFound, "exchange not found", method.ClassIdentifier(), method.MethodIdentifier())
+	if _, err = channel.getExchangeWithError(method.Exchange, method); err != nil {
+		return err
 	}
 
 	channel.currentMessage = amqp.NewMessage(method)
@@ -51,14 +50,13 @@ func (channel *Channel) basicPublish(method *amqp.BasicPublish) (err *amqp.Error
 }
 
 func (channel *Channel) basicConsume(method *amqp.BasicConsume) (err *amqp.Error) {
+	var qu *queue.Queue
 
-	queue := channel.conn.getVirtualHost().GetQueue(method.Queue)
-
-	if queue == nil {
-		return amqp.NewChannelError(amqp.NotFound, "Queue not found", method.ClassIdentifier(), method.MethodIdentifier())
+	if qu, err = channel.getQueueWithError(method.Queue, method); err != nil {
+		return err
 	}
 
-	cmr := consumer.New(method.Queue, method.ConsumerTag, method.NoAck, channel, queue, []*qos.AmqpQos{channel.qos, channel.conn.qos})
+	cmr := consumer.New(method.Queue, method.ConsumerTag, method.NoAck, channel, qu, []*qos.AmqpQos{channel.qos, channel.conn.qos})
 	channel.addConsumer(cmr)
 
 	if !method.NoWait {
@@ -66,7 +64,7 @@ func (channel *Channel) basicConsume(method *amqp.BasicConsume) (err *amqp.Error
 	}
 
 	cmr.Start()
-	queue.AddConsumer(cmr)
+	qu.AddConsumer(cmr)
 
 	return nil
 }

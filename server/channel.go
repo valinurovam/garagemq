@@ -10,6 +10,8 @@ import (
 	"sync"
 	"sync/atomic"
 	"fmt"
+	"github.com/valinurovam/garagemq/queue"
+	"github.com/valinurovam/garagemq/exchange"
 )
 
 const (
@@ -279,6 +281,48 @@ func (channel *Channel) handleAck(method *amqp.BasicAck) *amqp.Error {
 
 	if cmr, ok := channel.consumers[uMsg.cTag]; ok {
 		cmr.Consume()
+	}
+
+	return nil
+}
+
+func (channel *Channel) getExchangeWithError(exchangeName string, method amqp.Method) (exchange *exchange.Exchange, err *amqp.Error) {
+	ex := channel.conn.getVirtualHost().GetExchange(exchangeName)
+	if ex == nil {
+		return nil, amqp.NewChannelError(
+			amqp.NotFound,
+			fmt.Sprintf("exchange '%s' not found", exchangeName),
+			method.ClassIdentifier(),
+			method.MethodIdentifier(),
+		)
+	}
+	return ex, nil
+}
+
+func (channel *Channel) getQueueWithError(queueName string, method amqp.Method) (queue *queue.Queue, err *amqp.Error) {
+	qu := channel.conn.getVirtualHost().GetQueue(queueName)
+	if qu == nil {
+		return nil, amqp.NewChannelError(
+			amqp.NotFound,
+			fmt.Sprintf("queue '%s' not found", queueName),
+			method.ClassIdentifier(),
+			method.MethodIdentifier(),
+		)
+	}
+	return qu, nil
+}
+
+func (channel *Channel) checkQueueLockWithError(qu *queue.Queue, method amqp.Method) *amqp.Error {
+	if qu == nil {
+		return nil
+	}
+	if qu.IsExclusive() && qu.ConnId() != channel.conn.id {
+		return amqp.NewChannelError(
+			amqp.ResourceLocked,
+			fmt.Sprintf("queue '%s' is locked to another connection", qu.Name),
+			method.ClassIdentifier(),
+			method.MethodIdentifier(),
+		)
 	}
 
 	return nil

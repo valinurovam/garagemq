@@ -5,7 +5,6 @@ import (
 	"github.com/valinurovam/garagemq/queue"
 	"github.com/valinurovam/garagemq/binding"
 	"github.com/valinurovam/garagemq/exchange"
-	"fmt"
 )
 
 func (channel *Channel) queueRoute(method amqp.Method) *amqp.Error {
@@ -25,10 +24,11 @@ func (channel *Channel) queueRoute(method amqp.Method) *amqp.Error {
 	return amqp.NewConnectionError(amqp.NotImplemented, "unable to route queue method "+method.Name(), method.ClassIdentifier(), method.MethodIdentifier())
 }
 
-// TODO refactoring queueDeclare please, cause DRY
 func (channel *Channel) queueDeclare(method *amqp.QueueDeclare) *amqp.Error {
-	vhost := channel.conn.getVirtualHost()
-	existingQueue := vhost.GetQueue(method.Queue)
+	var existingQueue *queue.Queue
+	var notFoundErr, exclusiveErr *amqp.Error
+	existingQueue, notFoundErr = channel.getQueueWithError(method.Queue, method)
+	exclusiveErr = channel.checkQueueLockWithError(existingQueue, method)
 
 	if method.Passive {
 		if method.NoWait {
@@ -36,20 +36,10 @@ func (channel *Channel) queueDeclare(method *amqp.QueueDeclare) *amqp.Error {
 		}
 
 		if existingQueue == nil {
-			return amqp.NewChannelError(
-				amqp.NotFound,
-				fmt.Sprintf("queue '%s' not found", method.Queue),
-				method.ClassIdentifier(),
-				method.MethodIdentifier(),
-			)
+			return notFoundErr
 		} else {
-			if existingQueue.IsExclusive() && existingQueue.ConnId() != channel.conn.id {
-				return amqp.NewChannelError(
-					amqp.ResourceLocked,
-					fmt.Sprintf("queue '%s' is locked to another connection", method.Queue),
-					method.ClassIdentifier(),
-					method.MethodIdentifier(),
-				)
+			if exclusiveErr != nil {
+				return exclusiveErr
 			}
 
 			channel.sendMethod(&amqp.QueueDeclareOk{
@@ -72,13 +62,8 @@ func (channel *Channel) queueDeclare(method *amqp.QueueDeclare) *amqp.Error {
 	)
 
 	if existingQueue != nil {
-		if existingQueue.IsExclusive() && existingQueue.ConnId() != channel.conn.id {
-			return amqp.NewChannelError(
-				amqp.ResourceLocked,
-				fmt.Sprintf("queue '%s' is locked to another connection", method.Queue),
-				method.ClassIdentifier(),
-				method.MethodIdentifier(),
-			)
+		if exclusiveErr != nil {
+			return exclusiveErr
 		}
 
 		if err := existingQueue.EqualWithErr(newQueue); err != nil {
@@ -99,7 +84,7 @@ func (channel *Channel) queueDeclare(method *amqp.QueueDeclare) *amqp.Error {
 	}
 
 	newQueue.Start()
-	vhost.AppendQueue(newQueue)
+	channel.conn.getVirtualHost().AppendQueue(newQueue)
 	channel.sendMethod(&amqp.QueueDeclareOk{
 		Queue:         method.Queue,
 		MessageCount:  0,
@@ -110,34 +95,20 @@ func (channel *Channel) queueDeclare(method *amqp.QueueDeclare) *amqp.Error {
 }
 
 func (channel *Channel) queueBind(method *amqp.QueueBind) *amqp.Error {
-	vhost := channel.conn.getVirtualHost()
-	ex := vhost.GetExchange(method.Exchange)
-	if ex == nil {
-		return amqp.NewChannelError(
-			amqp.NotFound,
-			fmt.Sprintf("exchange '%s' not found", method.Exchange),
-			method.ClassIdentifier(),
-			method.MethodIdentifier(),
-		)
+	var ex *exchange.Exchange
+	var qu *queue.Queue
+	var err *amqp.Error
+
+	if ex, err = channel.getExchangeWithError(method.Exchange, method); err != nil {
+		return err
 	}
 
-	queue := vhost.GetQueue(method.Queue)
-	if queue == nil {
-		return amqp.NewChannelError(
-			amqp.NotFound,
-			fmt.Sprintf("queue '%s' not found", method.Queue),
-			method.ClassIdentifier(),
-			method.MethodIdentifier(),
-		)
+	if qu, err = channel.getQueueWithError(method.Queue, method); err != nil {
+		return err
 	}
 
-	if queue.IsExclusive() && queue.ConnId() != channel.conn.id {
-		return amqp.NewChannelError(
-			amqp.ResourceLocked,
-			fmt.Sprintf("queue '%s' is locked to another connection", method.Queue),
-			method.ClassIdentifier(),
-			method.MethodIdentifier(),
-		)
+	if err = channel.checkQueueLockWithError(qu, method); err != nil {
+		return err
 	}
 
 	bind := binding.New(method.Queue, method.Exchange, method.RoutingKey, method.Arguments, ex.ExType == exchange.EX_TYPE_TOPIC)
@@ -151,34 +122,20 @@ func (channel *Channel) queueBind(method *amqp.QueueBind) *amqp.Error {
 }
 
 func (channel *Channel) queueUnbind(method *amqp.QueueUnbind) *amqp.Error {
-	vhost := channel.conn.getVirtualHost()
-	ex := vhost.GetExchange(method.Exchange)
-	if ex == nil {
-		return amqp.NewChannelError(
-			amqp.NotFound,
-			fmt.Sprintf("exchange '%s' not found", method.Exchange),
-			method.ClassIdentifier(),
-			method.MethodIdentifier(),
-		)
+	var ex *exchange.Exchange
+	var qu *queue.Queue
+	var err *amqp.Error
+
+	if ex, err = channel.getExchangeWithError(method.Exchange, method); err != nil {
+		return err
 	}
 
-	queue := vhost.GetQueue(method.Queue)
-	if queue == nil {
-		return amqp.NewChannelError(
-			amqp.NotFound,
-			fmt.Sprintf("queue '%s' not found", method.Queue),
-			method.ClassIdentifier(),
-			method.MethodIdentifier(),
-		)
+	if qu, err = channel.getQueueWithError(method.Queue, method); err != nil {
+		return err
 	}
 
-	if queue.IsExclusive() && queue.ConnId() != channel.conn.id {
-		return amqp.NewChannelError(
-			amqp.ResourceLocked,
-			fmt.Sprintf("queue '%s' is locked to another connection", method.Queue),
-			method.ClassIdentifier(),
-			method.MethodIdentifier(),
-		)
+	if err = channel.checkQueueLockWithError(qu, method); err != nil {
+		return err
 	}
 
 	bind := binding.New(method.Queue, method.Exchange, method.RoutingKey, method.Arguments, ex.ExType == exchange.EX_TYPE_TOPIC)
@@ -190,27 +147,18 @@ func (channel *Channel) queueUnbind(method *amqp.QueueUnbind) *amqp.Error {
 }
 
 func (channel *Channel) queuePurge(method *amqp.QueuePurge) *amqp.Error {
-	vhost := channel.conn.getVirtualHost()
-	queue := vhost.GetQueue(method.Queue)
-	if queue == nil {
-		return amqp.NewChannelError(
-			amqp.NotFound,
-			fmt.Sprintf("queue '%s' not found", method.Queue),
-			method.ClassIdentifier(),
-			method.MethodIdentifier(),
-		)
+	var qu *queue.Queue
+	var err *amqp.Error
+
+	if qu, err = channel.getQueueWithError(method.Queue, method); err != nil {
+		return err
 	}
 
-	if queue.IsExclusive() && queue.ConnId() != channel.conn.id {
-		return amqp.NewChannelError(
-			amqp.ResourceLocked,
-			fmt.Sprintf("queue '%s' is locked to another connection", method.Queue),
-			method.ClassIdentifier(),
-			method.MethodIdentifier(),
-		)
+	if err = channel.checkQueueLockWithError(qu, method); err != nil {
+		return err
 	}
 
-	msgCnt := queue.Purge()
+	msgCnt := qu.Purge()
 	if !method.NoWait {
 		channel.sendMethod(&amqp.QueuePurgeOk{MessageCount: uint32(msgCnt)})
 	}
