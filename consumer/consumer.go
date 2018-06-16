@@ -106,3 +106,7 @@ func (consumer *Consumer) Stop() {
 	consumer.queue.RemoveConsumer(consumer.ConsumerTag)
 	close(consumer.consume)
 }
+
+func (consumer *Consumer) Tag() string {
+	return consumer.ConsumerTag
+}

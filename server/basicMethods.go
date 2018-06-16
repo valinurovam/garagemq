@@ -4,7 +4,7 @@ import (
 	"github.com/valinurovam/garagemq/amqp"
 	"github.com/valinurovam/garagemq/consumer"
 	"github.com/valinurovam/garagemq/qos"
-	"github.com/valinurovam/garagemq/queue"
+	"github.com/valinurovam/garagemq/interfaces"
 )
 
 func (channel *Channel) basicRoute(method amqp.Method) *amqp.Error {
@@ -50,7 +50,7 @@ func (channel *Channel) basicPublish(method *amqp.BasicPublish) (err *amqp.Error
 }
 
 func (channel *Channel) basicConsume(method *amqp.BasicConsume) (err *amqp.Error) {
-	var qu *queue.Queue
+	var qu interfaces.AmqpQueue
 
 	if qu, err = channel.getQueueWithError(method.Queue, method); err != nil {
 		return err

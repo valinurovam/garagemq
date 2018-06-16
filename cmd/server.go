@@ -11,6 +11,7 @@ import (
 	"runtime"
 	"fmt"
 	_ "net/http/pprof"
+	"net/http"
 )
 
 func init() {
@@ -21,7 +22,7 @@ func init() {
 
 func main() {
 	// for hprof debugging
-	//go http.ListenAndServe("0.0.0.0:8080", nil)
+	go http.ListenAndServe("0.0.0.0:8080", nil)
 
 	if n, _ := syscall.SysctlUint32("hw.ncpu"); n > 0 {
 		fmt.Println("Set GOMAXPROCS", n)

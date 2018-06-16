@@ -3,9 +3,9 @@ package vhost
 import (
 	"github.com/valinurovam/garagemq/exchange"
 	"github.com/valinurovam/garagemq/amqp"
-	"github.com/valinurovam/garagemq/queue"
 	"sync"
 	"github.com/valinurovam/garagemq/binding"
+	"github.com/valinurovam/garagemq/interfaces"
 )
 
 const EX_DEFAULT_NAME = ""
@@ -16,7 +16,7 @@ type VirtualHost struct {
 	exLock    sync.Mutex
 	exchanges map[string]*exchange.Exchange
 	quLock    sync.Mutex
-	queues    map[string]*queue.Queue
+	queues    map[string]interfaces.AmqpQueue
 }
 
 func New(name string, system bool) *VirtualHost {
@@ -24,7 +24,7 @@ func New(name string, system bool) *VirtualHost {
 		name:      name,
 		system:    system,
 		exchanges: make(map[string]*exchange.Exchange),
-		queues:    make(map[string]*queue.Queue),
+		queues:    make(map[string]interfaces.AmqpQueue),
 	}
 
 	vhost.initSystemExchanges()
@@ -48,7 +48,7 @@ func (vhost *VirtualHost) initSystemExchanges() {
 	vhost.AppendExchange(systemExchange)
 }
 
-func (vhost *VirtualHost) GetQueue(name string) *queue.Queue {
+func (vhost *VirtualHost) GetQueue(name string) interfaces.AmqpQueue {
 	return vhost.queues[name]
 }
 
@@ -66,12 +66,12 @@ func (vhost *VirtualHost) AppendExchange(ex *exchange.Exchange) {
 	vhost.exchanges[ex.Name] = ex
 }
 
-func (vhost *VirtualHost) AppendQueue(qe *queue.Queue) {
+func (vhost *VirtualHost) AppendQueue(qu interfaces.AmqpQueue) {
 	vhost.quLock.Lock()
 	defer vhost.quLock.Unlock()
-	vhost.queues[qe.Name] = qe
+	vhost.queues[qu.GetName()] = qu
 
 	ex := vhost.GetDefaultExchange()
-	bind := binding.New(qe.Name, EX_DEFAULT_NAME, qe.Name, &amqp.Table{}, false)
+	bind := binding.New(qu.GetName(), EX_DEFAULT_NAME, qu.GetName(), &amqp.Table{}, false)
 	ex.AppendBinding(bind)
 }

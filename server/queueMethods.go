@@ -5,6 +5,7 @@ import (
 	"github.com/valinurovam/garagemq/queue"
 	"github.com/valinurovam/garagemq/binding"
 	"github.com/valinurovam/garagemq/exchange"
+	"github.com/valinurovam/garagemq/interfaces"
 )
 
 func (channel *Channel) queueRoute(method amqp.Method) *amqp.Error {
@@ -25,7 +26,7 @@ func (channel *Channel) queueRoute(method amqp.Method) *amqp.Error {
 }
 
 func (channel *Channel) queueDeclare(method *amqp.QueueDeclare) *amqp.Error {
-	var existingQueue *queue.Queue
+	var existingQueue interfaces.AmqpQueue
 	var notFoundErr, exclusiveErr *amqp.Error
 	existingQueue, notFoundErr = channel.getQueueWithError(method.Queue, method)
 	exclusiveErr = channel.checkQueueLockWithError(existingQueue, method)
@@ -96,7 +97,7 @@ func (channel *Channel) queueDeclare(method *amqp.QueueDeclare) *amqp.Error {
 
 func (channel *Channel) queueBind(method *amqp.QueueBind) *amqp.Error {
 	var ex *exchange.Exchange
-	var qu *queue.Queue
+	var qu interfaces.AmqpQueue
 	var err *amqp.Error
 
 	if ex, err = channel.getExchangeWithError(method.Exchange, method); err != nil {
@@ -123,7 +124,7 @@ func (channel *Channel) queueBind(method *amqp.QueueBind) *amqp.Error {
 
 func (channel *Channel) queueUnbind(method *amqp.QueueUnbind) *amqp.Error {
 	var ex *exchange.Exchange
-	var qu *queue.Queue
+	var qu interfaces.AmqpQueue
 	var err *amqp.Error
 
 	if ex, err = channel.getExchangeWithError(method.Exchange, method); err != nil {
@@ -147,7 +148,7 @@ func (channel *Channel) queueUnbind(method *amqp.QueueUnbind) *amqp.Error {
 }
 
 func (channel *Channel) queuePurge(method *amqp.QueuePurge) *amqp.Error {
-	var qu *queue.Queue
+	var qu interfaces.AmqpQueue
 	var err *amqp.Error
 
 	if qu, err = channel.getQueueWithError(method.Queue, method); err != nil {

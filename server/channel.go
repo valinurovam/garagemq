@@ -2,16 +2,15 @@ package server
 
 import (
 	"github.com/valinurovam/garagemq/amqp"
-	"github.com/valinurovam/garagemq/consumer"
 	"github.com/valinurovam/garagemq/qos"
+	"github.com/valinurovam/garagemq/exchange"
+	"github.com/valinurovam/garagemq/interfaces"
 	"bytes"
 	"github.com/sirupsen/logrus"
 	log "github.com/sirupsen/logrus"
 	"sync"
 	"sync/atomic"
 	"fmt"
-	"github.com/valinurovam/garagemq/queue"
-	"github.com/valinurovam/garagemq/exchange"
 )
 
 const (
@@ -32,7 +31,7 @@ type Channel struct {
 	protoVersion   string
 	currentMessage *amqp.Message
 	cmrLock        sync.Mutex
-	consumers      map[string]*consumer.Consumer
+	consumers      map[string]interfaces.Consumer
 	qos            *qos.AmqpQos
 	deliveryTag    uint64
 	ackLock        sync.Mutex
@@ -53,7 +52,7 @@ func NewChannel(id uint16, conn *Connection) (*Channel) {
 		outgoing:     conn.outgoing,
 		status:       ChannelNew,
 		protoVersion: conn.server.protoVersion,
-		consumers:    make(map[string]*consumer.Consumer),
+		consumers:    make(map[string]interfaces.Consumer),
 		qos:          qos.New(0, 0),
 		ackStore:     make(map[uint64]*UnackedMessage),
 	}
@@ -215,18 +214,18 @@ func (channel *Channel) SendContent(method amqp.Method, message *amqp.Message) {
 		channel.outgoing <- payload
 	}
 }
-func (channel *Channel) addConsumer(cmr *consumer.Consumer) {
+func (channel *Channel) addConsumer(cmr interfaces.Consumer) {
 	channel.cmrLock.Lock()
-	channel.consumers[cmr.ConsumerTag] = cmr
+	channel.consumers[cmr.Tag()] = cmr
 	channel.cmrLock.Unlock()
 }
 
-func (channel *Channel) removeConsumer(cTag string)  {
+func (channel *Channel) removeConsumer(cTag string) {
 	channel.cmrLock.Lock()
 	defer channel.cmrLock.Unlock()
 	if cmr, ok := channel.consumers[cTag]; ok {
 		cmr.Stop()
-		delete(channel.consumers, cmr.ConsumerTag)
+		delete(channel.consumers, cmr.Tag())
 	}
 }
 
@@ -234,9 +233,9 @@ func (channel *Channel) close() {
 	channel.cmrLock.Lock()
 	for _, cmr := range channel.consumers {
 		cmr.Stop()
-		delete(channel.consumers, cmr.ConsumerTag)
+		delete(channel.consumers, cmr.Tag())
 		channel.logger.WithFields(log.Fields{
-			"consumerTag": cmr.ConsumerTag,
+			"consumerTag": cmr.Tag(),
 		}).Info("Consumer stopped")
 	}
 	channel.cmrLock.Unlock()
@@ -299,7 +298,7 @@ func (channel *Channel) getExchangeWithError(exchangeName string, method amqp.Me
 	return ex, nil
 }
 
-func (channel *Channel) getQueueWithError(queueName string, method amqp.Method) (queue *queue.Queue, err *amqp.Error) {
+func (channel *Channel) getQueueWithError(queueName string, method amqp.Method) (queue interfaces.AmqpQueue, err *amqp.Error) {
 	qu := channel.conn.getVirtualHost().GetQueue(queueName)
 	if qu == nil {
 		return nil, amqp.NewChannelError(
@@ -312,14 +311,14 @@ func (channel *Channel) getQueueWithError(queueName string, method amqp.Method) 
 	return qu, nil
 }
 
-func (channel *Channel) checkQueueLockWithError(qu *queue.Queue, method amqp.Method) *amqp.Error {
+func (channel *Channel) checkQueueLockWithError(qu interfaces.AmqpQueue, method amqp.Method) *amqp.Error {
 	if qu == nil {
 		return nil
 	}
 	if qu.IsExclusive() && qu.ConnId() != channel.conn.id {
 		return amqp.NewChannelError(
 			amqp.ResourceLocked,
-			fmt.Sprintf("queue '%s' is locked to another connection", qu.Name),
+			fmt.Sprintf("queue '%s' is locked to another connection", qu.GetName()),
 			method.ClassIdentifier(),
 			method.MethodIdentifier(),
 		)

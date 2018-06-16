@@ -2,10 +2,10 @@ package exchange
 
 import (
 	"github.com/valinurovam/garagemq/amqp"
-	"github.com/valinurovam/garagemq/binding"
 	"errors"
 	"fmt"
 	"sync"
+	"github.com/valinurovam/garagemq/interfaces"
 )
 
 const (
@@ -38,7 +38,7 @@ type Exchange struct {
 	system     bool
 	arguments  *amqp.Table
 	bindLock   sync.Mutex
-	bindings   []*binding.Binding
+	bindings   []interfaces.Binding
 }
 
 func GetExchangeTypeAlias(id int) (alias string, err error) {
@@ -66,7 +66,7 @@ func New(name string, exType int, durable bool, autoDelete bool, internal bool, 
 	}
 }
 
-func (ex *Exchange) AppendBinding(newBind *binding.Binding) {
+func (ex *Exchange) AppendBinding(newBind interfaces.Binding) {
 	ex.bindLock.Lock()
 	defer ex.bindLock.Unlock()
 	for _, bind := range ex.bindings {
@@ -77,7 +77,7 @@ func (ex *Exchange) AppendBinding(newBind *binding.Binding) {
 	ex.bindings = append(ex.bindings, newBind)
 }
 
-func (ex *Exchange) RemoveBiding(rmBind *binding.Binding) {
+func (ex *Exchange) RemoveBiding(rmBind interfaces.Binding) {
 	ex.bindLock.Lock()
 	defer ex.bindLock.Unlock()
 	for i, bind := range ex.bindings {
@@ -94,20 +94,20 @@ func (ex *Exchange) GetMatchedQueues(message *amqp.Message) (matchedQueues map[s
 	case EX_TYPE_DIRECT:
 		for _, bind := range ex.bindings {
 			if bind.MatchDirect(message.Exchange, message.RoutingKey) {
-				matchedQueues[bind.Queue] = true
+				matchedQueues[bind.GetQueue()] = true
 				return
 			}
 		}
 	case EX_TYPE_FANOUT:
 		for _, bind := range ex.bindings {
 			if bind.MatchFanout(message.Exchange) {
-				matchedQueues[bind.Queue] = true
+				matchedQueues[bind.GetQueue()] = true
 			}
 		}
 	case EX_TYPE_TOPIC:
 		for _, bind := range ex.bindings {
 			if bind.MatchTopic(message.Exchange, message.RoutingKey) {
-				matchedQueues[bind.Queue] = true
+				matchedQueues[bind.GetQueue()] = true
 			}
 		}
 	}

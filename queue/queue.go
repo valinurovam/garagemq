@@ -3,31 +3,31 @@ package queue
 import (
 	"github.com/valinurovam/garagemq/safequeue"
 	"github.com/valinurovam/garagemq/amqp"
-	"github.com/valinurovam/garagemq/consumer"
 	"sync"
 	"github.com/valinurovam/garagemq/qos"
 	"errors"
 	"fmt"
+	"github.com/valinurovam/garagemq/interfaces"
 )
 
 type Queue struct {
 	safequeue.SafeQueue
-	Name        string
+	name        string
 	connId      uint64
 	exclusive   bool
 	autoDelete  bool
 	durable     bool
 	cmrLock     sync.Mutex
-	consumers   []*consumer.Consumer
+	consumers   []interfaces.Consumer
 	call        chan bool
 	wasConsumed bool
 	shardSize   int
 }
 
-func NewQueue(name string, connId uint64, exclusive bool, autoDelete bool, durable bool, shardSize int) *Queue {
+func NewQueue(name string, connId uint64, exclusive bool, autoDelete bool, durable bool, shardSize int) interfaces.AmqpQueue {
 	return &Queue{
 		SafeQueue:   *safequeue.NewSafeQueue(shardSize),
-		Name:        name,
+		name:        name,
 		connId:      connId,
 		exclusive:   exclusive,
 		autoDelete:  autoDelete,
@@ -46,6 +46,10 @@ func (queue *Queue) Start() {
 			}
 		}
 	}()
+}
+
+func (queue *Queue) GetName() string {
+	return queue.name
 }
 
 func (queue *Queue) Push(message *amqp.Message) {
@@ -98,7 +102,7 @@ func (queue *Queue) dirtyPurge() {
 	queue.SafeQueue = *safequeue.NewSafeQueue(queue.shardSize)
 }
 
-func (queue *Queue) AddConsumer(consumer *consumer.Consumer) {
+func (queue *Queue) AddConsumer(consumer interfaces.Consumer) {
 	queue.wasConsumed = true
 	queue.cmrLock.Lock()
 	queue.consumers = append(queue.consumers, consumer)
@@ -109,7 +113,7 @@ func (queue *Queue) AddConsumer(consumer *consumer.Consumer) {
 func (queue *Queue) RemoveConsumer(cTag string) {
 	queue.cmrLock.Lock()
 	for i, cmr := range queue.consumers {
-		if cmr.ConsumerTag == cTag {
+		if cmr.Tag() == cTag {
 			queue.consumers = append(queue.consumers[:i], queue.consumers[i+1:]...)
 		}
 	}
@@ -137,23 +141,32 @@ func (queue *Queue) ConsumersCount() int {
 	return len(queue.consumers)
 }
 
-func (qA *Queue) EqualWithErr(qB *Queue) error {
+func (qA *Queue) EqualWithErr(qB interfaces.AmqpQueue) error {
 	errTemplate := "inequivalent arg '%s' for queue '%s': received '%s' but current is '%s'"
-	if qA.durable != qB.durable {
-		return errors.New(fmt.Sprintf(errTemplate, "durable", qA.Name, qB.durable, qA.durable))
+	if qA.durable != qB.IsDurable() {
+		return errors.New(fmt.Sprintf(errTemplate, "durable", qA.name, qB.IsDurable(), qA.durable))
 	}
-	if qA.autoDelete != qB.autoDelete {
-		return errors.New(fmt.Sprintf(errTemplate, "autoDelete", qA.Name, qB.autoDelete, qA.autoDelete))
+	if qA.autoDelete != qB.IsAutoDelete() {
+		return errors.New(fmt.Sprintf(errTemplate, "autoDelete", qA.name, qB.IsAutoDelete(), qA.autoDelete))
 	}
-	if qA.exclusive != qB.exclusive {
-		return errors.New(fmt.Sprintf(errTemplate, "exclusive", qA.Name, qB.exclusive, qA.exclusive))
+	if qA.exclusive != qB.IsExclusive() {
+		return errors.New(fmt.Sprintf(errTemplate, "exclusive", qA.name, qB.IsExclusive(), qA.exclusive))
 	}
 	return nil
+}
+
+func (q *Queue) IsDurable() bool {
+	return q.durable
+}
+
+func (q *Queue) IsAutoDelete() bool {
+	return q.autoDelete
 }
 
 func (q *Queue) IsExclusive() bool {
 	return q.exclusive
 }
+
 func (q *Queue) ConnId() uint64 {
 	return q.connId
 }
