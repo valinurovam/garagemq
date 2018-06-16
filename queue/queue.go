@@ -102,12 +102,16 @@ func (queue *Queue) dirtyPurge() {
 	queue.SafeQueue = *safequeue.NewSafeQueue(queue.shardSize)
 }
 
-func (queue *Queue) AddConsumer(consumer interfaces.Consumer) {
+func (queue *Queue) AddConsumer(consumer interfaces.Consumer, exclusive bool) error {
 	queue.wasConsumed = true
 	queue.cmrLock.Lock()
+	if exclusive && len(queue.consumers) != 0 {
+		return errors.New("queue is busy by exclusive consumer")
+	}
 	queue.consumers = append(queue.consumers, consumer)
 	queue.cmrLock.Unlock()
 	queue.callConsumers()
+	return nil
 }
 
 func (queue *Queue) RemoveConsumer(cTag string) {

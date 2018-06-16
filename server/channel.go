@@ -11,6 +11,7 @@ import (
 	"sync"
 	"sync/atomic"
 	"fmt"
+	"github.com/valinurovam/garagemq/consumer"
 )
 
 const (
@@ -214,10 +215,25 @@ func (channel *Channel) SendContent(method amqp.Method, message *amqp.Message) {
 		channel.outgoing <- payload
 	}
 }
-func (channel *Channel) addConsumer(cmr interfaces.Consumer) {
+func (channel *Channel) addConsumer(method *amqp.BasicConsume) (cmr interfaces.Consumer, err *amqp.Error) {
 	channel.cmrLock.Lock()
+
+	var qu interfaces.AmqpQueue
+	if qu, err = channel.getQueueWithError(method.Queue, method); err != nil {
+		return nil, err
+	}
+
+	cmr = consumer.New(method.Queue, method.ConsumerTag, method.NoAck, channel, qu, []*qos.AmqpQos{channel.qos, channel.conn.qos})
+	if _, ok := channel.consumers[cmr.Tag()]; ok {
+		return nil, amqp.NewChannelError(amqp.NotAllowed, fmt.Sprintf("Consumer with tag '%s' already exists", cmr.Tag()), method.ClassIdentifier(), method.MethodIdentifier())
+	}
+
+	if quErr := qu.AddConsumer(cmr, method.Exclusive); quErr != nil {
+		return nil, amqp.NewChannelError(amqp.AccessRefused, quErr.Error(), method.ClassIdentifier(), method.MethodIdentifier())
+	}
 	channel.consumers[cmr.Tag()] = cmr
 	channel.cmrLock.Unlock()
+	return cmr, nil
 }
 
 func (channel *Channel) removeConsumer(cTag string) {

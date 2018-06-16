@@ -2,8 +2,6 @@ package server
 
 import (
 	"github.com/valinurovam/garagemq/amqp"
-	"github.com/valinurovam/garagemq/consumer"
-	"github.com/valinurovam/garagemq/qos"
 	"github.com/valinurovam/garagemq/interfaces"
 )
 
@@ -50,21 +48,16 @@ func (channel *Channel) basicPublish(method *amqp.BasicPublish) (err *amqp.Error
 }
 
 func (channel *Channel) basicConsume(method *amqp.BasicConsume) (err *amqp.Error) {
-	var qu interfaces.AmqpQueue
-
-	if qu, err = channel.getQueueWithError(method.Queue, method); err != nil {
+	var cmr interfaces.Consumer
+	if cmr, err = channel.addConsumer(method); err != nil {
 		return err
 	}
 
-	cmr := consumer.New(method.Queue, method.ConsumerTag, method.NoAck, channel, qu, []*qos.AmqpQos{channel.qos, channel.conn.qos})
-	channel.addConsumer(cmr)
-
 	if !method.NoWait {
-		channel.sendMethod(&amqp.BasicConsumeOk{ConsumerTag: cmr.ConsumerTag})
+		channel.sendMethod(&amqp.BasicConsumeOk{ConsumerTag: cmr.Tag()})
 	}
 
 	cmr.Start()
-	qu.AddConsumer(cmr)
 
 	return nil
 }

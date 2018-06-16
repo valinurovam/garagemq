@@ -25,7 +25,7 @@ type AmqpQueue interface {
 	Length() uint64
 	ConsumersCount() int
 	Purge() uint64
-	AddConsumer(consumer Consumer)
+	AddConsumer(consumer Consumer, exclusive bool) error
 	EqualWithErr(qu AmqpQueue) error
 }
 
