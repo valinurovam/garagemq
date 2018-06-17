@@ -19,6 +19,7 @@ type Server struct {
 	connections  map[uint64]*Connection
 	config       *ServerConfig
 	users        map[string]string
+	vhostsLock   sync.Mutex
 	vhosts       map[string]*vhost.VirtualHost
 }
 
@@ -108,5 +109,14 @@ func (srv *Server) initUsers() {
 }
 
 func (srv *Server) initVirtualHosts() {
+	srv.vhostsLock.Lock()
+	defer srv.vhostsLock.Unlock()
 	srv.vhosts["/"] = vhost.New("/", true)
+}
+
+func (srv *Server) GetVhost(name string) *vhost.VirtualHost {
+	srv.vhostsLock.Lock()
+	defer srv.vhostsLock.Unlock()
+
+	return srv.vhosts[name]
 }

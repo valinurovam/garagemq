@@ -151,3 +151,9 @@ func (exA *Exchange) EqualWithErr(exB *Exchange) error {
 	}
 	return nil
 }
+
+func (ex *Exchange) GetBindings() []interfaces.Binding {
+	ex.bindLock.Lock()
+	defer ex.bindLock.Unlock()
+	return ex.bindings
+}

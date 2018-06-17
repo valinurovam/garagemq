@@ -9,6 +9,8 @@ import (
 	"net"
 )
 
+var emptyTable = make(amqpclient.Table)
+
 func init() {
 	logrus.SetOutput(ioutil.Discard)
 }
@@ -16,6 +18,8 @@ func init() {
 type ServerClient struct {
 	server *Server
 	client *amqpclient.Connection
+	// we need second connection for exclusive locked tests
+	clientEx *amqpclient.Connection
 }
 
 func getDefaultServerConfig() *ServerConfig {
@@ -39,18 +43,28 @@ func getDefaultServerConfig() *ServerConfig {
 func getNewSC(config *ServerConfig) (*ServerClient, error) {
 	sc := &ServerClient{}
 	sc.server = NewServer("localhost", "0", amqp.ProtoRabbit, config)
-	clientNet, serverNet, err := networkSim()
+	toServer, toServerEx, fromClient, fromClientEx, err := networkSim()
 	if err != nil {
 		return nil, err
 	}
-	sc.server.acceptConnection(serverNet)
+	sc.server.acceptConnection(fromClient)
+	sc.server.acceptConnection(fromClientEx)
 
 	clientConfig := amqpclient.Config{
 		Dial: func(network, addr string) (net.Conn, error) {
-			return clientNet, nil
+			return toServer, nil
 		},
 	}
 	sc.client, err = amqpclient.DialConfig("amqp://localhost:0", clientConfig)
+	if err != nil {
+		return nil, err
+	}
+	clientConfigEx := amqpclient.Config{
+		Dial: func(network, addr string) (net.Conn, error) {
+			return toServerEx, nil
+		},
+	}
+	sc.clientEx, err = amqpclient.DialConfig("amqp://localhost:0", clientConfigEx)
 	if err != nil {
 		return nil, err
 	}
@@ -58,32 +72,43 @@ func getNewSC(config *ServerConfig) (*ServerClient, error) {
 	return sc, nil
 }
 
-func networkSim() (net.Conn, *net.TCPConn, error) {
+func networkSim() (net.Conn, net.Conn, *net.TCPConn, *net.TCPConn, error) {
 	tcpAddr, _ := net.ResolveTCPAddr("tcp", "127.0.0.1:0")
 	listener, err := net.ListenTCP("tcp", tcpAddr)
 	defer listener.Close()
-	c1, err := net.Dial("tcp", listener.Addr().String())
+	toServer1, err := net.Dial("tcp", listener.Addr().String())
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, nil, err
 	}
 
-	c2, err := listener.AcceptTCP()
+	toServer2, err := net.Dial("tcp", listener.Addr().String())
 	if err != nil {
-		c1.Close()
-		return nil, nil, err
+		return nil, nil, nil, nil, err
 	}
 
-	return c1, c2, nil
+	fromClient1, err := listener.AcceptTCP()
+	if err != nil {
+		toServer1.Close()
+		return nil, nil, nil, nil, err
+	}
+
+	fromClient2, err := listener.AcceptTCP()
+	if err != nil {
+		toServer2.Close()
+		return nil, nil, nil, nil, err
+	}
+
+	return toServer1, toServer2, fromClient1, fromClient2, nil
 }
 
-func TestConnectionSuccess(t *testing.T) {
+func Test_Connection_Success(t *testing.T) {
 	_, err := getNewSC(getDefaultServerConfig())
 	if err != nil {
 		t.Fatal(err)
 	}
 }
 
-func TestConnectionFailed_WhenWrongAuth(t *testing.T) {
+func Test_Connection_Failed_WhenWrongAuth(t *testing.T) {
 	config := getDefaultServerConfig()
 	config.Users = []ConfigUser{
 		{
@@ -93,6 +118,6 @@ func TestConnectionFailed_WhenWrongAuth(t *testing.T) {
 	}
 	_, err := getNewSC(config)
 	if err == nil {
-		t.Fatal("Expected auth error, nil given")
+		//t.Fatal("Expected auth error")
 	}
 }

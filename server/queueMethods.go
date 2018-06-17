@@ -28,6 +28,16 @@ func (channel *Channel) queueRoute(method amqp.Method) *amqp.Error {
 func (channel *Channel) queueDeclare(method *amqp.QueueDeclare) *amqp.Error {
 	var existingQueue interfaces.AmqpQueue
 	var notFoundErr, exclusiveErr *amqp.Error
+
+	if method.Queue == "" {
+		return amqp.NewChannelError(
+			amqp.CommandInvalid,
+			"queue name is requred",
+			method.ClassIdentifier(),
+			method.MethodIdentifier(),
+		)
+	}
+
 	existingQueue, notFoundErr = channel.getQueueWithError(method.Queue, method)
 	exclusiveErr = channel.checkQueueLockWithError(existingQueue, method)
 

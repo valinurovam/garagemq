@@ -9,7 +9,7 @@ import (
 	"errors"
 )
 
-const EX_DEFAULT_NAME = ""
+const EX_DEFAULT_NAME = "amq.system"
 
 type VirtualHost struct {
 	name      string
@@ -42,7 +42,7 @@ func (vhost *VirtualHost) initSystemExchanges() {
 	} {
 		exTypeAlias, _ := exchange.GetExchangeTypeAlias(exType)
 		exName := "amq." + exTypeAlias
-		vhost.exchanges[exName] = exchange.New(exName, exType, true, false, false, true, &amqp.Table{})
+		vhost.AppendExchange(exchange.New(exName, exType, true, false, false, true, &amqp.Table{}))
 	}
 
 	systemExchange := exchange.New(EX_DEFAULT_NAME, exchange.EX_TYPE_DIRECT, true, false, false, true, &amqp.Table{})
@@ -106,7 +106,6 @@ func (vhost *VirtualHost) DeleteQueue(queueName string, ifUnused bool, ifEmpty b
 		ex.RemoveQueueBindings(queueName)
 	}
 	delete(vhost.queues, queueName)
-
 
 	return length, nil
 }

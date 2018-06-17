@@ -22,6 +22,15 @@ func (channel *Channel) exchangeDeclare(method *amqp.ExchangeDeclare) *amqp.Erro
 		return amqp.NewChannelError(amqp.NotImplemented, err.Error(), method.ClassIdentifier(), method.MethodIdentifier())
 	}
 
+	if method.Exchange == "" {
+		return amqp.NewChannelError(
+			amqp.CommandInvalid,
+			"exchange name is requred",
+			method.ClassIdentifier(),
+			method.MethodIdentifier(),
+		)
+	}
+
 	existingExchange := channel.conn.getVirtualHost().GetExchange(method.Exchange)
 	if method.Passive {
 		if method.NoWait {
@@ -40,15 +49,6 @@ func (channel *Channel) exchangeDeclare(method *amqp.ExchangeDeclare) *amqp.Erro
 		}
 
 		return nil
-	}
-
-	if method.Exchange == "" {
-		return amqp.NewChannelError(
-			amqp.CommandInvalid,
-			"exchange name is requred",
-			method.ClassIdentifier(),
-			method.MethodIdentifier(),
-		)
 	}
 
 	if strings.HasPrefix(method.Exchange, "amq.") {
