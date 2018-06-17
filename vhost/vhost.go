@@ -6,6 +6,7 @@ import (
 	"sync"
 	"github.com/valinurovam/garagemq/binding"
 	"github.com/valinurovam/garagemq/interfaces"
+	"errors"
 )
 
 const EX_DEFAULT_NAME = ""
@@ -49,10 +50,22 @@ func (vhost *VirtualHost) initSystemExchanges() {
 }
 
 func (vhost *VirtualHost) GetQueue(name string) interfaces.AmqpQueue {
+	vhost.quLock.Lock()
+	defer vhost.quLock.Unlock()
+	return vhost.getQueue(name)
+}
+
+func (vhost *VirtualHost) getQueue(name string) interfaces.AmqpQueue {
 	return vhost.queues[name]
 }
 
 func (vhost *VirtualHost) GetExchange(name string) *exchange.Exchange {
+	vhost.exLock.Lock()
+	defer vhost.exLock.Unlock()
+	return vhost.getExchange(name)
+}
+
+func (vhost *VirtualHost) getExchange(name string) *exchange.Exchange {
 	return vhost.exchanges[name]
 }
 
@@ -74,4 +87,26 @@ func (vhost *VirtualHost) AppendQueue(qu interfaces.AmqpQueue) {
 	ex := vhost.GetDefaultExchange()
 	bind := binding.New(qu.GetName(), EX_DEFAULT_NAME, qu.GetName(), &amqp.Table{}, false)
 	ex.AppendBinding(bind)
+}
+
+func (vhost *VirtualHost) DeleteQueue(queueName string, ifUnused bool, ifEmpty bool) (uint64, error) {
+	vhost.quLock.Lock()
+	defer vhost.quLock.Unlock()
+
+	qu := vhost.getQueue(queueName)
+	if qu == nil {
+		return 0, errors.New("not found")
+	}
+
+	var length, err = qu.Delete(ifUnused, ifEmpty)
+	if err != nil {
+		return 0, err
+	}
+	for _, ex := range vhost.exchanges {
+		ex.RemoveQueueBindings(queueName)
+	}
+	delete(vhost.queues, queueName)
+
+
+	return length, nil
 }

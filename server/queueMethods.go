@@ -43,7 +43,7 @@ func (channel *Channel) queueDeclare(method *amqp.QueueDeclare) *amqp.Error {
 				return exclusiveErr
 			}
 
-			channel.sendMethod(&amqp.QueueDeclareOk{
+			channel.SendMethod(&amqp.QueueDeclareOk{
 				Queue:         method.Queue,
 				MessageCount:  uint32(existingQueue.Length()),
 				ConsumerCount: uint32(existingQueue.ConsumersCount()),
@@ -76,7 +76,7 @@ func (channel *Channel) queueDeclare(method *amqp.QueueDeclare) *amqp.Error {
 			)
 		}
 
-		channel.sendMethod(&amqp.QueueDeclareOk{
+		channel.SendMethod(&amqp.QueueDeclareOk{
 			Queue:         method.Queue,
 			MessageCount:  uint32(existingQueue.Length()),
 			ConsumerCount: uint32(existingQueue.ConsumersCount()),
@@ -86,7 +86,7 @@ func (channel *Channel) queueDeclare(method *amqp.QueueDeclare) *amqp.Error {
 
 	newQueue.Start()
 	channel.conn.getVirtualHost().AppendQueue(newQueue)
-	channel.sendMethod(&amqp.QueueDeclareOk{
+	channel.SendMethod(&amqp.QueueDeclareOk{
 		Queue:         method.Queue,
 		MessageCount:  0,
 		ConsumerCount: 0,
@@ -116,7 +116,7 @@ func (channel *Channel) queueBind(method *amqp.QueueBind) *amqp.Error {
 	ex.AppendBinding(bind)
 
 	if !method.NoWait {
-		channel.sendMethod(&amqp.QueueBindOk{})
+		channel.SendMethod(&amqp.QueueBindOk{})
 	}
 
 	return nil
@@ -142,7 +142,7 @@ func (channel *Channel) queueUnbind(method *amqp.QueueUnbind) *amqp.Error {
 	bind := binding.New(method.Queue, method.Exchange, method.RoutingKey, method.Arguments, ex.ExType == exchange.EX_TYPE_TOPIC)
 	ex.RemoveBiding(bind)
 
-	channel.sendMethod(&amqp.QueueUnbindOk{})
+	channel.SendMethod(&amqp.QueueUnbindOk{})
 
 	return nil
 }
@@ -161,11 +161,28 @@ func (channel *Channel) queuePurge(method *amqp.QueuePurge) *amqp.Error {
 
 	msgCnt := qu.Purge()
 	if !method.NoWait {
-		channel.sendMethod(&amqp.QueuePurgeOk{MessageCount: uint32(msgCnt)})
+		channel.SendMethod(&amqp.QueuePurgeOk{MessageCount: uint32(msgCnt)})
 	}
 	return nil
 }
 
 func (channel *Channel) queueDelete(method *amqp.QueueDelete) *amqp.Error {
-	return amqp.NewChannelError(amqp.NotImplemented, method.Name(), method.ClassIdentifier(), method.MethodIdentifier())
+	var qu interfaces.AmqpQueue
+	var err *amqp.Error
+
+	if qu, err = channel.getQueueWithError(method.Queue, method); err != nil {
+		return err
+	}
+
+	if err = channel.checkQueueLockWithError(qu, method); err != nil {
+		return err
+	}
+
+	var length, errDel = channel.conn.getVirtualHost().DeleteQueue(method.Queue, method.IfUnused, method.IfEmpty)
+	if errDel != nil {
+		return amqp.NewChannelError(amqp.PreconditionFailed, errDel.Error(), method.ClassIdentifier(), method.MethodIdentifier())
+	}
+
+	channel.SendMethod(&amqp.QueueDeleteOk{MessageCount: uint32(length)})
+	return nil
 }

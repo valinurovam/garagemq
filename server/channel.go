@@ -109,7 +109,7 @@ func (channel *Channel) sendError(err *amqp.Error) {
 	switch err.ErrorType {
 	case amqp.ErrorOnChannel:
 		channel.status = ChannelClosing
-		channel.sendMethod(&amqp.ChannelClose{
+		channel.SendMethod(&amqp.ChannelClose{
 			ReplyCode: err.ReplyCode,
 			ReplyText: err.ReplyText,
 			ClassId:   err.ClassId,
@@ -117,7 +117,7 @@ func (channel *Channel) sendError(err *amqp.Error) {
 		})
 	case amqp.ErrorOnConnection:
 		channel.conn.status = ConnClosing
-		channel.conn.channels[0].sendMethod(&amqp.ConnectionClose{
+		channel.conn.channels[0].SendMethod(&amqp.ConnectionClose{
 			ReplyCode: err.ReplyCode,
 			ReplyText: err.ReplyText,
 			ClassId:   err.ClassId,
@@ -191,7 +191,7 @@ func (channel *Channel) handleContentBody(bodyFrame *amqp.Frame) *amqp.Error {
 	return nil
 }
 
-func (channel *Channel) sendMethod(method amqp.Method) {
+func (channel *Channel) SendMethod(method amqp.Method) {
 	rawMethod := bytes.NewBuffer([]byte{})
 	if err := amqp.WriteMethod(rawMethod, method, channel.server.protoVersion); err != nil {
 		logrus.WithError(err).Error("Error")
@@ -204,7 +204,7 @@ func (channel *Channel) sendMethod(method amqp.Method) {
 }
 
 func (channel *Channel) SendContent(method amqp.Method, message *amqp.Message) {
-	channel.sendMethod(method)
+	channel.SendMethod(method)
 
 	rawHeader := bytes.NewBuffer([]byte{})
 	amqp.WriteContentHeader(rawHeader, message.Header, channel.server.protoVersion)
@@ -316,7 +316,7 @@ func (channel *Channel) getExchangeWithError(exchangeName string, method amqp.Me
 
 func (channel *Channel) getQueueWithError(queueName string, method amqp.Method) (queue interfaces.AmqpQueue, err *amqp.Error) {
 	qu := channel.conn.getVirtualHost().GetQueue(queueName)
-	if qu == nil {
+	if qu == nil || !qu.IsActive() {
 		return nil, amqp.NewChannelError(
 			amqp.NotFound,
 			fmt.Sprintf("queue '%s' not found", queueName),

@@ -107,6 +107,11 @@ func (consumer *Consumer) Stop() {
 	close(consumer.consume)
 }
 
+func (consumer *Consumer) Cancel() {
+	consumer.Stop()
+	consumer.channel.SendMethod(&amqp.BasicCancel{ConsumerTag: consumer.ConsumerTag, NoWait: true})
+}
+
 func (consumer *Consumer) Tag() string {
 	return consumer.ConsumerTag
 }

@@ -22,9 +22,11 @@ type Queue struct {
 	call        chan bool
 	wasConsumed bool
 	shardSize   int
+	actLock     sync.Mutex
+	active      bool
 }
 
-func NewQueue(name string, connId uint64, exclusive bool, autoDelete bool, durable bool, shardSize int) interfaces.AmqpQueue {
+func NewQueue(name string, connId uint64, exclusive bool, autoDelete bool, durable bool, shardSize int) *Queue {
 	return &Queue{
 		SafeQueue:   *safequeue.NewSafeQueue(shardSize),
 		name:        name,
@@ -34,11 +36,15 @@ func NewQueue(name string, connId uint64, exclusive bool, autoDelete bool, durab
 		durable:     durable,
 		call:        make(chan bool, 1),
 		wasConsumed: false,
+		active:      false,
 		shardSize:   shardSize,
 	}
 }
 
 func (queue *Queue) Start() {
+	queue.actLock.Lock()
+	defer queue.actLock.Unlock()
+	queue.active = true
 	go func() {
 		for _ = range queue.call {
 			for _, cmr := range queue.consumers {
@@ -92,7 +98,7 @@ func (queue *Queue) PopQos(qosList []*qos.AmqpQos) *amqp.Message {
 
 func (queue *Queue) Purge() (length uint64) {
 	queue.SafeQueue.Lock()
-	length = queue.SafeQueue.Length()
+	length = queue.SafeQueue.DirtyLength()
 	defer queue.SafeQueue.Unlock()
 	queue.dirtyPurge()
 	return
@@ -100,6 +106,31 @@ func (queue *Queue) Purge() (length uint64) {
 
 func (queue *Queue) dirtyPurge() {
 	queue.SafeQueue = *safequeue.NewSafeQueue(queue.shardSize)
+}
+
+func (queue *Queue) Delete(ifUnused bool, ifEmpty bool) (uint64, error) {
+	queue.actLock.Lock()
+	queue.cmrLock.Lock()
+	queue.SafeQueue.Lock()
+	defer queue.actLock.Unlock()
+	defer queue.cmrLock.Unlock()
+	defer queue.SafeQueue.Unlock()
+
+	queue.active = false
+
+	if ifUnused && len(queue.consumers) != 0 {
+		return 0, errors.New("queue has consumers")
+	}
+
+	if ifUnused && queue.SafeQueue.DirtyLength() != 0 {
+		return 0, errors.New("queue has messages")
+	}
+
+	queue.cancelConsumers()
+	length := queue.SafeQueue.DirtyLength()
+	queue.dirtyPurge()
+
+	return length, nil
 }
 
 func (queue *Queue) AddConsumer(consumer interfaces.Consumer, exclusive bool) error {
@@ -135,6 +166,12 @@ func (queue *Queue) callConsumers() {
 	}
 }
 
+func (queue *Queue) cancelConsumers() {
+	for _, cmr := range queue.consumers {
+		cmr.Cancel()
+	}
+}
+
 func (queue *Queue) Length() uint64 {
 	return queue.SafeQueue.Length();
 }
@@ -159,18 +196,22 @@ func (qA *Queue) EqualWithErr(qB interfaces.AmqpQueue) error {
 	return nil
 }
 
-func (q *Queue) IsDurable() bool {
-	return q.durable
+func (queue *Queue) IsDurable() bool {
+	return queue.durable
 }
 
-func (q *Queue) IsAutoDelete() bool {
-	return q.autoDelete
+func (queue *Queue) IsAutoDelete() bool {
+	return queue.autoDelete
 }
 
-func (q *Queue) IsExclusive() bool {
-	return q.exclusive
+func (queue *Queue) IsExclusive() bool {
+	return queue.exclusive
 }
 
-func (q *Queue) ConnId() uint64 {
-	return q.connId
+func (queue *Queue) ConnId() uint64 {
+	return queue.connId
+}
+
+func (queue *Queue) IsActive() bool {
+	return queue.active
 }

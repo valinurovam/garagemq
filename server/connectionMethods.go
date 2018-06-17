@@ -48,7 +48,7 @@ func (channel *Channel) connectionStart() {
 	}
 
 	var method = amqp.ConnectionStart{0, 9, &serverProps, []byte("PLAIN"), []byte("en_US")}
-	channel.sendMethod(&method)
+	channel.SendMethod(&method)
 
 	channel.conn.status = ConnStart
 }
@@ -73,7 +73,7 @@ func (channel *Channel) connectionStartOk(method *amqp.ConnectionStartOk) *amqp.
 	channel.conn.clientProperties = method.ClientProperties
 
 	// @todo Send HeartBeat 0 cause not supported yet
-	channel.sendMethod(&amqp.ConnectionTune{channel.conn.maxChannels, channel.conn.maxFrameSize, 0})
+	channel.SendMethod(&amqp.ConnectionTune{channel.conn.maxChannels, channel.conn.maxFrameSize, 0})
 	channel.conn.status = ConnTune
 
 	return nil
@@ -104,7 +104,7 @@ func (channel *Channel) connectionOpen(method *amqp.ConnectionOpen) *amqp.Error 
 		return amqp.NewConnectionError(amqp.InvalidPath, "virtualHost '"+method.VirtualHost+"' does not exist", method.ClassIdentifier(), method.MethodIdentifier())
 	}
 
-	channel.sendMethod(&amqp.ConnectionOpenOk{})
+	channel.SendMethod(&amqp.ConnectionOpenOk{})
 	channel.conn.status = ConnOpenOK
 
 	channel.logger.Info("AMQP connection open")
@@ -112,7 +112,7 @@ func (channel *Channel) connectionOpen(method *amqp.ConnectionOpen) *amqp.Error 
 }
 
 func (channel *Channel) connectionClose(method *amqp.ConnectionClose) *amqp.Error {
-	channel.sendMethod(&amqp.ConnectionCloseOk{})
+	channel.SendMethod(&amqp.ConnectionCloseOk{})
 	return nil
 }
 

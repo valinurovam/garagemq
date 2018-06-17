@@ -25,7 +25,7 @@ func (channel *Channel) basicRoute(method amqp.Method) *amqp.Error {
 
 func (channel *Channel) basicQos(method *amqp.BasicQos) (err *amqp.Error) {
 	channel.updateQos(method.PrefetchCount, method.PrefetchSize, method.Global)
-	channel.sendMethod(&amqp.BasicQosOk{})
+	channel.SendMethod(&amqp.BasicQosOk{})
 
 	return nil
 }
@@ -54,7 +54,7 @@ func (channel *Channel) basicConsume(method *amqp.BasicConsume) (err *amqp.Error
 	}
 
 	if !method.NoWait {
-		channel.sendMethod(&amqp.BasicConsumeOk{ConsumerTag: cmr.Tag()})
+		channel.SendMethod(&amqp.BasicConsumeOk{ConsumerTag: cmr.Tag()})
 	}
 
 	cmr.Start()
@@ -67,6 +67,6 @@ func (channel *Channel) basicCancel(method *amqp.BasicCancel) (err *amqp.Error) 
 		return amqp.NewChannelError(amqp.NotFound, "Consumer not found", method.ClassIdentifier(), method.MethodIdentifier())
 	}
 	channel.removeConsumer(method.ConsumerTag)
-	channel.sendMethod(&amqp.BasicConsumeOk{ConsumerTag: method.ConsumerTag})
+	channel.SendMethod(&amqp.BasicConsumeOk{ConsumerTag: method.ConsumerTag})
 	return nil
 }

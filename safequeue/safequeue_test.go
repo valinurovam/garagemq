@@ -28,7 +28,7 @@ func TestSafeQueue(t *testing.T) {
 		queue.Push(item)
 	}
 
-	if queue.Length() != int64(queueLength) {
+	if queue.Length() != uint64(queueLength) {
 		t.Fatalf("expected %d elements, have %d", queueLength, queue.Length())
 	}
 

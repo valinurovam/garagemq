@@ -36,7 +36,7 @@ func (channel *Channel) exchangeDeclare(method *amqp.ExchangeDeclare) *amqp.Erro
 				method.MethodIdentifier(),
 			)
 		} else {
-			channel.sendMethod(&amqp.ExchangeDeclareOk{})
+			channel.SendMethod(&amqp.ExchangeDeclareOk{})
 		}
 
 		return nil
@@ -79,12 +79,12 @@ func (channel *Channel) exchangeDeclare(method *amqp.ExchangeDeclare) *amqp.Erro
 				method.MethodIdentifier(),
 			)
 		}
-		channel.sendMethod(&amqp.ExchangeDeclareOk{})
+		channel.SendMethod(&amqp.ExchangeDeclareOk{})
 		return nil
 	}
 
 	channel.conn.getVirtualHost().AppendExchange(newExchange)
-	channel.sendMethod(&amqp.ExchangeDeclareOk{})
+	channel.SendMethod(&amqp.ExchangeDeclareOk{})
 
 	return nil
 }

@@ -87,6 +87,10 @@ func (queue *SafeQueue) Length() uint64 {
 	return queue.length
 }
 
+func (queue *SafeQueue) DirtyLength() uint64 {
+	return queue.length
+}
+
 func (queue *SafeQueue) HeadItem() (res interface{}) {
 	return queue.head[queue.headPos]
 }
