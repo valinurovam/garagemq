@@ -93,6 +93,19 @@ func Test_QueueDeclarePassive_Failed_NotExists(t *testing.T) {
 	}
 }
 
+func Test_QueueDeclareExclusive_Success(t *testing.T) {
+	sc, _ := getNewSC(getDefaultServerConfig())
+	ch, _ := sc.client.Channel()
+
+	ch.QueueDeclare("test", false, false, true, false, emptyTable)
+	ch.Close()
+	sc.client.Close()
+
+	if sc.server.GetVhost("/").GetQueue("test") != nil {
+		t.Fatal("Exclusive queue exists after connection close")
+	}
+}
+
 func Test_QueueDeclareExclusive_Failed_Locked(t *testing.T) {
 	sc, _ := getNewSC(getDefaultServerConfig())
 	ch, _ := sc.client.Channel()

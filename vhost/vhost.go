@@ -55,6 +55,12 @@ func (vhost *VirtualHost) GetQueue(name string) interfaces.AmqpQueue {
 	return vhost.getQueue(name)
 }
 
+func (vhost *VirtualHost) GetQueues() map[string]interfaces.AmqpQueue {
+	vhost.quLock.Lock()
+	defer vhost.quLock.Unlock()
+	return vhost.queues
+}
+
 func (vhost *VirtualHost) getQueue(name string) interfaces.AmqpQueue {
 	return vhost.queues[name]
 }

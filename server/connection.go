@@ -71,9 +71,19 @@ func (conn *Connection) close() {
 	for _, channel := range conn.channels {
 		channel.close()
 	}
+	conn.clearQueues()
 	conn.netConn.Close()
 	conn.server.removeConnection(conn.id)
 	conn.logger.Info("AMQP connection closed")
+}
+
+func (conn *Connection) clearQueues() {
+	virtualHost := conn.getVirtualHost()
+	for _, queue := range virtualHost.GetQueues() {
+		if queue.IsExclusive() && queue.ConnId() == conn.id {
+			virtualHost.DeleteQueue(queue.GetName(), false, false)
+		}
+	}
 }
 
 func (conn *Connection) setStatus(status int) {
