@@ -9,7 +9,7 @@ import (
 	"errors"
 )
 
-const EX_DEFAULT_NAME = "amq.system"
+const EX_DEFAULT_NAME = ""
 
 type VirtualHost struct {
 	name      string

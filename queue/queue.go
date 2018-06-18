@@ -97,13 +97,15 @@ func (queue *Queue) PopQos(qosList []*qos.AmqpQos) *amqp.Message {
 }
 
 func (queue *Queue) Purge() (length uint64) {
-	queue.SafeQueue.Lock()
+	oldQueue := queue.SafeQueue
+	oldQueue.Lock()
+	defer oldQueue.Unlock()
 	length = queue.SafeQueue.DirtyLength()
-	defer queue.SafeQueue.Unlock()
 	queue.dirtyPurge()
 	return
 }
 
+// TODO Looks like hack
 func (queue *Queue) dirtyPurge() {
 	queue.SafeQueue = *safequeue.NewSafeQueue(queue.shardSize)
 }
@@ -111,10 +113,11 @@ func (queue *Queue) dirtyPurge() {
 func (queue *Queue) Delete(ifUnused bool, ifEmpty bool) (uint64, error) {
 	queue.actLock.Lock()
 	queue.cmrLock.Lock()
-	queue.SafeQueue.Lock()
+	oldQueue := queue.SafeQueue
+	oldQueue.Lock()
 	defer queue.actLock.Unlock()
 	defer queue.cmrLock.Unlock()
-	defer queue.SafeQueue.Unlock()
+	defer oldQueue.Unlock()
 
 	queue.active = false
 
@@ -122,7 +125,7 @@ func (queue *Queue) Delete(ifUnused bool, ifEmpty bool) (uint64, error) {
 		return 0, errors.New("queue has consumers")
 	}
 
-	if ifUnused && queue.SafeQueue.DirtyLength() != 0 {
+	if ifEmpty && queue.SafeQueue.DirtyLength() != 0 {
 		return 0, errors.New("queue has messages")
 	}
 
