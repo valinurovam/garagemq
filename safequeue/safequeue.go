@@ -62,7 +62,6 @@ func (queue *SafeQueue) Pop() (item interface{}) {
 func (queue *SafeQueue) DirtyPop() (item interface{}) {
 	item, queue.head[queue.headPos] = queue.head[queue.headPos], nil
 	if item == nil {
-		queue.Unlock()
 		return item
 	}
 	queue.headPos++

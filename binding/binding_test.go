@@ -2,13 +2,15 @@ package binding_test
 
 import (
 	"testing"
-	"github.com/valinurovam/garagemq/binding"
-	"github.com/valinurovam/garagemq/amqp"
 	"sort"
 	"fmt"
+
+	"github.com/valinurovam/garagemq/binding"
+	"github.com/valinurovam/garagemq/amqp"
+	"github.com/valinurovam/garagemq/interfaces"
 )
 
-func bindingsProviderData(topic bool) []*binding.Binding {
+func bindingsProviderData(topic bool) []interfaces.Binding {
 	bindData := map[string]string{
 		"t1":  "a.b.c",
 		"t2":  "a.*.c",
@@ -38,7 +40,7 @@ func bindingsProviderData(topic bool) []*binding.Binding {
 		"t26": "#.b.#",
 	}
 
-	result := []*binding.Binding{}
+	result := []interfaces.Binding{}
 
 	for queue, key := range bindData {
 		result = append(result, binding.New(queue, "", key, &amqp.Table{}, topic))
@@ -70,7 +72,7 @@ func TestBinding_MatchTopic(t *testing.T) {
 		bindMatches := []string{}
 		for _, bind := range bindings {
 			if bind.MatchTopic("", key) {
-				bindMatches = append(bindMatches, bind.Queue)
+				bindMatches = append(bindMatches, bind.GetQueue())
 			}
 		}
 		if !testEq(matches, bindMatches) {
