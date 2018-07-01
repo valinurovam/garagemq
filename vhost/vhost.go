@@ -3,37 +3,65 @@ package vhost
 import (
 	"github.com/valinurovam/garagemq/exchange"
 	"github.com/valinurovam/garagemq/amqp"
-	"sync"
 	"github.com/valinurovam/garagemq/binding"
 	"github.com/valinurovam/garagemq/interfaces"
+	"github.com/valinurovam/garagemq/queue"
+	"github.com/valinurovam/garagemq/msgstorage"
+	"github.com/valinurovam/garagemq/config"
+	log "github.com/sirupsen/logrus"
+	"sync"
+	"strings"
 	"errors"
 )
 
 const EX_DEFAULT_NAME = ""
 
 type VirtualHost struct {
-	name      string
-	system    bool
-	exLock    sync.Mutex
-	exchanges map[string]*exchange.Exchange
-	quLock    sync.Mutex
-	queues    map[string]interfaces.AmqpQueue
+	name       string
+	system     bool
+	exLock     sync.Mutex
+	exchanges  map[string]*exchange.Exchange
+	quLock     sync.Mutex
+	queues     map[string]interfaces.AmqpQueue
+	msgStorage *msgstorage.MsgStorage
+	srvStorage interfaces.DbStorage
+	srvConfig  *config.Config
+	logger     *log.Entry
 }
 
-func New(name string, system bool) *VirtualHost {
+func New(name string, system bool, msgStorage *msgstorage.MsgStorage, srvStorage interfaces.DbStorage, srvConfig *config.Config) *VirtualHost {
 	vhost := &VirtualHost{
-		name:      name,
-		system:    system,
-		exchanges: make(map[string]*exchange.Exchange),
-		queues:    make(map[string]interfaces.AmqpQueue),
+		name:       name,
+		system:     system,
+		exchanges:  make(map[string]*exchange.Exchange),
+		queues:     make(map[string]interfaces.AmqpQueue),
+		msgStorage: msgStorage,
+		srvStorage: srvStorage,
+		srvConfig:  srvConfig,
 	}
 
+	vhost.logger = log.WithFields(log.Fields{
+		"vhost": name,
+	})
+
 	vhost.initSystemExchanges()
+	vhost.loadQueues()
+
+	vhost.logger.Info("Load messages into queues")
+	vhost.msgStorage.LoadIntoQueues(vhost.queues)
+	for _, q := range vhost.GetQueues() {
+		q.Start()
+		vhost.logger.WithFields(log.Fields{
+			"name":   q.GetName(),
+			"length": q.Length(),
+		}).Info("Messages loaded into queue")
+	}
 
 	return vhost
 }
 
 func (vhost *VirtualHost) initSystemExchanges() {
+	vhost.logger.Info("Initialize host default exchanges...")
 	for _, exType := range []int{
 		exchange.EX_TYPE_DIRECT,
 		exchange.EX_TYPE_FANOUT,
@@ -82,17 +110,73 @@ func (vhost *VirtualHost) GetDefaultExchange() *exchange.Exchange {
 func (vhost *VirtualHost) AppendExchange(ex *exchange.Exchange) {
 	vhost.exLock.Lock()
 	defer vhost.exLock.Unlock()
+	exTypeAlias, _ := exchange.GetExchangeTypeAlias(ex.ExType)
+	vhost.logger.WithFields(log.Fields{
+		"name": ex.Name,
+		"type": exTypeAlias,
+	}).Info("Append exchange")
 	vhost.exchanges[ex.Name] = ex
+}
+
+func (vhost *VirtualHost) NewQueue(name string, connId uint64, exclusive bool, autoDelete bool, durable bool, shardSize int) interfaces.AmqpQueue {
+	return queue.NewQueue(
+		name,
+		connId,
+		exclusive,
+		autoDelete,
+		durable,
+		shardSize,
+		vhost.msgStorage,
+	)
 }
 
 func (vhost *VirtualHost) AppendQueue(qu interfaces.AmqpQueue) {
 	vhost.quLock.Lock()
 	defer vhost.quLock.Unlock()
+	vhost.logger.WithFields(log.Fields{
+		"queueName": qu.GetName(),
+	}).Info("Append queue")
+
 	vhost.queues[qu.GetName()] = qu
 
 	ex := vhost.GetDefaultExchange()
 	bind := binding.New(qu.GetName(), EX_DEFAULT_NAME, qu.GetName(), &amqp.Table{}, false)
 	ex.AppendBinding(bind)
+
+	vhost.saveQueues()
+}
+
+func (vhost *VirtualHost) getKeyName() string {
+	if vhost.name == "/" {
+		return "default"
+	} else {
+		return vhost.name
+	}
+}
+func (vhost *VirtualHost) saveQueues() {
+	var queueNames []string
+	for name, q := range vhost.queues {
+		if !q.IsDurable() {
+			continue
+		}
+		queueNames = append(queueNames, name)
+	}
+	vhost.srvStorage.Set(vhost.getKeyName()+".queues", []byte(strings.Join(queueNames, "\n")))
+}
+
+func (vhost *VirtualHost) loadQueues() {
+	// TODO incapsulate into server
+	vhost.logger.Info("Initialize queues...")
+	queues, err := vhost.srvStorage.Get(vhost.getKeyName() + ".queues")
+	if err != nil || len(queues) == 0 {
+		return
+	}
+	queueNames := strings.Split(string(queues), "\n")
+	for _, name := range queueNames {
+		vhost.AppendQueue(
+			vhost.NewQueue(name, 0, false, false, true, vhost.srvConfig.Queue.ShardSize),
+		)
+	}
 }
 
 func (vhost *VirtualHost) DeleteQueue(queueName string, ifUnused bool, ifEmpty bool) (uint64, error) {
@@ -114,4 +198,26 @@ func (vhost *VirtualHost) DeleteQueue(queueName string, ifUnused bool, ifEmpty b
 	delete(vhost.queues, queueName)
 
 	return length, nil
+}
+
+func (vhost *VirtualHost) Stop() error {
+	vhost.quLock.Lock()
+	vhost.exLock.Lock()
+	defer vhost.quLock.Unlock()
+	defer vhost.exLock.Unlock()
+	vhost.logger.Info("Stop virtual host")
+	for _, qu := range vhost.queues {
+		qu.Stop()
+		vhost.logger.WithFields(log.Fields{
+			"queueName": qu.GetName(),
+		}).Info("Queue stopped")
+	}
+
+	vhost.msgStorage.Close()
+	vhost.logger.Info("Storage closed")
+	return nil
+}
+
+func (vhost *VirtualHost) Name() string {
+	return vhost.name
 }

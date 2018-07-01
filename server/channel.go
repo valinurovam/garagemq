@@ -40,8 +40,10 @@ type Channel struct {
 }
 
 type UnackedMessage struct {
-	cTag string
-	size uint64
+	cTag  string
+	size  uint64
+	queue string
+	id    uint64
 }
 
 func NewChannel(id uint16, conn *Connection) (*Channel) {
@@ -217,6 +219,7 @@ func (channel *Channel) SendContent(method amqp.Method, message *amqp.Message) {
 }
 func (channel *Channel) addConsumer(method *amqp.BasicConsume) (cmr interfaces.Consumer, err *amqp.Error) {
 	channel.cmrLock.Lock()
+	defer channel.cmrLock.Unlock()
 
 	var qu interfaces.AmqpQueue
 	if qu, err = channel.getQueueWithError(method.Queue, method); err != nil {
@@ -232,7 +235,7 @@ func (channel *Channel) addConsumer(method *amqp.BasicConsume) (cmr interfaces.C
 		return nil, amqp.NewChannelError(amqp.AccessRefused, quErr.Error(), method.ClassIdentifier(), method.MethodIdentifier())
 	}
 	channel.consumers[cmr.Tag()] = cmr
-	channel.cmrLock.Unlock()
+
 	return cmr, nil
 }
 
@@ -247,6 +250,7 @@ func (channel *Channel) removeConsumer(cTag string) {
 
 func (channel *Channel) close() {
 	channel.cmrLock.Lock()
+	defer channel.cmrLock.Unlock()
 	for _, cmr := range channel.consumers {
 		cmr.Stop()
 		delete(channel.consumers, cmr.Tag())
@@ -254,8 +258,6 @@ func (channel *Channel) close() {
 			"consumerTag": cmr.Tag(),
 		}).Info("Consumer stopped")
 	}
-	channel.cmrLock.Unlock()
-
 }
 
 func (channel *Channel) updateQos(prefetchCount uint16, prefetchSize uint32, global bool) {
@@ -270,17 +272,20 @@ func (channel *Channel) NextDeliveryTag() uint64 {
 	return atomic.AddUint64(&channel.deliveryTag, 1)
 }
 
-func (channel *Channel) AddUnackedMessage(dTag uint64, cTag string, message *amqp.Message) {
+func (channel *Channel) AddUnackedMessage(dTag uint64, cTag string, queue string, message *amqp.Message) {
 	channel.ackLock.Lock()
+	defer channel.ackLock.Unlock()
 	channel.ackStore[dTag] = &UnackedMessage{
-		cTag: cTag,
-		size: message.BodySize,
+		cTag:  cTag,
+		size:  message.BodySize,
+		queue: queue,
+		id:    message.Id,
 	}
-	channel.ackLock.Unlock()
 }
 
 func (channel *Channel) handleAck(method *amqp.BasicAck) *amqp.Error {
 	channel.ackLock.Lock()
+	defer channel.ackLock.Unlock()
 	var uMsg *UnackedMessage
 	var msgFound bool
 
@@ -289,7 +294,7 @@ func (channel *Channel) handleAck(method *amqp.BasicAck) *amqp.Error {
 	}
 
 	delete(channel.ackStore, method.DeliveryTag)
-	channel.ackLock.Unlock()
+	channel.conn.getVirtualHost().GetQueue(uMsg.queue).AckMsg(uMsg.id)
 
 	channel.qos.Dec(1, uint32(uMsg.size))
 	channel.conn.qos.Dec(1, uint32(uMsg.size))

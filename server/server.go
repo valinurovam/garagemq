@@ -7,6 +7,18 @@ import (
 	"github.com/valinurovam/garagemq/auth"
 	"github.com/valinurovam/garagemq/vhost"
 	"sync"
+	"syscall"
+	"github.com/valinurovam/garagemq/storage"
+	"fmt"
+	"github.com/valinurovam/garagemq/interfaces"
+	"github.com/valinurovam/garagemq/config"
+	"os/signal"
+	"github.com/valinurovam/garagemq/msgstorage"
+)
+
+const (
+	Started  = iota
+	Stopping
 )
 
 type Server struct {
@@ -17,13 +29,15 @@ type Server struct {
 	connSeq      uint64
 	connLock     sync.Mutex
 	connections  map[uint64]*Connection
-	config       *ServerConfig
+	config       *config.Config
 	users        map[string]string
 	vhostsLock   sync.Mutex
 	vhosts       map[string]*vhost.VirtualHost
+	status       int
+	storage      interfaces.DbStorage
 }
 
-func NewServer(host string, port string, protoVersion string, config *ServerConfig) (server *Server) {
+func NewServer(host string, port string, protoVersion string, config *config.Config) (server *Server) {
 	server = &Server{
 		host:         host,
 		port:         port,
@@ -32,14 +46,22 @@ func NewServer(host string, port string, protoVersion string, config *ServerConf
 		config:       config,
 		users:        make(map[string]string),
 		vhosts:       make(map[string]*vhost.VirtualHost),
+		connSeq:      1,
 	}
-
-	server.initUsers()
-	server.initVirtualHosts()
 	return
 }
 
 func (srv *Server) Start() (err error) {
+	log.WithFields(log.Fields{
+		"pid": os.Getpid(),
+	}).Info("Server starting")
+
+	go srv.hookSignals()
+
+	srv.initServerStorage()
+	srv.initUsers()
+	srv.initDefaultVirtualHosts()
+
 	address := srv.host + ":" + srv.port
 	tcpAddr, err := net.ResolveTCPAddr("tcp4", address)
 	srv.listener, err = net.ListenTCP("tcp", tcpAddr)
@@ -52,43 +74,71 @@ func (srv *Server) Start() (err error) {
 
 	log.WithFields(log.Fields{
 		"address": address,
-	}).Info("Server start")
+	}).Info("Server started")
 
-	for {
-		conn, err := srv.listener.AcceptTCP()
-		conn.SetReadBuffer(srv.config.Tcp.ReadBufSize)
-		conn.SetWriteBuffer(srv.config.Tcp.WriteBufSize)
-		conn.SetNoDelay(srv.config.Tcp.Nodelay)
+	go func() {
+		for {
+			conn, err := srv.listener.AcceptTCP()
+			if err != nil {
+				if srv.status == Stopping {
+					return
+				}
+				srv.stopWithError(err, "accepting connection")
+			}
+			log.WithFields(log.Fields{
+				"from": conn.RemoteAddr().String(),
+				"to":   conn.LocalAddr().String(),
+			}).Info("accepting connection")
 
-		if err != nil {
-			log.WithError(err).Error("accepting connection")
-			os.Exit(1)
+			conn.SetReadBuffer(srv.config.Tcp.ReadBufSize)
+			conn.SetWriteBuffer(srv.config.Tcp.WriteBufSize)
+			conn.SetNoDelay(srv.config.Tcp.Nodelay)
+
+			srv.acceptConnection(conn)
 		}
-		log.WithFields(log.Fields{
-			"from": conn.RemoteAddr().String(),
-			"to":   conn.LocalAddr().String(),
-		}).Info("accepting connection")
-		srv.acceptConnection(conn)
-	}
+	}()
+	srv.status = Started
+	select {}
 	return
 }
 
 func (srv *Server) Stop() {
+	srv.vhostsLock.Lock()
+	defer srv.vhostsLock.Unlock()
+	srv.status = Stopping
+
+	// stop accept new connections
 	srv.listener.Close()
+
+	// stop exchanges and queues
+	// cancel consumers
+	// close connections
+	// stop vhosts
+	for _, virtualHost := range srv.vhosts {
+		virtualHost.Stop()
+	}
+}
+
+func (srv *Server) stopWithError(err error, msg string) {
+	log.WithError(err).Error(msg)
+	srv.Stop()
+	os.Exit(1)
 }
 
 func (srv *Server) acceptConnection(conn *net.TCPConn) {
 	srv.connLock.Lock()
+	defer srv.connLock.Unlock()
+
 	connection := NewConnection(srv, conn)
 	srv.connections[connection.id] = connection
-	srv.connLock.Unlock()
 	go connection.handleConnection()
 }
 
 func (srv *Server) removeConnection(connId uint64) {
 	srv.connLock.Lock()
+	defer srv.connLock.Unlock()
+
 	delete(srv.connections, connId)
-	srv.connLock.Unlock()
 }
 
 func (srv *Server) checkAuth(saslData auth.SaslData) bool {
@@ -108,10 +158,52 @@ func (srv *Server) initUsers() {
 	}
 }
 
-func (srv *Server) initVirtualHosts() {
+func (srv *Server) initServerStorage() {
+	srv.storage = srv.getStorageInstance("server")
+}
+
+func (srv *Server) initDefaultVirtualHosts() {
+	log.WithFields(log.Fields{
+		"vhost": "/",
+	}).Info("Initialize default vhost")
+
+	log.Info("Initialize host message msgStorage")
+	msgStorage := msgstorage.New(srv.getStorageInstance("/"))
+
 	srv.vhostsLock.Lock()
 	defer srv.vhostsLock.Unlock()
-	srv.vhosts["/"] = vhost.New("/", true)
+	srv.vhosts["/"] = vhost.New("/", true, msgStorage, srv.storage, srv.config)
+}
+
+func (srv *Server) getStorageInstance(name string) interfaces.DbStorage {
+	var stName string
+	if name == "/" {
+		stName = "default"
+	} else {
+		stName = name
+	}
+
+	stPath := fmt.Sprintf("%s/%s/%s", srv.config.Db.DefaultPath, srv.config.Db.Engine, stName)
+
+	if err := os.MkdirAll(stPath, 0777); err != nil {
+		panic(err)
+	}
+
+	log.WithFields(log.Fields{
+		"vhost":  "/",
+		"path":   stPath,
+		"engine": srv.config.Db.Engine,
+	}).Info("Open db storage")
+
+	switch srv.config.Db.Engine {
+	case "badger":
+		return storage.NewBadger(stPath)
+	case "bunt":
+		return storage.NewBunt(stPath)
+	default:
+		srv.stopWithError(nil, fmt.Sprintf("Unknown db engine '%s'", srv.config.Db.Engine))
+	}
+	return nil
 }
 
 func (srv *Server) GetVhost(name string) *vhost.VirtualHost {
@@ -119,4 +211,25 @@ func (srv *Server) GetVhost(name string) *vhost.VirtualHost {
 	defer srv.vhostsLock.Unlock()
 
 	return srv.vhosts[name]
+}
+
+func (srv *Server) onSignal(sig os.Signal) {
+	switch sig {
+	case syscall.SIGTERM:
+		fallthrough
+	case syscall.SIGINT:
+		srv.Stop()
+		os.Exit(0)
+	}
+}
+
+func (srv *Server) hookSignals() {
+	c := make(chan os.Signal, 1)
+	signal.Notify(c, syscall.SIGINT, syscall.SIGTERM)
+	go func() {
+		for sig := range c {
+			log.Infof("Received [%d:%s] signal from OS", sig, sig.String())
+			srv.onSignal(sig)
+		}
+	}()
 }

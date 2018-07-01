@@ -7,3 +7,6 @@ tcp:
   writeBufSize: 196608
 queue:
   shardSize: 8192
+db:
+  defaultPath: db
+  engine: badger

@@ -1,9 +1,10 @@
-package server
+package config
 
-type ServerConfig struct {
+type Config struct {
 	Users []ConfigUser
 	Tcp   TcpConfig
 	Queue Queue
+	Db    Db
 }
 
 type ConfigUser struct {
@@ -19,4 +20,9 @@ type TcpConfig struct {
 
 type Queue struct {
 	ShardSize int `yaml:"shardSize"`
+}
+
+type Db struct {
+	DefaultPath string `yaml:"defaultPath"`
+	Engine      string `yaml:"engine"`
 }

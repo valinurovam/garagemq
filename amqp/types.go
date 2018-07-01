@@ -1,5 +1,10 @@
 package amqp
 
+import (
+	"sync/atomic"
+	"bytes"
+)
+
 type Table map[string]interface{}
 
 type Decimal struct {
@@ -23,6 +28,7 @@ type ContentHeader struct {
 }
 
 type Message struct {
+	Id         uint64
 	Header     *ContentHeader
 	Exchange   string
 	RoutingKey string
@@ -32,8 +38,11 @@ type Message struct {
 	Body       []*Frame
 }
 
+var msgId uint64
+
 func NewMessage(method *BasicPublish) *Message {
 	return &Message{
+		Id:         atomic.AddUint64(&msgId, 1),
 		Exchange:   method.Exchange,
 		RoutingKey: method.RoutingKey,
 		Mandatory:  method.Mandatory,
@@ -42,9 +51,67 @@ func NewMessage(method *BasicPublish) *Message {
 	}
 }
 
-func (msg *Message) Append(body *Frame) {
-	msg.Body = append(msg.Body, body)
-	msg.BodySize += uint64(len(body.Payload))
+func (message *Message) Append(body *Frame) {
+	message.Body = append(message.Body, body)
+	message.BodySize += uint64(len(body.Payload))
+}
+
+func (message *Message) Marshal() (data []byte, err error) {
+	buffer := bytes.NewBuffer([]byte{})
+	if err = WriteLonglong(buffer, message.Id); err != nil {
+		return nil, err
+	}
+	// TODO Remove ProtoRabbit
+	if err = WriteContentHeader(buffer, message.Header, ProtoRabbit); err != nil {
+		return nil, err
+	}
+	if err = WriteShortstr(buffer, message.Exchange); err != nil {
+		return nil, err
+	}
+	if err = WriteShortstr(buffer, message.RoutingKey); err != nil {
+		return nil, err
+	}
+	if err = WriteLonglong(buffer, message.BodySize); err != nil {
+		return nil, err
+	}
+
+	body := bytes.NewBuffer([]byte{})
+	for _, frame := range message.Body {
+		if err = WriteFrame(body, frame); err != nil {
+			return nil, err
+		}
+	}
+	WriteLongstr(buffer, body.Bytes())
+	return buffer.Bytes(), nil
+}
+
+func (message *Message) Unmarshal(buffer []byte) (err error) {
+	reader := bytes.NewReader(buffer)
+	if message.Id, err = ReadLonglong(reader); err != nil {
+		return err
+	}
+	// TODO Remove ProtoRabbit
+	if message.Header, err = ReadContentHeader(reader, ProtoRabbit); err != nil {
+		return err
+	}
+	if message.Exchange, err = ReadShortstr(reader); err != nil {
+		return err
+	}
+	if message.RoutingKey, err = ReadShortstr(reader); err != nil {
+		return err
+	}
+	if message.BodySize, err = ReadLonglong(reader); err != nil {
+		return err
+	}
+
+	rawBody, err := ReadLongstr(reader)
+	bodyBuffer := bytes.NewReader(rawBody)
+
+	for bodyBuffer.Len() != 0 {
+		body, _ := ReadFrame(bodyBuffer)
+		message.Body = append(message.Body, body)
+	}
+	return nil
 }
 
 const (

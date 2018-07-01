@@ -15,9 +15,12 @@ type Queue interface {
 
 type AmqpQueue interface {
 	Start()
+	Stop() error
 	Push(message *amqp.Message)
+	PushFromStorage(message *amqp.Message)
 	Pop() *amqp.Message
 	PopQos(qosList []*qos.AmqpQos) *amqp.Message
+	AckMsg(id uint64)
 	RemoveConsumer(cTag string)
 	GetName() string
 	IsExclusive() bool
@@ -37,7 +40,7 @@ type Channel interface {
 	SendContent(method amqp.Method, message *amqp.Message)
 	SendMethod(method amqp.Method)
 	NextDeliveryTag() uint64
-	AddUnackedMessage(dTag uint64, cTag string, message *amqp.Message)
+	AddUnackedMessage(dTag uint64, cTag string, queue string, message *amqp.Message)
 }
 
 type Consumer interface {
@@ -56,4 +59,12 @@ type Binding interface {
 	GetRoutingKey() string
 	GetQueue() string
 	Equal(biding Binding) bool
+}
+
+type DbStorage interface {
+	Set(key string, value []byte) (err error)
+	Del(key string) (err error)
+	Get(key string) (value []byte, err error)
+	Iterate(fn func(key []byte, value []byte))
+	Close() error
 }

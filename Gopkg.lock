@@ -2,6 +2,43 @@
 
 
 [[projects]]
+  branch = "master"
+  name = "github.com/AndreasBriese/bbloom"
+  packages = ["."]
+  revision = "28f7e881ca57bc00e028f9ede9f0d9104cfeef5e"
+
+[[projects]]
+  name = "github.com/dgraph-io/badger"
+  packages = [
+    ".",
+    "options",
+    "protos",
+    "skl",
+    "table",
+    "y"
+  ]
+  revision = "a6f0866f06a0ef6ac612e427ffe5d081db4e6fab"
+  version = "v1.5.2"
+
+[[projects]]
+  branch = "master"
+  name = "github.com/dgryski/go-farm"
+  packages = ["."]
+  revision = "2de33835d10275975374b37b2dcfd22c9020a1f5"
+
+[[projects]]
+  name = "github.com/golang/protobuf"
+  packages = ["proto"]
+  revision = "b4deda0973fb4c70b50d226b1af49f3da59f5265"
+  version = "v1.1.0"
+
+[[projects]]
+  name = "github.com/pkg/errors"
+  packages = ["."]
+  revision = "645ef00459ed84a119197bfb8d8205042c6df63d"
+  version = "v0.8.0"
+
+[[projects]]
   name = "github.com/sirupsen/logrus"
   packages = ["."]
   revision = "c155da19408a8799da419ed3eeb0cb5db0ad5dbc"
@@ -15,13 +52,68 @@
 
 [[projects]]
   branch = "master"
+  name = "github.com/tidwall/btree"
+  packages = ["."]
+  revision = "9876f1454cf0993a53d74c27196993e345f50dd1"
+
+[[projects]]
+  name = "github.com/tidwall/buntdb"
+  packages = ["."]
+  revision = "2da7c106683f522198cdf55ed8db42b374de50d7"
+  version = "v1.0.0"
+
+[[projects]]
+  name = "github.com/tidwall/gjson"
+  packages = ["."]
+  revision = "f123b340873a0084cb27267eddd8ff615115fbff"
+  version = "v1.1.2"
+
+[[projects]]
+  branch = "master"
+  name = "github.com/tidwall/grect"
+  packages = ["."]
+  revision = "ba9a043346eba55344e40d66a5e74cfda3a9d293"
+
+[[projects]]
+  branch = "master"
+  name = "github.com/tidwall/match"
+  packages = ["."]
+  revision = "1731857f09b1f38450e2c12409748407822dc6be"
+
+[[projects]]
+  branch = "master"
+  name = "github.com/tidwall/rtree"
+  packages = [
+    ".",
+    "base"
+  ]
+  revision = "6cd427091e0e662cb4f8e2c9eb1a41e1c46ff0d3"
+
+[[projects]]
+  branch = "master"
+  name = "github.com/tidwall/tinyqueue"
+  packages = ["."]
+  revision = "1e39f55115634cad2c504631c8bfcc292f2c9c55"
+
+[[projects]]
+  branch = "master"
   name = "golang.org/x/crypto"
   packages = [
     "bcrypt",
     "blowfish",
     "ssh/terminal"
   ]
-  revision = "1f94bef427e370e425e55b172f3b5e300ef38304"
+  revision = "a49355c7e3f8fe157a85be2f77e6e269a0f89602"
+
+[[projects]]
+  branch = "master"
+  name = "golang.org/x/net"
+  packages = [
+    "context",
+    "internal/timeseries",
+    "trace"
+  ]
+  revision = "4cb1c02c05b0e749b0365f61ae859a8e0cfceed9"
 
 [[projects]]
   branch = "master"
@@ -30,7 +122,7 @@
     "unix",
     "windows"
   ]
-  revision = "6f686a352de66814cdd080d970febae7767857a3"
+  revision = "7138fd3d9dc8335c567ca206f4333fb75eb05d56"
 
 [[projects]]
   name = "gopkg.in/yaml.v2"
@@ -41,6 +133,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "90184d1b424c3d8c8e61f813992b4b16ed1a05f8378818e3cba7a75da718a331"
+  inputs-digest = "68552e4af2247330f9b56adc08f6bfc18dbd975fcdca067703d2fed807a911dd"
   solver-name = "gps-cdcl"
   solver-version = 1

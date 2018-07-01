@@ -2,14 +2,14 @@ package main
 
 import (
 	"github.com/valinurovam/garagemq/server"
+	"github.com/valinurovam/garagemq/amqp"
+	"github.com/valinurovam/garagemq/config"
 	log "github.com/sirupsen/logrus"
 	"os"
-	"github.com/valinurovam/garagemq/amqp"
 	"io/ioutil"
 	"gopkg.in/yaml.v2"
 	"syscall"
 	"runtime"
-	"fmt"
 	_ "net/http/pprof"
 	"net/http"
 )
@@ -25,11 +25,10 @@ func main() {
 	go http.ListenAndServe("0.0.0.0:8080", nil)
 
 	if n, _ := syscall.SysctlUint32("hw.ncpu"); n > 0 {
-		fmt.Println("Set GOMAXPROCS", n)
 		runtime.GOMAXPROCS(int(n))
 	}
 
-	config := server.ServerConfig{}
+	config := config.Config{}
 	file, _ := ioutil.ReadFile("etc/config.yaml")
 	yaml.Unmarshal(file, &config)
 

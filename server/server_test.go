@@ -3,16 +3,21 @@ package server
 import (
 	"testing"
 	"github.com/valinurovam/garagemq/amqp"
-	"github.com/sirupsen/logrus"
 	amqpclient "github.com/streadway/amqp"
-	"io/ioutil"
 	"net"
+	"github.com/valinurovam/garagemq/config"
+	"os"
+	"github.com/sirupsen/logrus"
+	"io/ioutil"
 )
 
 var emptyTable = make(amqpclient.Table)
 
 func init() {
 	logrus.SetOutput(ioutil.Discard)
+	//logrus.SetFormatter(&logrus.TextFormatter{FullTimestamp: true})
+	//logrus.SetOutput(os.Stdout)
+	//logrus.SetLevel(logrus.InfoLevel)
 }
 
 type ServerClient struct {
@@ -22,27 +27,39 @@ type ServerClient struct {
 	clientEx *amqpclient.Connection
 }
 
-func getDefaultServerConfig() *ServerConfig {
-	return &ServerConfig{
-		Users: []ConfigUser{
+func (sc *ServerClient) clean() {
+	os.RemoveAll(sc.server.config.Db.DefaultPath)
+}
+
+func getDefaultServerConfig() *config.Config {
+	return &config.Config{
+		Users: []config.ConfigUser{
 			{
 				Username: "guest",
 				Password: "$2a$14$OR8Od7QJ4yjck89RNWM0TeYJrQSIZLQ13ptktd3n.bStXuhZTcnuq", // guest hash
 			},
 		},
-		Tcp: TcpConfig{
+		Tcp: config.TcpConfig{
 			Nodelay:      false,
 			ReadBufSize:  0,
 			WriteBufSize: 0,
 		},
-		Queue: Queue{
+		Queue: config.Queue{
 			ShardSize: 128,
+		},
+		Db: config.Db{
+			DefaultPath: "db_test",
+			Engine:      "badger",
 		},
 	}
 }
-func getNewSC(config *ServerConfig) (*ServerClient, error) {
+func getNewSC(config *config.Config) (*ServerClient, error) {
 	sc := &ServerClient{}
 	sc.server = NewServer("localhost", "0", amqp.ProtoRabbit, config)
+	sc.server.initServerStorage()
+	sc.server.initUsers()
+	sc.server.initDefaultVirtualHosts()
+
 	toServer, toServerEx, fromClient, fromClientEx, err := networkSim()
 	if err != nil {
 		return nil, err
@@ -102,21 +119,23 @@ func networkSim() (net.Conn, net.Conn, *net.TCPConn, *net.TCPConn, error) {
 }
 
 func Test_Connection_Success(t *testing.T) {
-	_, err := getNewSC(getDefaultServerConfig())
+	sc, err := getNewSC(getDefaultServerConfig())
+	defer sc.clean()
 	if err != nil {
 		t.Fatal(err)
 	}
 }
 
 func Test_Connection_Failed_WhenWrongAuth(t *testing.T) {
-	config := getDefaultServerConfig()
-	config.Users = []ConfigUser{
+	cfg := getDefaultServerConfig()
+	cfg.Users = []config.ConfigUser{
 		{
 			Username: "guest",
 			Password: "guest?",
 		},
 	}
-	_, err := getNewSC(config)
+	sc, err := getNewSC(cfg)
+	defer sc.clean()
 	if err == nil {
 		//t.Fatal("Expected auth error")
 	}

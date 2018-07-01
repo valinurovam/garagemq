@@ -8,50 +8,69 @@ import (
 	"errors"
 	"fmt"
 	"github.com/valinurovam/garagemq/interfaces"
+	"github.com/valinurovam/garagemq/msgstorage"
 )
 
 type Queue struct {
 	safequeue.SafeQueue
-	name        string
-	connId      uint64
-	exclusive   bool
-	autoDelete  bool
-	durable     bool
-	cmrLock     sync.Mutex
-	consumers   []interfaces.Consumer
-	call        chan bool
-	wasConsumed bool
-	shardSize   int
-	actLock     sync.Mutex
-	active      bool
+	name            string
+	connId          uint64
+	exclusive       bool
+	autoDelete      bool
+	durable         bool
+	cmrLock         sync.RWMutex
+	consumers       []interfaces.Consumer
+	call            chan bool
+	wasConsumed     bool
+	shardSize       int
+	actLock         sync.Mutex
+	active          bool
+	storage         *msgstorage.MsgStorage
+	currentConsumer int
 }
 
-func NewQueue(name string, connId uint64, exclusive bool, autoDelete bool, durable bool, shardSize int) *Queue {
+func NewQueue(name string, connId uint64, exclusive bool, autoDelete bool, durable bool, shardSize int, storage *msgstorage.MsgStorage) *Queue {
 	return &Queue{
-		SafeQueue:   *safequeue.NewSafeQueue(shardSize),
-		name:        name,
-		connId:      connId,
-		exclusive:   exclusive,
-		autoDelete:  autoDelete,
-		durable:     durable,
-		call:        make(chan bool, 1),
-		wasConsumed: false,
-		active:      false,
-		shardSize:   shardSize,
+		SafeQueue:       *safequeue.NewSafeQueue(shardSize),
+		name:            name,
+		connId:          connId,
+		exclusive:       exclusive,
+		autoDelete:      autoDelete,
+		durable:         durable,
+		call:            make(chan bool, 1),
+		wasConsumed:     false,
+		active:          false,
+		shardSize:       shardSize,
+		storage:         storage,
+		currentConsumer: 0,
 	}
 }
 
 func (queue *Queue) Start() {
-	queue.actLock.Lock()
-	defer queue.actLock.Unlock()
 	queue.active = true
 	go func() {
 		for _ = range queue.call {
-			for _, cmr := range queue.consumers {
-				cmr.Consume()
-			}
+			func() {
+				queue.cmrLock.RLock()
+				defer queue.cmrLock.RUnlock()
+				cmrCount := len(queue.consumers)
+				for i := 0; i < cmrCount; i++ {
+					if !queue.active {
+						return
+					}
+					queue.currentConsumer = (queue.currentConsumer + 1) % cmrCount
+					cmr := queue.consumers[queue.currentConsumer]
+					cmr.Consume()
+				}
+			}()
 		}
 	}()
+}
+
+func (queue *Queue) Stop() error {
+	queue.active = false
+	queue.cancelConsumers()
+	return nil
 }
 
 func (queue *Queue) GetName() string {
@@ -59,8 +78,16 @@ func (queue *Queue) GetName() string {
 }
 
 func (queue *Queue) Push(message *amqp.Message) {
+	if queue.durable {
+		queue.storage.Add(message, queue.name)
+	}
+
 	queue.SafeQueue.Push(message)
 	queue.callConsumers()
+}
+
+func (queue *Queue) PushFromStorage(message *amqp.Message) {
+	queue.SafeQueue.Push(message)
 }
 
 func (queue *Queue) Pop() *amqp.Message {
@@ -96,6 +123,12 @@ func (queue *Queue) PopQos(qosList []*qos.AmqpQos) *amqp.Message {
 	return nil
 }
 
+func (queue *Queue) AckMsg(id uint64) {
+	if queue.durable {
+		queue.storage.Del(id, queue.name)
+	}
+}
+
 func (queue *Queue) Purge() (length uint64) {
 	oldQueue := queue.SafeQueue
 	oldQueue.Lock()
@@ -112,11 +145,11 @@ func (queue *Queue) dirtyPurge() {
 
 func (queue *Queue) Delete(ifUnused bool, ifEmpty bool) (uint64, error) {
 	queue.actLock.Lock()
-	queue.cmrLock.Lock()
+	queue.cmrLock.RLock()
 	oldQueue := queue.SafeQueue
 	oldQueue.Lock()
 	defer queue.actLock.Unlock()
-	defer queue.cmrLock.Unlock()
+	defer queue.cmrLock.RUnlock()
 	defer oldQueue.Unlock()
 
 	queue.active = false
@@ -129,6 +162,8 @@ func (queue *Queue) Delete(ifUnused bool, ifEmpty bool) (uint64, error) {
 		return 0, errors.New("queue has messages")
 	}
 
+	// TODO Purge durable queue
+
 	queue.cancelConsumers()
 	length := queue.SafeQueue.DirtyLength()
 	queue.dirtyPurge()
@@ -137,29 +172,43 @@ func (queue *Queue) Delete(ifUnused bool, ifEmpty bool) (uint64, error) {
 }
 
 func (queue *Queue) AddConsumer(consumer interfaces.Consumer, exclusive bool) error {
-	queue.wasConsumed = true
 	queue.cmrLock.Lock()
+	defer queue.cmrLock.Unlock()
+
+	if !queue.active {
+		return errors.New(fmt.Sprintf("queue is not active"))
+	}
+	queue.wasConsumed = true
+
 	if exclusive && len(queue.consumers) != 0 {
 		return errors.New(fmt.Sprintf("queue is busy by %d consumers", len(queue.consumers)))
 	}
 	queue.consumers = append(queue.consumers, consumer)
-	queue.cmrLock.Unlock()
+
 	queue.callConsumers()
 	return nil
 }
 
 func (queue *Queue) RemoveConsumer(cTag string) {
 	queue.cmrLock.Lock()
+	defer queue.cmrLock.Unlock()
+
 	for i, cmr := range queue.consumers {
 		if cmr.Tag() == cTag {
 			queue.consumers = append(queue.consumers[:i], queue.consumers[i+1:]...)
+			break
 		}
 	}
+	cmrCount := len(queue.consumers)
+	if cmrCount == 0 {
+		queue.currentConsumer = 0
+	} else {
+		queue.currentConsumer = (queue.currentConsumer + 1) % cmrCount
+	}
 
-	if len(queue.consumers) == 0 && queue.wasConsumed && queue.autoDelete {
+	if cmrCount == 0 && queue.wasConsumed && queue.autoDelete {
 		// TODO deleteQueue
 	}
-	queue.cmrLock.Unlock()
 }
 
 func (queue *Queue) callConsumers() {
@@ -180,8 +229,8 @@ func (queue *Queue) Length() uint64 {
 }
 
 func (queue *Queue) ConsumersCount() int {
-	queue.cmrLock.Lock()
-	defer queue.cmrLock.Unlock()
+	queue.cmrLock.RLock()
+	defer queue.cmrLock.RUnlock()
 	return len(queue.consumers)
 }
 

@@ -4,10 +4,12 @@ import (
 	"testing"
 	"github.com/streadway/amqp"
 	"time"
+	"strings"
 )
 
 func Test_QueueDeclare_Success(t *testing.T) {
 	sc, _ := getNewSC(getDefaultServerConfig())
+	defer sc.clean()
 	ch, _ := sc.client.Channel()
 
 	if _, err := ch.QueueDeclare("test", false, false, false, false, emptyTable); err != nil {
@@ -19,8 +21,39 @@ func Test_QueueDeclare_Success(t *testing.T) {
 	}
 }
 
+func Test_QueueDeclareDurable_Success(t *testing.T) {
+	sc, _ := getNewSC(getDefaultServerConfig())
+	defer sc.clean()
+	ch, _ := sc.client.Channel()
+
+	if _, err := ch.QueueDeclare("test", true, false, false, false, emptyTable); err != nil {
+		t.Fatal(err)
+	}
+
+	if sc.server.GetVhost("/").GetQueue("test") == nil {
+		t.Fatal("Queue does not exists after 'QueueDeclare'")
+	}
+
+	storedQueues, err := sc.server.storage.Get("default.queues")
+	if err != nil || len(storedQueues) == 0 {
+		t.Fatal("Queue does not exists into storage after 'QueueDeclareDurable'")
+	}
+	queueNames := strings.Split(string(storedQueues), "\n")
+	found := false
+	for _, name := range queueNames {
+		if name == "test" {
+			found = true
+		}
+	}
+
+	if !found {
+		t.Fatal("Queue does not exists into storage after 'QueueDeclareDurable'")
+	}
+}
+
 func Test_QueueDeclare_HasDefaultRoute(t *testing.T) {
 	sc, _ := getNewSC(getDefaultServerConfig())
+	defer sc.clean()
 	ch, _ := sc.client.Channel()
 
 	if _, err := ch.QueueDeclare("test", false, false, false, false, emptyTable); err != nil {
@@ -42,6 +75,7 @@ func Test_QueueDeclare_HasDefaultRoute(t *testing.T) {
 
 func Test_QueueDeclare_Success_RedeclareEqual(t *testing.T) {
 	sc, _ := getNewSC(getDefaultServerConfig())
+	defer sc.clean()
 	ch, _ := sc.client.Channel()
 
 	ch.QueueDeclare("test", false, false, false, false, emptyTable)
@@ -53,6 +87,7 @@ func Test_QueueDeclare_Success_RedeclareEqual(t *testing.T) {
 
 func Test_QueueDeclare_Failed_RedeclareNotEqual(t *testing.T) {
 	sc, _ := getNewSC(getDefaultServerConfig())
+	defer sc.clean()
 	ch, _ := sc.client.Channel()
 
 	ch.QueueDeclare("test", false, false, false, false, emptyTable)
@@ -64,6 +99,7 @@ func Test_QueueDeclare_Failed_RedeclareNotEqual(t *testing.T) {
 
 func Test_QueueDeclare_Failed_EmptyName(t *testing.T) {
 	sc, _ := getNewSC(getDefaultServerConfig())
+	defer sc.clean()
 	ch, _ := sc.client.Channel()
 
 	if _, err := ch.QueueDeclare("", false, false, false, false, emptyTable); err == nil {
@@ -73,6 +109,7 @@ func Test_QueueDeclare_Failed_EmptyName(t *testing.T) {
 
 func Test_QueueDeclarePassive_Success(t *testing.T) {
 	sc, _ := getNewSC(getDefaultServerConfig())
+	defer sc.clean()
 	ch, _ := sc.client.Channel()
 
 	ch.QueueDeclare("test", false, false, false, false, emptyTable)
@@ -84,6 +121,7 @@ func Test_QueueDeclarePassive_Success(t *testing.T) {
 
 func Test_QueueDeclarePassive_Failed_NotExists(t *testing.T) {
 	sc, _ := getNewSC(getDefaultServerConfig())
+	defer sc.clean()
 	ch, _ := sc.client.Channel()
 
 	ch.QueueDeclare("test", false, false, false, false, emptyTable)
@@ -95,6 +133,7 @@ func Test_QueueDeclarePassive_Failed_NotExists(t *testing.T) {
 
 func Test_QueueDeclareExclusive_Success(t *testing.T) {
 	sc, _ := getNewSC(getDefaultServerConfig())
+	defer sc.clean()
 	ch, _ := sc.client.Channel()
 
 	ch.QueueDeclare("test", false, false, true, false, emptyTable)
@@ -108,6 +147,7 @@ func Test_QueueDeclareExclusive_Success(t *testing.T) {
 
 func Test_QueueDeclareExclusive_Failed_Locked(t *testing.T) {
 	sc, _ := getNewSC(getDefaultServerConfig())
+	defer sc.clean()
 	ch, _ := sc.client.Channel()
 	exCH, _ := sc.clientEx.Channel()
 
@@ -120,6 +160,7 @@ func Test_QueueDeclareExclusive_Failed_Locked(t *testing.T) {
 
 func Test_QueueDeclareNotExclusive_Success(t *testing.T) {
 	sc, _ := getNewSC(getDefaultServerConfig())
+	defer sc.clean()
 	ch, _ := sc.client.Channel()
 	exCH, _ := sc.clientEx.Channel()
 
@@ -132,6 +173,7 @@ func Test_QueueDeclareNotExclusive_Success(t *testing.T) {
 
 func Test_QueueBind_Success(t *testing.T) {
 	sc, _ := getNewSC(getDefaultServerConfig())
+	defer sc.clean()
 	ch, _ := sc.client.Channel()
 
 	ch.ExchangeDeclare("testEx", "direct", false, false, false, false, emptyTable)
@@ -154,6 +196,7 @@ func Test_QueueBind_Success(t *testing.T) {
 
 func Test_QueueBind_Success_Rebind(t *testing.T) {
 	sc, _ := getNewSC(getDefaultServerConfig())
+	defer sc.clean()
 	ch, _ := sc.client.Channel()
 
 	ch.ExchangeDeclare("testEx", "direct", false, false, false, false, emptyTable)
@@ -177,6 +220,7 @@ func Test_QueueBind_Success_Rebind(t *testing.T) {
 
 func Test_QueueBind_Failed_OnExclusiveQueue(t *testing.T) {
 	sc, _ := getNewSC(getDefaultServerConfig())
+	defer sc.clean()
 	ch, _ := sc.client.Channel()
 	chEx, _ := sc.clientEx.Channel()
 
@@ -190,6 +234,7 @@ func Test_QueueBind_Failed_OnExclusiveQueue(t *testing.T) {
 
 func Test_QueueUnbind_Success(t *testing.T) {
 	sc, _ := getNewSC(getDefaultServerConfig())
+	defer sc.clean()
 	ch, _ := sc.client.Channel()
 
 	ch.ExchangeDeclare("testEx", "direct", false, false, false, false, emptyTable)
@@ -211,6 +256,7 @@ func Test_QueueUnbind_Success(t *testing.T) {
 
 func Test_QueuePurge_Success(t *testing.T) {
 	sc, _ := getNewSC(getDefaultServerConfig())
+	defer sc.clean()
 	ch, _ := sc.client.Channel()
 	queue, _ := ch.QueueDeclare("test", false, false, false, false, emptyTable)
 
@@ -241,6 +287,7 @@ func Test_QueuePurge_Success(t *testing.T) {
 
 func Test_QueueDelete_Success(t *testing.T) {
 	sc, _ := getNewSC(getDefaultServerConfig())
+	defer sc.clean()
 	ch, _ := sc.client.Channel()
 	queue, _ := ch.QueueDeclare("test", false, false, false, false, emptyTable)
 
@@ -262,6 +309,7 @@ func Test_QueueDelete_Success(t *testing.T) {
 
 func Test_QueueDelete_Failed_NotEmpty(t *testing.T) {
 	sc, _ := getNewSC(getDefaultServerConfig())
+	defer sc.clean()
 	ch, _ := sc.client.Channel()
 	queue, _ := ch.QueueDeclare("test", false, false, false, false, emptyTable)
 

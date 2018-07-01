@@ -2,15 +2,15 @@ package server
 
 import (
 	"net"
-	"fmt"
 	"bytes"
 	log "github.com/sirupsen/logrus"
 	"sync/atomic"
 	"github.com/valinurovam/garagemq/amqp"
 	"github.com/valinurovam/garagemq/vhost"
 	"github.com/valinurovam/garagemq/qos"
-	"bufio"
 	"sync"
+	"bufio"
+	"sort"
 )
 
 const (
@@ -49,7 +49,7 @@ func NewConnection(server *Server, netConn *net.TCPConn) (connection *Connection
 		server:       server,
 		netConn:      netConn,
 		channels:     make(map[uint16]*Channel),
-		outgoing:     make(chan *amqp.Frame, 100),
+		outgoing:     make(chan *amqp.Frame, 1),
 		maxChannels:  4096,
 		maxFrameSize: 65536,
 		qos:          qos.New(0, 0),
@@ -63,18 +63,30 @@ func NewConnection(server *Server, netConn *net.TCPConn) (connection *Connection
 }
 
 func (conn *Connection) close() {
-	if conn.getStatus() == ConnClosed {
+	conn.statusLock.Lock()
+	defer conn.statusLock.Unlock()
+	if conn.status == ConnClosed {
 		return
 	}
+	conn.status = ConnClosed
 
-	conn.setStatus(ConnClosed)
-	for _, channel := range conn.channels {
+	// channel0 should we be closed at the end
+	channelIds := make([]int, 0)
+	for chId, _ := range conn.channels {
+		channelIds = append(channelIds, int(chId))
+	}
+	sort.Sort(sort.Reverse(sort.IntSlice(channelIds)))
+	for _, chId := range channelIds {
+		channel := conn.channels[uint16(chId)]
 		channel.close()
 	}
 	conn.clearQueues()
 	conn.netConn.Close()
+	conn.logger.WithFields(log.Fields{
+		"vhost": conn.virtualHost.Name(),
+		"from":  conn.netConn.RemoteAddr(),
+	}).Info("Connection closed")
 	conn.server.removeConnection(conn.id)
-	conn.logger.Info("AMQP connection closed")
 }
 
 func (conn *Connection) clearQueues() {
@@ -89,6 +101,7 @@ func (conn *Connection) clearQueues() {
 func (conn *Connection) setStatus(status int) {
 	conn.statusLock.Lock()
 	defer conn.statusLock.Unlock()
+
 	conn.status = status
 }
 
@@ -102,7 +115,9 @@ func (conn *Connection) handleConnection() {
 	buf := make([]byte, 8)
 	_, err := conn.netConn.Read(buf)
 	if err != nil {
-		fmt.Println("Error accepting: ", err.Error())
+		conn.logger.WithError(err).WithFields(log.Fields{
+			"readed buffer": buf,
+		}).Error("Error on read protocol header")
 		return
 	}
 
@@ -135,19 +150,19 @@ func (conn *Connection) handleOutgoing() {
 		if err := amqp.WriteFrame(buffer, frame); err != nil {
 			conn.logger.WithError(err).Warn("writing frame")
 			conn.setStatus(ConnClosing)
-			break
+			conn.close()
+			return
 		}
 
 		if frame.CloseAfter {
 			conn.setStatus(ConnClosing)
+			buffer.Flush()
+			conn.close()
 			break
 		}
 
 		buffer.Flush()
 	}
-
-	buffer.Flush()
-	conn.close()
 }
 
 func (conn *Connection) handleIncoming() {

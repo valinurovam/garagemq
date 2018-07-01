@@ -7,6 +7,7 @@ import (
 
 func Test_DefaultExchanges(t *testing.T) {
 	sc, _ := getNewSC(getDefaultServerConfig())
+	defer sc.clean()
 	vhost := sc.server.GetVhost("/")
 
 	exchanges := []string{"direct", "fanout", "headers", "topic"}
@@ -29,6 +30,7 @@ func Test_DefaultExchanges(t *testing.T) {
 
 func Test_ExchangeDeclare_Success(t *testing.T) {
 	sc, _ := getNewSC(getDefaultServerConfig())
+	defer sc.clean()
 	ch, _ := sc.client.Channel()
 
 	if err := ch.ExchangeDeclare("test", "direct", false, false, false, false, emptyTable); err != nil {
@@ -42,6 +44,7 @@ func Test_ExchangeDeclare_Success(t *testing.T) {
 
 func Test_ExchangeDeclare_Success_RedeclareEqual(t *testing.T) {
 	sc, _ := getNewSC(getDefaultServerConfig())
+	defer sc.clean()
 	ch, _ := sc.client.Channel()
 
 	ch.ExchangeDeclare("test", "direct", false, false, false, false, emptyTable)
@@ -53,6 +56,7 @@ func Test_ExchangeDeclare_Success_RedeclareEqual(t *testing.T) {
 
 func Test_ExchangeDeclare_Failed_RedeclareNotEqual(t *testing.T) {
 	sc, _ := getNewSC(getDefaultServerConfig())
+	defer sc.clean()
 	ch, _ := sc.client.Channel()
 
 	ch.ExchangeDeclare("test", "direct", false, false, false, false, emptyTable)
@@ -64,6 +68,7 @@ func Test_ExchangeDeclare_Failed_RedeclareNotEqual(t *testing.T) {
 
 func Test_ExchangeDeclare_Failed_EmptyName(t *testing.T) {
 	sc, _ := getNewSC(getDefaultServerConfig())
+	defer sc.clean()
 	ch, _ := sc.client.Channel()
 
 	if err := ch.ExchangeDeclare("", "direct", false, false, false, false, emptyTable); err == nil {
@@ -73,6 +78,7 @@ func Test_ExchangeDeclare_Failed_EmptyName(t *testing.T) {
 
 func Test_ExchangeDeclare_Failed_DefaultName(t *testing.T) {
 	sc, _ := getNewSC(getDefaultServerConfig())
+	defer sc.clean()
 	ch, _ := sc.client.Channel()
 
 	if err := ch.ExchangeDeclare("amq.direct", "direct", false, false, false, false, emptyTable); err == nil {
@@ -82,6 +88,7 @@ func Test_ExchangeDeclare_Failed_DefaultName(t *testing.T) {
 
 func Test_ExchangeDeclarePassive_Success(t *testing.T) {
 	sc, _ := getNewSC(getDefaultServerConfig())
+	defer sc.clean()
 	ch, _ := sc.client.Channel()
 
 	ch.ExchangeDeclare("test", "direct", false, false, false, false, emptyTable)
@@ -93,6 +100,7 @@ func Test_ExchangeDeclarePassive_Success(t *testing.T) {
 
 func Test_ExchangeDeclarePassive_Failed_NotExists(t *testing.T) {
 	sc, _ := getNewSC(getDefaultServerConfig())
+	defer sc.clean()
 	ch, _ := sc.client.Channel()
 
 	ch.ExchangeDeclare("test", "direct", false, false, false, false, emptyTable)

@@ -2,7 +2,6 @@ package server
 
 import (
 	"github.com/valinurovam/garagemq/amqp"
-	"github.com/valinurovam/garagemq/queue"
 	"github.com/valinurovam/garagemq/binding"
 	"github.com/valinurovam/garagemq/exchange"
 	"github.com/valinurovam/garagemq/interfaces"
@@ -63,7 +62,7 @@ func (channel *Channel) queueDeclare(method *amqp.QueueDeclare) *amqp.Error {
 		return nil
 	}
 
-	newQueue := queue.NewQueue(
+	newQueue := channel.conn.getVirtualHost().NewQueue(
 		method.Queue,
 		channel.conn.id,
 		method.Exclusive,

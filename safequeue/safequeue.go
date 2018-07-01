@@ -33,6 +33,7 @@ func NewSafeQueue(shardSize int) *SafeQueue {
 
 func (queue *SafeQueue) Push(item interface{}) {
 	queue.Lock()
+	defer queue.Unlock()
 
 	queue.tail[queue.tailPos] = item
 	queue.tailPos++
@@ -49,7 +50,6 @@ func (queue *SafeQueue) Push(item interface{}) {
 		queue.shards = buffer
 		queue.tail = queue.shards[queue.tailIdx]
 	}
-	queue.Unlock()
 }
 
 func (queue *SafeQueue) Pop() (item interface{}) {

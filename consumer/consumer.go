@@ -27,7 +27,7 @@ type Consumer struct {
 	status      int
 	qos         []*qos.AmqpQos
 	consume     chan bool
-	stopLock    sync.Mutex
+	stopLock    sync.RWMutex
 }
 
 func New(queueName string, consumerTag string, noAck bool, channel interfaces.Channel, queue interfaces.AmqpQueue, qos []*qos.AmqpQos) *Consumer {
@@ -54,6 +54,7 @@ func generateTag(id uint64) string {
 func (consumer *Consumer) Start() {
 	consumer.status = Started
 	go consumer.startConsume()
+	consumer.Consume()
 }
 
 func (consumer *Consumer) startConsume() {
@@ -68,7 +69,7 @@ func (consumer *Consumer) startConsume() {
 
 		dTag := consumer.channel.NextDeliveryTag()
 		if !consumer.noAck {
-			consumer.channel.AddUnackedMessage(dTag, consumer.ConsumerTag, message)
+			consumer.channel.AddUnackedMessage(dTag, consumer.ConsumerTag, consumer.queue.GetName(), message)
 		}
 
 		consumer.channel.SendContent(&amqp.BasicDeliver{
@@ -84,8 +85,6 @@ func (consumer *Consumer) startConsume() {
 }
 
 func (consumer *Consumer) Consume() {
-	consumer.stopLock.Lock()
-	defer consumer.stopLock.Unlock()
 	if consumer.status == Stopped {
 		return
 	}

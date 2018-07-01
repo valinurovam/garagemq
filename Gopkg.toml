@@ -25,6 +25,30 @@
 #   unused-packages = true
 
 
+[[constraint]]
+  name = "github.com/dgraph-io/badger"
+  version = "1.5.2"
+
+[[constraint]]
+  name = "github.com/sirupsen/logrus"
+  version = "1.0.5"
+
+[[constraint]]
+  branch = "master"
+  name = "github.com/streadway/amqp"
+
+[[constraint]]
+  name = "github.com/tidwall/buntdb"
+  version = "1.0.0"
+
+[[constraint]]
+  branch = "master"
+  name = "golang.org/x/crypto"
+
+[[constraint]]
+  name = "gopkg.in/yaml.v2"
+  version = "2.2.1"
+
 [prune]
   go-tests = true
   unused-packages = true
