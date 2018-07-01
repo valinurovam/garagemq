@@ -1,11 +1,11 @@
 package amqp
 
 import (
-	"encoding/binary"
-	"io"
 	"bytes"
+	"encoding/binary"
 	"errors"
 	"fmt"
+	"io"
 	"time"
 )
 
@@ -452,7 +452,7 @@ func readValueRabbit(r io.Reader) (data interface{}, err error) {
 		return nil, nil
 	}
 
-	return nil, errors.New(fmt.Sprintf("Unsupported type %c (%s) by %s protocol", vType, ProtoRabbit))
+	return nil, errors.New(fmt.Sprintf("Unsupported type %c (%d) by %s protocol", vType, vType, ProtoRabbit))
 }
 
 func WriteTable(writer io.Writer, table *Table, protoVersion string) (err error) {

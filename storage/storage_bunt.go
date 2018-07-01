@@ -59,7 +59,6 @@ func (storage *StorageBunt) Get(key string) (value []byte, err error) {
 	return
 }
 
-
 func (storage *StorageBunt) Iterate(fn func(key []byte, value []byte)) {
 	storage.db.View(func(tx *buntdb.Tx) error {
 		err := tx.Ascend("", func(key, value string) bool {

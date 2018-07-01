@@ -2,6 +2,7 @@ package server
 
 import (
 	"testing"
+
 	"github.com/valinurovam/garagemq/exchange"
 )
 

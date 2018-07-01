@@ -1,14 +1,15 @@
 package queue
 
 import (
-	"github.com/valinurovam/garagemq/safequeue"
-	"github.com/valinurovam/garagemq/amqp"
-	"sync"
-	"github.com/valinurovam/garagemq/qos"
 	"errors"
 	"fmt"
+	"sync"
+
+	"github.com/valinurovam/garagemq/amqp"
 	"github.com/valinurovam/garagemq/interfaces"
 	"github.com/valinurovam/garagemq/msgstorage"
+	"github.com/valinurovam/garagemq/qos"
+	"github.com/valinurovam/garagemq/safequeue"
 )
 
 type Queue struct {

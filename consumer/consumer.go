@@ -1,13 +1,14 @@
 package consumer
 
 import (
-	"github.com/valinurovam/garagemq/amqp"
-	"github.com/valinurovam/garagemq/qos"
-	"github.com/valinurovam/garagemq/interfaces"
 	"fmt"
-	"time"
-	"sync/atomic"
 	"sync"
+	"sync/atomic"
+	"time"
+
+	"github.com/valinurovam/garagemq/amqp"
+	"github.com/valinurovam/garagemq/interfaces"
+	"github.com/valinurovam/garagemq/qos"
 )
 
 const (

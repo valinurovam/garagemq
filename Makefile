@@ -6,3 +6,9 @@ build:
 
 run:
 	go build -o cmd/server cmd/server.go && cmd/server
+
+vet:
+	go vet github.com/valinurovam/garagemq...
+
+test:
+	go test -cover github.com/valinurovam/garagemq...

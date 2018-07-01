@@ -1,8 +1,8 @@
 package amqp
 
 import (
-	"sync/atomic"
 	"bytes"
+	"sync/atomic"
 )
 
 type Table map[string]interface{}

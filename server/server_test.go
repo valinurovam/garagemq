@@ -1,14 +1,15 @@
 package server
 
 import (
-	"testing"
-	"github.com/valinurovam/garagemq/amqp"
-	amqpclient "github.com/streadway/amqp"
-	"net"
-	"github.com/valinurovam/garagemq/config"
-	"os"
-	"github.com/sirupsen/logrus"
 	"io/ioutil"
+	"net"
+	"os"
+	"testing"
+
+	"github.com/sirupsen/logrus"
+	amqpclient "github.com/streadway/amqp"
+	"github.com/valinurovam/garagemq/amqp"
+	"github.com/valinurovam/garagemq/config"
 )
 
 var emptyTable = make(amqpclient.Table)

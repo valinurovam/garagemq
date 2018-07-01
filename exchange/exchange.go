@@ -1,10 +1,11 @@
 package exchange
 
 import (
-	"github.com/valinurovam/garagemq/amqp"
 	"errors"
 	"fmt"
 	"sync"
+
+	"github.com/valinurovam/garagemq/amqp"
 	"github.com/valinurovam/garagemq/interfaces"
 )
 

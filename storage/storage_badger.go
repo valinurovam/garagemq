@@ -1,8 +1,9 @@
 package storage
 
 import (
-	"github.com/dgraph-io/badger"
 	"time"
+
+	"github.com/dgraph-io/badger"
 	"github.com/dgraph-io/badger/options"
 )
 

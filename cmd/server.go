@@ -1,17 +1,18 @@
 package main
 
 import (
-	"github.com/valinurovam/garagemq/server"
+	"io/ioutil"
+	"net/http"
+	_ "net/http/pprof"
+	"os"
+	"runtime"
+	"syscall"
+
+	log "github.com/sirupsen/logrus"
 	"github.com/valinurovam/garagemq/amqp"
 	"github.com/valinurovam/garagemq/config"
-	log "github.com/sirupsen/logrus"
-	"os"
-	"io/ioutil"
+	"github.com/valinurovam/garagemq/server"
 	"gopkg.in/yaml.v2"
-	"syscall"
-	"runtime"
-	_ "net/http/pprof"
-	"net/http"
 )
 
 func init() {

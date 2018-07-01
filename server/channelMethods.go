@@ -36,7 +36,6 @@ func (channel *Channel) channelClose(method *amqp.ChannelClose) (err *amqp.Error
 	return nil
 }
 
-
 func (channel *Channel) channelCloseOk(method *amqp.ChannelCloseOk) (err *amqp.Error) {
 	channel.status = ChannelClosed
 	return nil

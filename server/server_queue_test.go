@@ -1,10 +1,11 @@
 package server
 
 import (
-	"testing"
-	"github.com/streadway/amqp"
-	"time"
 	"strings"
+	"testing"
+	"time"
+
+	"github.com/streadway/amqp"
 )
 
 func Test_QueueDeclare_Success(t *testing.T) {

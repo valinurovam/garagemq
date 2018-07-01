@@ -1,8 +1,9 @@
 package msgstorage
 
 import (
-	"github.com/valinurovam/garagemq/interfaces"
 	"github.com/valinurovam/garagemq/amqp"
+	"github.com/valinurovam/garagemq/interfaces"
+
 	"strconv"
 	"strings"
 )

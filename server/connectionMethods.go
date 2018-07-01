@@ -1,9 +1,10 @@
 package server
 
 import (
-	"github.com/valinurovam/garagemq/amqp"
-	"runtime"
 	"os"
+	"runtime"
+
+	"github.com/valinurovam/garagemq/amqp"
 	"github.com/valinurovam/garagemq/auth"
 )
 
@@ -47,7 +48,7 @@ func (channel *Channel) connectionStart() {
 		serverProps["host"] = host
 	}
 
-	var method = amqp.ConnectionStart{0, 9, &serverProps, []byte("PLAIN"), []byte("en_US")}
+	var method = amqp.ConnectionStart{VersionMajor: 0, VersionMinor: 9, ServerProperties: &serverProps, Mechanisms: []byte("PLAIN"), Locales: []byte("en_US")}
 	channel.SendMethod(&method)
 
 	channel.conn.status = ConnStart
@@ -73,7 +74,7 @@ func (channel *Channel) connectionStartOk(method *amqp.ConnectionStartOk) *amqp.
 	channel.conn.clientProperties = method.ClientProperties
 
 	// @todo Send HeartBeat 0 cause not supported yet
-	channel.SendMethod(&amqp.ConnectionTune{channel.conn.maxChannels, channel.conn.maxFrameSize, 0})
+	channel.SendMethod(&amqp.ConnectionTune{ChannelMax: channel.conn.maxChannels, FrameMax: channel.conn.maxFrameSize, Heartbeat: 0})
 	channel.conn.status = ConnTune
 
 	return nil

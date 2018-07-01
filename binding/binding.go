@@ -1,9 +1,10 @@
 package binding
 
 import (
-	"github.com/valinurovam/garagemq/amqp"
 	"regexp"
 	"strings"
+
+	"github.com/valinurovam/garagemq/amqp"
 	"github.com/valinurovam/garagemq/interfaces"
 )
 

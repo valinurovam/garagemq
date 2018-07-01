@@ -1,17 +1,18 @@
 package server
 
 import (
-	"github.com/valinurovam/garagemq/amqp"
-	"github.com/valinurovam/garagemq/qos"
-	"github.com/valinurovam/garagemq/exchange"
-	"github.com/valinurovam/garagemq/interfaces"
 	"bytes"
-	"github.com/sirupsen/logrus"
-	log "github.com/sirupsen/logrus"
+	"fmt"
 	"sync"
 	"sync/atomic"
-	"fmt"
+
+	"github.com/sirupsen/logrus"
+	log "github.com/sirupsen/logrus"
+	"github.com/valinurovam/garagemq/amqp"
 	"github.com/valinurovam/garagemq/consumer"
+	"github.com/valinurovam/garagemq/exchange"
+	"github.com/valinurovam/garagemq/interfaces"
+	"github.com/valinurovam/garagemq/qos"
 )
 
 const (
@@ -178,7 +179,7 @@ func (channel *Channel) handleContentBody(bodyFrame *amqp.Frame) *amqp.Error {
 
 	if len(matchedQueues) == 0 && message.Mandatory {
 		channel.SendContent(
-			&amqp.BasicReturn{amqp.NoConsumers, "No route", message.Exchange, message.RoutingKey},
+			&amqp.BasicReturn{ReplyCode: amqp.NoConsumers, ReplyText: "No route", Exchange: message.Exchange, RoutingKey: message.RoutingKey},
 			message,
 		)
 		return nil

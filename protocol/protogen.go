@@ -1,12 +1,12 @@
 package main
 
 import (
-	"io/ioutil"
 	"encoding/xml"
-	"strings"
 	"io"
-	"text/template"
+	"io/ioutil"
 	"os"
+	"strings"
+	"text/template"
 )
 
 var baseDomainsMap = map[string]string{

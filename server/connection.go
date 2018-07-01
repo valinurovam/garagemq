@@ -1,16 +1,17 @@
 package server
 
 import (
-	"net"
-	"bytes"
-	log "github.com/sirupsen/logrus"
-	"sync/atomic"
-	"github.com/valinurovam/garagemq/amqp"
-	"github.com/valinurovam/garagemq/vhost"
-	"github.com/valinurovam/garagemq/qos"
-	"sync"
 	"bufio"
+	"bytes"
+	"net"
 	"sort"
+	"sync"
+	"sync/atomic"
+
+	log "github.com/sirupsen/logrus"
+	"github.com/valinurovam/garagemq/amqp"
+	"github.com/valinurovam/garagemq/qos"
+	"github.com/valinurovam/garagemq/vhost"
 )
 
 const (

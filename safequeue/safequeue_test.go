@@ -2,6 +2,7 @@ package safequeue_test
 
 import (
 	"testing"
+
 	"github.com/valinurovam/garagemq/safequeue"
 )
 
@@ -42,6 +43,5 @@ func TestSafeQueue(t *testing.T) {
 	if queue.Length() != 0 {
 		t.Fatalf("expected %d elements, have %d", 0, queue.Length())
 	}
-
 
 }

@@ -1,12 +1,12 @@
 package binding_test
 
 import (
-	"testing"
-	"sort"
 	"fmt"
+	"sort"
+	"testing"
 
-	"github.com/valinurovam/garagemq/binding"
 	"github.com/valinurovam/garagemq/amqp"
+	"github.com/valinurovam/garagemq/binding"
 	"github.com/valinurovam/garagemq/interfaces"
 )
 

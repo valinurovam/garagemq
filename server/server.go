@@ -1,19 +1,20 @@
 package server
 
 import (
+	"fmt"
 	"net"
 	"os"
-	log "github.com/sirupsen/logrus"
-	"github.com/valinurovam/garagemq/auth"
-	"github.com/valinurovam/garagemq/vhost"
+	"os/signal"
 	"sync"
 	"syscall"
-	"github.com/valinurovam/garagemq/storage"
-	"fmt"
-	"github.com/valinurovam/garagemq/interfaces"
+
+	log "github.com/sirupsen/logrus"
+	"github.com/valinurovam/garagemq/auth"
 	"github.com/valinurovam/garagemq/config"
-	"os/signal"
+	"github.com/valinurovam/garagemq/interfaces"
 	"github.com/valinurovam/garagemq/msgstorage"
+	"github.com/valinurovam/garagemq/storage"
+	"github.com/valinurovam/garagemq/vhost"
 )
 
 const (
