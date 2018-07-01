@@ -249,6 +249,14 @@ func (qA *Queue) EqualWithErr(qB interfaces.AmqpQueue) error {
 	return nil
 }
 
+func (queue *Queue) Marshal(protoVersion string) []byte {
+	return []byte(queue.name)
+}
+
+func (queue *Queue) Unmarshal(data []byte, protoVersion string) string {
+	return string(data)
+}
+
 func (queue *Queue) IsDurable() bool {
 	return queue.durable
 }

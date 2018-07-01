@@ -34,6 +34,7 @@ type AmqpQueue interface {
 	AddConsumer(consumer Consumer, exclusive bool) error
 	EqualWithErr(qu AmqpQueue) error
 	Delete(ifUnused bool, ifEmpty bool) (uint64, error)
+	Marshal(protoVersion string) []byte
 }
 
 type Channel interface {

@@ -56,13 +56,13 @@ func (message *Message) Append(body *Frame) {
 	message.BodySize += uint64(len(body.Payload))
 }
 
-func (message *Message) Marshal() (data []byte, err error) {
+func (message *Message) Marshal(protoVersion string) (data []byte, err error) {
 	buffer := bytes.NewBuffer([]byte{})
 	if err = WriteLonglong(buffer, message.Id); err != nil {
 		return nil, err
 	}
 	// TODO Remove ProtoRabbit
-	if err = WriteContentHeader(buffer, message.Header, ProtoRabbit); err != nil {
+	if err = WriteContentHeader(buffer, message.Header, protoVersion); err != nil {
 		return nil, err
 	}
 	if err = WriteShortstr(buffer, message.Exchange); err != nil {
@@ -85,13 +85,13 @@ func (message *Message) Marshal() (data []byte, err error) {
 	return buffer.Bytes(), nil
 }
 
-func (message *Message) Unmarshal(buffer []byte) (err error) {
+func (message *Message) Unmarshal(buffer []byte, protoVersion string) (err error) {
 	reader := bytes.NewReader(buffer)
 	if message.Id, err = ReadLonglong(reader); err != nil {
 		return err
 	}
 	// TODO Remove ProtoRabbit
-	if message.Header, err = ReadContentHeader(reader, ProtoRabbit); err != nil {
+	if message.Header, err = ReadContentHeader(reader, protoVersion); err != nil {
 		return err
 	}
 	if message.Exchange, err = ReadShortstr(reader); err != nil {

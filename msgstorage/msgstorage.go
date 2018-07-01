@@ -9,17 +9,19 @@ import (
 )
 
 type MsgStorage struct {
-	db interfaces.DbStorage
+	db           interfaces.DbStorage
+	protoVersion string
 }
 
-func New(db interfaces.DbStorage) *MsgStorage {
+func New(db interfaces.DbStorage, protoVersion string) *MsgStorage {
 	return &MsgStorage{
-		db: db,
+		db:           db,
+		protoVersion: protoVersion,
 	}
 }
 
 func (storage *MsgStorage) Add(message *amqp.Message, queue string) error {
-	if data, err := message.Marshal(); err == nil {
+	if data, err := message.Marshal(storage.protoVersion); err == nil {
 		return storage.db.Set(makeKey(message.Id, queue), data)
 	} else {
 		return err
@@ -39,7 +41,7 @@ func (storage *MsgStorage) LoadIntoQueues(queues map[string]interfaces.AmqpQueue
 				return
 			}
 			message := &amqp.Message{}
-			message.Unmarshal(value)
+			message.Unmarshal(value, storage.protoVersion)
 			queue.PushFromStorage(message)
 		},
 	)

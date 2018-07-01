@@ -2,7 +2,6 @@ package vhost
 
 import (
 	"errors"
-	"strings"
 	"sync"
 
 	log "github.com/sirupsen/logrus"
@@ -13,6 +12,7 @@ import (
 	"github.com/valinurovam/garagemq/interfaces"
 	"github.com/valinurovam/garagemq/msgstorage"
 	"github.com/valinurovam/garagemq/queue"
+	"github.com/valinurovam/garagemq/srvstorage"
 )
 
 const EX_DEFAULT_NAME = ""
@@ -25,12 +25,12 @@ type VirtualHost struct {
 	quLock     sync.Mutex
 	queues     map[string]interfaces.AmqpQueue
 	msgStorage *msgstorage.MsgStorage
-	srvStorage interfaces.DbStorage
+	srvStorage *srvstorage.SrvStorage
 	srvConfig  *config.Config
 	logger     *log.Entry
 }
 
-func New(name string, system bool, msgStorage *msgstorage.MsgStorage, srvStorage interfaces.DbStorage, srvConfig *config.Config) *VirtualHost {
+func New(name string, system bool, msgStorage *msgstorage.MsgStorage, srvStorage *srvstorage.SrvStorage, srvConfig *config.Config) *VirtualHost {
 	vhost := &VirtualHost{
 		name:       name,
 		system:     system,
@@ -144,35 +144,17 @@ func (vhost *VirtualHost) AppendQueue(qu interfaces.AmqpQueue) {
 	bind := binding.New(qu.GetName(), EX_DEFAULT_NAME, qu.GetName(), &amqp.Table{}, false)
 	ex.AppendBinding(bind)
 
-	vhost.saveQueues()
-}
-
-func (vhost *VirtualHost) getKeyName() string {
-	if vhost.name == "/" {
-		return "default"
-	} else {
-		return vhost.name
+	if qu.IsDurable() {
+		vhost.srvStorage.AddQueue(vhost.name, qu)
 	}
-}
-func (vhost *VirtualHost) saveQueues() {
-	var queueNames []string
-	for name, q := range vhost.queues {
-		if !q.IsDurable() {
-			continue
-		}
-		queueNames = append(queueNames, name)
-	}
-	vhost.srvStorage.Set(vhost.getKeyName()+".queues", []byte(strings.Join(queueNames, "\n")))
 }
 
 func (vhost *VirtualHost) loadQueues() {
-	// TODO incapsulate into server
 	vhost.logger.Info("Initialize queues...")
-	queues, err := vhost.srvStorage.Get(vhost.getKeyName() + ".queues")
-	if err != nil || len(queues) == 0 {
+	queueNames := vhost.srvStorage.GetVhostQueues(vhost.name)
+	if len(queueNames) == 0 {
 		return
 	}
-	queueNames := strings.Split(string(queues), "\n")
 	for _, name := range queueNames {
 		vhost.AppendQueue(
 			vhost.NewQueue(name, 0, false, false, true, vhost.srvConfig.Queue.ShardSize),

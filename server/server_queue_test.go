@@ -1,7 +1,6 @@
 package server
 
 import (
-	"strings"
 	"testing"
 	"time"
 
@@ -35,13 +34,12 @@ func Test_QueueDeclareDurable_Success(t *testing.T) {
 		t.Fatal("Queue does not exists after 'QueueDeclare'")
 	}
 
-	storedQueues, err := sc.server.storage.Get("default.queues")
-	if err != nil || len(storedQueues) == 0 {
+	storedQueues := sc.server.storage.GetVhostQueues("/")
+	if len(storedQueues) == 0 {
 		t.Fatal("Queue does not exists into storage after 'QueueDeclareDurable'")
 	}
-	queueNames := strings.Split(string(storedQueues), "\n")
 	found := false
-	for _, name := range queueNames {
+	for _, name := range storedQueues {
 		if name == "test" {
 			found = true
 		}

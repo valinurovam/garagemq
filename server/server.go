@@ -13,6 +13,7 @@ import (
 	"github.com/valinurovam/garagemq/config"
 	"github.com/valinurovam/garagemq/interfaces"
 	"github.com/valinurovam/garagemq/msgstorage"
+	"github.com/valinurovam/garagemq/srvstorage"
 	"github.com/valinurovam/garagemq/storage"
 	"github.com/valinurovam/garagemq/vhost"
 )
@@ -35,7 +36,7 @@ type Server struct {
 	vhostsLock   sync.Mutex
 	vhosts       map[string]*vhost.VirtualHost
 	status       int
-	storage      interfaces.DbStorage
+	storage      *srvstorage.SrvStorage
 }
 
 func NewServer(host string, port string, protoVersion string, config *config.Config) (server *Server) {
@@ -63,41 +64,8 @@ func (srv *Server) Start() (err error) {
 	srv.initUsers()
 	srv.initDefaultVirtualHosts()
 
-	address := srv.host + ":" + srv.port
-	tcpAddr, err := net.ResolveTCPAddr("tcp4", address)
-	srv.listener, err = net.ListenTCP("tcp", tcpAddr)
-	if err != nil {
-		log.WithError(err).WithFields(log.Fields{
-			"address": address,
-		}).Error("Error on listener start")
-		os.Exit(1)
-	}
+	go srv.listen()
 
-	log.WithFields(log.Fields{
-		"address": address,
-	}).Info("Server started")
-
-	go func() {
-		for {
-			conn, err := srv.listener.AcceptTCP()
-			if err != nil {
-				if srv.status == Stopping {
-					return
-				}
-				srv.stopWithError(err, "accepting connection")
-			}
-			log.WithFields(log.Fields{
-				"from": conn.RemoteAddr().String(),
-				"to":   conn.LocalAddr().String(),
-			}).Info("accepting connection")
-
-			conn.SetReadBuffer(srv.config.Tcp.ReadBufSize)
-			conn.SetWriteBuffer(srv.config.Tcp.WriteBufSize)
-			conn.SetNoDelay(srv.config.Tcp.Nodelay)
-
-			srv.acceptConnection(conn)
-		}
-	}()
 	srv.status = Started
 	select {}
 	return
@@ -117,6 +85,49 @@ func (srv *Server) Stop() {
 	// stop vhosts
 	for _, virtualHost := range srv.vhosts {
 		virtualHost.Stop()
+	}
+}
+
+func (srv *Server) GetVhost(name string) *vhost.VirtualHost {
+	srv.vhostsLock.Lock()
+	defer srv.vhostsLock.Unlock()
+
+	return srv.vhosts[name]
+}
+
+func (srv *Server) listen() {
+	address := srv.host + ":" + srv.port
+	tcpAddr, err := net.ResolveTCPAddr("tcp4", address)
+	srv.listener, err = net.ListenTCP("tcp", tcpAddr)
+	if err != nil {
+		log.WithError(err).WithFields(log.Fields{
+			"address": address,
+		}).Error("Error on listener start")
+		os.Exit(1)
+	}
+
+	log.WithFields(log.Fields{
+		"address": address,
+	}).Info("Server started")
+
+	for {
+		conn, err := srv.listener.AcceptTCP()
+		if err != nil {
+			if srv.status == Stopping {
+				return
+			}
+			srv.stopWithError(err, "accepting connection")
+		}
+		log.WithFields(log.Fields{
+			"from": conn.RemoteAddr().String(),
+			"to":   conn.LocalAddr().String(),
+		}).Info("accepting connection")
+
+		conn.SetReadBuffer(srv.config.Tcp.ReadBufSize)
+		conn.SetWriteBuffer(srv.config.Tcp.WriteBufSize)
+		conn.SetNoDelay(srv.config.Tcp.Nodelay)
+
+		srv.acceptConnection(conn)
 	}
 }
 
@@ -160,7 +171,7 @@ func (srv *Server) initUsers() {
 }
 
 func (srv *Server) initServerStorage() {
-	srv.storage = srv.getStorageInstance("server")
+	srv.storage = srvstorage.New(srv.getStorageInstance("server"), srv.protoVersion)
 }
 
 func (srv *Server) initDefaultVirtualHosts() {
@@ -169,7 +180,7 @@ func (srv *Server) initDefaultVirtualHosts() {
 	}).Info("Initialize default vhost")
 
 	log.Info("Initialize host message msgStorage")
-	msgStorage := msgstorage.New(srv.getStorageInstance("/"))
+	msgStorage := msgstorage.New(srv.getStorageInstance("/"), srv.protoVersion)
 
 	srv.vhostsLock.Lock()
 	defer srv.vhostsLock.Unlock()
@@ -187,6 +198,7 @@ func (srv *Server) getStorageInstance(name string) interfaces.DbStorage {
 	stPath := fmt.Sprintf("%s/%s/%s", srv.config.Db.DefaultPath, srv.config.Db.Engine, stName)
 
 	if err := os.MkdirAll(stPath, 0777); err != nil {
+		// TODO is here true way to handle error?
 		panic(err)
 	}
 
@@ -205,13 +217,6 @@ func (srv *Server) getStorageInstance(name string) interfaces.DbStorage {
 		srv.stopWithError(nil, fmt.Sprintf("Unknown db engine '%s'", srv.config.Db.Engine))
 	}
 	return nil
-}
-
-func (srv *Server) GetVhost(name string) *vhost.VirtualHost {
-	srv.vhostsLock.Lock()
-	defer srv.vhostsLock.Unlock()
-
-	return srv.vhosts[name]
 }
 
 func (srv *Server) onSignal(sig os.Signal) {
