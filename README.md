@@ -17,6 +17,7 @@ db:
 ### Implemented methods
  
 #### connection 
+
 - [x] connection.start
 - [x] connection.startOk 
 - [ ] connection.secure
@@ -29,6 +30,7 @@ db:
 - [x] connection.closeOk 
 
 #### channel
+
 - [x] channel.open
 - [x] channel.openOk
 - [ ] channel.flow
@@ -37,13 +39,16 @@ db:
 - [x] channel.closeOk
 
 #### exchange
+
 - [x] exchange.declare
 - [x] exchange.declareOk
 - [ ] exchange.delete
 - [ ] exchange.deleteOk
 
 #### queue
+
 Purge and delete methods implemented only for in-memory queues.
+
 - [x] queue.declare
 - [x] queue.declareOk
 - [x] queue.bind
@@ -56,8 +61,10 @@ Purge and delete methods implemented only for in-memory queues.
 - [x] queue.deleteOk
 
 #### basic
+
 Qos method implemented only for standard AMQP mode. It means that qos applies for connection(global=true) or channel(global=false). 
 RabbitMQ Qos means for channel(global=true) or each new consumer(global=false).
+
 - [x] basic.qos
 - [x] basic.qosOk
 - [x] basic.consume
@@ -74,12 +81,13 @@ RabbitMQ Qos means for channel(global=true) or each new consumer(global=false).
 - [ ] basic.reject
 - [ ] basic.recoverAsync
 - [ ] basic.recover
-- [ ] basic.recoverOk
+- [ ] basic.recoverOk 
  
 #### tx
-- [x] tx.select
-- [x] tx.selectOk
-- [x] tx.commit
-- [x] tx.commitOk
-- [x] tx.rollback
-- [x] tx.rollbackOk
+
+- [ ] tx.select
+- [ ] tx.selectOk
+- [ ] tx.commit
+- [ ] tx.commitOk
+- [ ] tx.rollback
+- [ ] tx.rollbackOk
