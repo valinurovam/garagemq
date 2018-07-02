@@ -168,6 +168,10 @@ func (channel *Channel) queuePurge(method *amqp.QueuePurge) *amqp.Error {
 		return err
 	}
 
+	if qu.IsDurable() {
+		return amqp.NewChannelError(amqp.NotImplemented, "Durable = true", method.ClassIdentifier(), method.MethodIdentifier())
+	}
+
 	msgCnt := qu.Purge()
 	if !method.NoWait {
 		channel.SendMethod(&amqp.QueuePurgeOk{MessageCount: uint32(msgCnt)})
@@ -185,6 +189,10 @@ func (channel *Channel) queueDelete(method *amqp.QueueDelete) *amqp.Error {
 
 	if err = channel.checkQueueLockWithError(qu, method); err != nil {
 		return err
+	}
+
+	if qu.IsDurable() {
+		return amqp.NewChannelError(amqp.NotImplemented, "Durable = true", method.ClassIdentifier(), method.MethodIdentifier())
 	}
 
 	var length, errDel = channel.conn.getVirtualHost().DeleteQueue(method.Queue, method.IfUnused, method.IfEmpty)
