@@ -43,5 +43,47 @@ func TestSafeQueue(t *testing.T) {
 	if queue.Length() != 0 {
 		t.Fatalf("expected %d elements, have %d", 0, queue.Length())
 	}
+}
 
+func TestSafeQueue_HeadItem(t *testing.T) {
+	queue := safequeue.NewSafeQueue(SIZE)
+	queueLength := SIZE
+	for item := 0; item < queueLength; item++ {
+		queue.Push(item)
+	}
+
+	if h := queue.HeadItem(); h != 0 {
+		t.Fatalf("expected head %v, actual %v", 0, h)
+	}
+}
+
+func TestSafeQueue_DirtyLength(t *testing.T) {
+	queue := safequeue.NewSafeQueue(SIZE)
+	queueLength := SIZE
+	for item := 0; item < queueLength; item++ {
+		queue.Push(item)
+	}
+
+	if queue.Length() != queue.DirtyLength() {
+		t.Fatal("Single thread DirtyLength must be equal Length")
+	}
+}
+
+func TestSafeQueue_Purge(t *testing.T) {
+	queue := safequeue.NewSafeQueue(SIZE)
+	queueLength := SIZE
+	for item := 0; item < queueLength; item++ {
+		queue.Push(item)
+	}
+
+	queue.Purge()
+
+	if queue.Length() != 0 {
+		t.Fatalf("expected %d elements, actual %d", 0, queue.Length())
+	}
+
+	pop := queue.Pop()
+	if nil != pop {
+		t.Fatalf("Pop: expected %v, actual %v", nil, pop)
+	}
 }

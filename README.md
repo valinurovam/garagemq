@@ -47,8 +47,6 @@ db:
 
 #### queue
 
-Purge and delete methods implemented only for in-memory queues.
-
 - [x] queue.declare
 - [x] queue.declareOk
 - [x] queue.bind

@@ -264,7 +264,7 @@ func Test_QueuePurge_Success(t *testing.T) {
 		ch.Publish("", queue.Name, false, false, amqp.Publishing{ContentType: "text/plain", Body: []byte("test")})
 	}
 
-	time.Sleep(time.Millisecond)
+	time.Sleep(5 * time.Millisecond)
 	length := sc.server.GetVhost("/").GetQueue("test").Length()
 	if length != uint64(msgCount) {
 		t.Fatalf("Expected: queue.length = %d, %d given", msgCount, length)
@@ -295,7 +295,7 @@ func Test_QueueDelete_Success(t *testing.T) {
 		ch.Publish("", queue.Name, false, false, amqp.Publishing{ContentType: "text/plain", Body: []byte("test")})
 	}
 
-	time.Sleep(time.Millisecond)
+	time.Sleep(5 * time.Millisecond)
 	var deletedCount, err = ch.QueueDelete("test", false, false, false)
 	if err != nil {
 		t.Fatal(err)
@@ -303,6 +303,52 @@ func Test_QueueDelete_Success(t *testing.T) {
 
 	if deletedCount != msgCount {
 		t.Fatalf("Expected: deleteCount = %d, %d given", msgCount, deletedCount)
+	}
+
+	if q := sc.server.GetVhost("/").GetQueue("test"); q != nil {
+		t.Fatalf("Queue exists after delete")
+	}
+}
+
+func Test_QueueDeleteDurable_Success(t *testing.T) {
+	sc, _ := getNewSC(getDefaultServerConfig())
+	defer sc.clean()
+	ch, _ := sc.client.Channel()
+	queue, _ := ch.QueueDeclare("test", true, false, false, false, emptyTable)
+
+	msgCount := 10
+	for i := 0; i < msgCount; i++ {
+		ch.Publish("", queue.Name, false, false, amqp.Publishing{ContentType: "text/plain", Body: []byte("test")})
+	}
+
+	time.Sleep(5 * time.Millisecond)
+	var deletedCount, err = ch.QueueDelete("test", false, false, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if deletedCount != msgCount {
+		t.Fatalf("Expected: deleteCount = %d, %d given", msgCount, deletedCount)
+	}
+
+	if q := sc.server.GetVhost("/").GetQueue("test"); q != nil {
+		t.Fatalf("Queue exists after delete")
+	}
+
+	storedQueues := sc.server.storage.GetVhostQueues("/")
+	if len(storedQueues) != 0 {
+		t.Fatal("Durable queue exists into storage after 'QueueDelete'")
+	}
+
+	found := false
+	for _, name := range storedQueues {
+		if name == "test" {
+			found = true
+		}
+	}
+
+	if found {
+		t.Fatal("Durable queue exists into storage after 'QueueDelete'")
 	}
 }
 
@@ -317,7 +363,7 @@ func Test_QueueDelete_Failed_NotEmpty(t *testing.T) {
 		ch.Publish("", queue.Name, false, false, amqp.Publishing{ContentType: "text/plain", Body: []byte("test")})
 	}
 
-	time.Sleep(time.Millisecond)
+	time.Sleep(5 * time.Millisecond)
 	var _, err = ch.QueueDelete("test", false, true, false)
 	if err == nil {
 		t.Fatal("Expected: queue has messages error")

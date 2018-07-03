@@ -131,11 +131,14 @@ func (queue *Queue) AckMsg(id uint64) {
 }
 
 func (queue *Queue) Purge() (length uint64) {
-	oldQueue := queue.SafeQueue
-	oldQueue.Lock()
-	defer oldQueue.Unlock()
+	queue.SafeQueue.Lock()
+	defer queue.SafeQueue.Unlock()
 	length = queue.SafeQueue.DirtyLength()
-	queue.dirtyPurge()
+	queue.SafeQueue.DirtyPurge()
+
+	if queue.durable {
+		queue.storage.PurgeQueue(queue.name)
+	}
 	return
 }
 
@@ -163,11 +166,12 @@ func (queue *Queue) Delete(ifUnused bool, ifEmpty bool) (uint64, error) {
 		return 0, errors.New("queue has messages")
 	}
 
-	// TODO Purge durable queue
-
 	queue.cancelConsumers()
 	length := queue.SafeQueue.DirtyLength()
-	queue.dirtyPurge()
+
+	if queue.durable {
+		queue.storage.PurgeQueue(queue.name)
+	}
 
 	return length, nil
 }

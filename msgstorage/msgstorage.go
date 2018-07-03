@@ -1,11 +1,12 @@
 package msgstorage
 
 import (
-	"github.com/valinurovam/garagemq/amqp"
-	"github.com/valinurovam/garagemq/interfaces"
-
+	"bytes"
 	"strconv"
 	"strings"
+
+	"github.com/valinurovam/garagemq/amqp"
+	"github.com/valinurovam/garagemq/interfaces"
 )
 
 type MsgStorage struct {
@@ -43,6 +44,18 @@ func (storage *MsgStorage) LoadIntoQueues(queues map[string]interfaces.AmqpQueue
 			message := &amqp.Message{}
 			message.Unmarshal(value, storage.protoVersion)
 			queue.PushFromStorage(message)
+		},
+	)
+}
+
+func (storage *MsgStorage) PurgeQueue(queue string) {
+	prefix := []byte("msg." + queue)
+	storage.db.Iterate(
+		func(key []byte, value []byte) {
+			if !bytes.HasPrefix(key, prefix) {
+				return
+			}
+			storage.db.Del(string(key))
 		},
 	)
 }

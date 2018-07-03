@@ -27,6 +27,11 @@ func (storage *SrvStorage) AddQueue(vhost string, queue interfaces.AmqpQueue) er
 	return storage.db.Set(key, queue.Marshal(storage.protoVersion))
 }
 
+func (storage *SrvStorage) DelQueue(vhost string, queue interfaces.AmqpQueue) error {
+	key := fmt.Sprintf("%s.%s.%s", queuePrefix, vhost, queue.GetName())
+	return storage.db.Del(key)
+}
+
 func (storage *SrvStorage) GetVhostQueues(vhost string) []string {
 	queueNames := []string{}
 	storage.db.Iterate(

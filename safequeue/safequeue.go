@@ -93,3 +93,18 @@ func (queue *SafeQueue) DirtyLength() uint64 {
 func (queue *SafeQueue) HeadItem() (res interface{}) {
 	return queue.head[queue.headPos]
 }
+
+func (queue *SafeQueue) DirtyPurge() {
+	queue.shards = [][]interface{}{make([]interface{}, queue.shardSize)}
+	queue.tailIdx = 0
+	queue.tail = queue.shards[queue.tailIdx]
+	queue.headIdx = 0
+	queue.head = queue.shards[queue.headIdx]
+	queue.length = 0
+}
+
+func (queue *SafeQueue) Purge() {
+	queue.Lock()
+	defer queue.Unlock()
+	queue.DirtyPurge()
+}

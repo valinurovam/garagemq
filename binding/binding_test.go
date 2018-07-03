@@ -1,7 +1,6 @@
 package binding_test
 
 import (
-	"fmt"
 	"sort"
 	"testing"
 
@@ -49,6 +48,22 @@ func bindingsProviderData(topic bool) []interfaces.Binding {
 	return result
 }
 
+func matchesProviderDataDirect() map[string][]string {
+	return map[string][]string{
+		"a.b.c":               {"t1", "t20"},
+		"a.b":                 {"t15"},
+		"a.b.b":               {"t14"},
+		"":                    {"t17"},
+		"b.c.c":               {},
+		"a.a.a.a.a":           {},
+		"vodka.gin":           {},
+		"vodka.martini":       {"t19"},
+		"b.b.c":               {"t13"},
+		"nothing.here.at.all": {},
+		"oneword":             {},
+	}
+}
+
 func matchesProviderDataTopic() map[string][]string {
 	return map[string][]string{
 		"a.b.c":               {"t1", "t2", "t5", "t6", "t10", "t11", "t12", "t18", "t20", "t21", "t22", "t23", "t24", "t26"},
@@ -76,9 +91,68 @@ func TestBinding_MatchTopic(t *testing.T) {
 			}
 		}
 		if !testEq(matches, bindMatches) {
-			fmt.Println(key, matches, bindMatches)
 			t.Fatalf("Error on matching key '%s'", key)
 		}
+	}
+}
+
+func TestBinding_MatchDirect(t *testing.T) {
+	bindings := bindingsProviderData(false)
+	matchesExpected := matchesProviderDataDirect()
+	for key, matches := range matchesExpected {
+		bindMatches := []string{}
+		for _, bind := range bindings {
+			if bind.MatchDirect("", key) {
+				bindMatches = append(bindMatches, bind.GetQueue())
+			}
+		}
+		if !testEq(matches, bindMatches) {
+			t.Fatalf("Error on matching key '%s'", key)
+		}
+	}
+}
+
+func TestBinding_MatchFanout(t *testing.T) {
+	bindings := bindingsProviderData(false)
+	matched := true
+	for _, bind := range bindings {
+		if !bind.MatchFanout("") {
+			// all should be matched
+			matched = false
+		}
+	}
+	if !matched {
+		t.Fatalf("Error on matching fanout binding")
+	}
+}
+
+func TestBinding_Equal(t *testing.T) {
+	b1 := binding.New("test_q", "test_ex", "test_key", &amqp.Table{}, true)
+	b2 := binding.New("test_q", "test_ex", "test_key", &amqp.Table{}, true)
+
+	if !b1.Equal(b2) {
+		t.Fatalf("Excpected equal bindings")
+	}
+
+	b1 = binding.New("test_q1", "test_ex", "test_key", &amqp.Table{}, true)
+	b2 = binding.New("test_q", "test_ex", "test_key", &amqp.Table{}, true)
+
+	if b1.Equal(b2) {
+		t.Fatalf("Excpected not equal bindings")
+	}
+
+	b1 = binding.New("test_q", "test_ex2", "test_key", &amqp.Table{}, true)
+	b2 = binding.New("test_q", "test_ex", "test_key", &amqp.Table{}, true)
+
+	if b1.Equal(b2) {
+		t.Fatalf("Excpected not equal bindings")
+	}
+
+	b1 = binding.New("test_q", "test_ex", "test_key3", &amqp.Table{}, true)
+	b2 = binding.New("test_q", "test_ex", "test_key", &amqp.Table{}, true)
+
+	if b1.Equal(b2) {
+		t.Fatalf("Excpected not equal bindings")
 	}
 }
 

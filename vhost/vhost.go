@@ -178,6 +178,7 @@ func (vhost *VirtualHost) DeleteQueue(queueName string, ifUnused bool, ifEmpty b
 	for _, ex := range vhost.exchanges {
 		ex.RemoveQueueBindings(queueName)
 	}
+	vhost.srvStorage.DelQueue(vhost.name, qu)
 	delete(vhost.queues, queueName)
 
 	return length, nil
