@@ -105,6 +105,8 @@ func (channel *Channel) connectionOpen(method *amqp.ConnectionOpen) *amqp.Error 
 		return amqp.NewConnectionError(amqp.InvalidPath, "virtualHost '"+method.VirtualHost+"' does not exist", method.ClassIdentifier(), method.MethodIdentifier())
 	}
 
+	channel.conn.vhostName = method.VirtualHost
+
 	channel.SendMethod(&amqp.ConnectionOpenOk{})
 	channel.conn.status = ConnOpenOK
 

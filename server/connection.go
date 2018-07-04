@@ -42,6 +42,7 @@ type Connection struct {
 	status           int
 	qos              *qos.AmqpQos
 	virtualHost      *vhost.VirtualHost
+	vhostName        string
 }
 
 func NewConnection(server *Server, netConn *net.TCPConn) (connection *Connection) {
@@ -84,7 +85,7 @@ func (conn *Connection) close() {
 	conn.clearQueues()
 	conn.netConn.Close()
 	conn.logger.WithFields(log.Fields{
-		"vhost": conn.virtualHost.Name(),
+		"vhost": conn.vhostName,
 		"from":  conn.netConn.RemoteAddr(),
 	}).Info("Connection closed")
 	conn.server.removeConnection(conn.id)
@@ -92,6 +93,10 @@ func (conn *Connection) close() {
 
 func (conn *Connection) clearQueues() {
 	virtualHost := conn.getVirtualHost()
+	if virtualHost == nil {
+		// it is possible when conn close before open, for example login failure
+		return
+	}
 	for _, queue := range virtualHost.GetQueues() {
 		if queue.IsExclusive() && queue.ConnId() == conn.id {
 			virtualHost.DeleteQueue(queue.GetName(), false, false)
@@ -124,7 +129,7 @@ func (conn *Connection) handleConnection() {
 
 	// The client MUST start a new connection by sending a protocol header
 	var supported = []byte{'A', 'M', 'Q', 'P', 0, 0, 9, 1}
-	if bytes.Compare(buf, supported) != 0 {
+	if !bytes.Equal(buf, supported) {
 		conn.logger.WithFields(log.Fields{
 			"given":     buf,
 			"supported": supported,

@@ -14,6 +14,8 @@ func New(prefetchCount uint16, prefetchSize uint32) *AmqpQos {
 	return &AmqpQos{
 		prefetchCount: prefetchCount,
 		prefetchSize:  prefetchSize,
+		currentCount:  0,
+		currentSize:   0,
 	}
 }
 
@@ -46,8 +48,17 @@ func (qos *AmqpQos) Dec(count uint16, size uint32) {
 	qos.Lock()
 	defer qos.Unlock()
 
-	qos.currentCount = qos.currentCount - count
-	qos.currentSize = qos.currentSize - size
+	if qos.currentCount < count {
+		qos.currentCount = 0
+	} else {
+		qos.currentCount = qos.currentCount - count
+	}
+
+	if qos.currentSize < size {
+		qos.currentSize = 0
+	} else {
+		qos.currentSize = qos.currentSize - size
+	}
 }
 
 func (qos *AmqpQos) Release() {

@@ -18,7 +18,7 @@ func init() {
 	logrus.SetOutput(ioutil.Discard)
 	//logrus.SetFormatter(&logrus.TextFormatter{FullTimestamp: true})
 	//logrus.SetOutput(os.Stdout)
-	//logrus.SetLevel(logrus.InfoLevel)
+	//logrus.SetLevel(logrus.DebugLevel)
 }
 
 type ServerClient struct {
@@ -29,7 +29,8 @@ type ServerClient struct {
 }
 
 func (sc *ServerClient) clean() {
-	os.RemoveAll(sc.server.config.Db.DefaultPath)
+	cfg := getDefaultServerConfig()
+	os.RemoveAll(cfg.Db.DefaultPath)
 }
 
 func getDefaultServerConfig() *config.Config {
@@ -138,6 +139,7 @@ func Test_Connection_Failed_WhenWrongAuth(t *testing.T) {
 	sc, err := getNewSC(cfg)
 	defer sc.clean()
 	if err == nil {
+		// TODO Remove this. For DEF Only
 		//t.Fatal("Expected auth error")
 	}
 }
