@@ -149,7 +149,7 @@ func (channel *Channel) queueUnbind(method *amqp.QueueUnbind) *amqp.Error {
 	}
 
 	bind := binding.New(method.Queue, method.Exchange, method.RoutingKey, method.Arguments, ex.ExType == exchange.EX_TYPE_TOPIC)
-	ex.RemoveBiding(bind)
+	ex.RemoveBinding(bind)
 
 	channel.SendMethod(&amqp.QueueUnbindOk{})
 

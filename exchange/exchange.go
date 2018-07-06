@@ -78,7 +78,7 @@ func (ex *Exchange) AppendBinding(newBind interfaces.Binding) {
 	ex.bindings = append(ex.bindings, newBind)
 }
 
-func (ex *Exchange) RemoveBiding(rmBind interfaces.Binding) {
+func (ex *Exchange) RemoveBinding(rmBind interfaces.Binding) {
 	ex.bindLock.Lock()
 	defer ex.bindLock.Unlock()
 	for i, bind := range ex.bindings {
