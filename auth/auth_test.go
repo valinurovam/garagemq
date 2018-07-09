@@ -30,18 +30,34 @@ func TestParsePlain_Failed_WrongFormat(t *testing.T) {
 	}
 }
 
-func TestCheckPasswordHash(t *testing.T) {
+func TestCheckPasswordHash_Bcrypt(t *testing.T) {
 	password := "tEsTpAsSwOrD123"
-	hash, err := HashPassword(password)
+	hash, err := HashPassword(password, false)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	if !CheckPasswordHash(password, hash) {
+	if !CheckPasswordHash(password, hash, false) {
 		t.Fatal("Expected true on check password")
 	}
 
-	if CheckPasswordHash("tEsTpAsSwOrD", hash) {
-		//t.Fatal("Expected false on check password")
+	if CheckPasswordHash("tEsTpAsSwOrD", hash, false) {
+		t.Fatal("Expected false on check password")
+	}
+}
+
+func TestCheckPasswordHash_MD5(t *testing.T) {
+	password := "tEsTpAsSwOrD123"
+	hash, err := HashPassword(password, true)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if !CheckPasswordHash(password, hash, true) {
+		t.Fatal("Expected true on check password")
+	}
+
+	if CheckPasswordHash("tEsTpAsSwOrD", hash, true) {
+		t.Fatal("Expected false on check password")
 	}
 }

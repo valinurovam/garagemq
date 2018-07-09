@@ -14,6 +14,7 @@ import (
 const (
 	Started = iota
 	Stopped
+	Paused
 )
 
 var cid uint64
@@ -60,7 +61,7 @@ func (consumer *Consumer) Start() {
 
 func (consumer *Consumer) startConsume() {
 	for _ = range consumer.consume {
-		if consumer.status != Started {
+		if consumer.status == Stopped {
 			break
 		}
 		message := consumer.queue.PopQos(consumer.qos)
@@ -85,8 +86,16 @@ func (consumer *Consumer) startConsume() {
 	}
 }
 
+func (consumer *Consumer) Pause() {
+	consumer.status = Paused
+}
+
+func (consumer *Consumer) UnPause() {
+	consumer.status = Started
+}
+
 func (consumer *Consumer) Consume() {
-	if consumer.status == Stopped {
+	if consumer.status == Stopped || consumer.status == Paused {
 		return
 	}
 

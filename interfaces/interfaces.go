@@ -47,8 +47,10 @@ type Channel interface {
 type Consumer interface {
 	Consume()
 	Tag() string
-	Stop()
 	Start()
+	Stop()
+	Pause()
+	UnPause()
 	Cancel()
 }
 

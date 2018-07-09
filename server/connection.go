@@ -52,8 +52,8 @@ func NewConnection(server *Server, netConn *net.TCPConn) (connection *Connection
 		netConn:      netConn,
 		channels:     make(map[uint16]*Channel),
 		outgoing:     make(chan *amqp.Frame, 1),
-		maxChannels:  4096,
-		maxFrameSize: 65536,
+		maxChannels:  server.config.Connection.ChannelsMax,
+		maxFrameSize: server.config.Connection.FrameMaxSize,
 		qos:          qos.New(0, 0),
 	}
 

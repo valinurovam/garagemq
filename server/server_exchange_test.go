@@ -7,7 +7,7 @@ import (
 )
 
 func Test_DefaultExchanges(t *testing.T) {
-	sc, _ := getNewSC(getDefaultServerConfig())
+	sc, _ := getNewSC(getDefaultTestConfig())
 	defer sc.clean()
 	vhost := sc.server.GetVhost("/")
 
@@ -30,7 +30,7 @@ func Test_DefaultExchanges(t *testing.T) {
 }
 
 func Test_ExchangeDeclare_Success(t *testing.T) {
-	sc, _ := getNewSC(getDefaultServerConfig())
+	sc, _ := getNewSC(getDefaultTestConfig())
 	defer sc.clean()
 	ch, _ := sc.client.Channel()
 
@@ -44,7 +44,7 @@ func Test_ExchangeDeclare_Success(t *testing.T) {
 }
 
 func Test_ExchangeDeclare_Success_RedeclareEqual(t *testing.T) {
-	sc, _ := getNewSC(getDefaultServerConfig())
+	sc, _ := getNewSC(getDefaultTestConfig())
 	defer sc.clean()
 	ch, _ := sc.client.Channel()
 
@@ -55,8 +55,18 @@ func Test_ExchangeDeclare_Success_RedeclareEqual(t *testing.T) {
 	}
 }
 
+func Test_ExchangeDeclare_Failed_WrongType(t *testing.T) {
+	sc, _ := getNewSC(getDefaultTestConfig())
+	defer sc.clean()
+	ch, _ := sc.client.Channel()
+
+	if err := ch.ExchangeDeclare("test", "test", false, false, false, false, emptyTable); err == nil {
+		t.Fatal("Expected NotImplemented error")
+	}
+}
+
 func Test_ExchangeDeclare_Failed_RedeclareNotEqual(t *testing.T) {
-	sc, _ := getNewSC(getDefaultServerConfig())
+	sc, _ := getNewSC(getDefaultTestConfig())
 	defer sc.clean()
 	ch, _ := sc.client.Channel()
 
@@ -68,7 +78,7 @@ func Test_ExchangeDeclare_Failed_RedeclareNotEqual(t *testing.T) {
 }
 
 func Test_ExchangeDeclare_Failed_EmptyName(t *testing.T) {
-	sc, _ := getNewSC(getDefaultServerConfig())
+	sc, _ := getNewSC(getDefaultTestConfig())
 	defer sc.clean()
 	ch, _ := sc.client.Channel()
 
@@ -78,7 +88,7 @@ func Test_ExchangeDeclare_Failed_EmptyName(t *testing.T) {
 }
 
 func Test_ExchangeDeclare_Failed_DefaultName(t *testing.T) {
-	sc, _ := getNewSC(getDefaultServerConfig())
+	sc, _ := getNewSC(getDefaultTestConfig())
 	defer sc.clean()
 	ch, _ := sc.client.Channel()
 
@@ -88,7 +98,7 @@ func Test_ExchangeDeclare_Failed_DefaultName(t *testing.T) {
 }
 
 func Test_ExchangeDeclarePassive_Success(t *testing.T) {
-	sc, _ := getNewSC(getDefaultServerConfig())
+	sc, _ := getNewSC(getDefaultTestConfig())
 	defer sc.clean()
 	ch, _ := sc.client.Channel()
 
@@ -100,7 +110,7 @@ func Test_ExchangeDeclarePassive_Success(t *testing.T) {
 }
 
 func Test_ExchangeDeclarePassive_Failed_NotExists(t *testing.T) {
-	sc, _ := getNewSC(getDefaultServerConfig())
+	sc, _ := getNewSC(getDefaultTestConfig())
 	defer sc.clean()
 	ch, _ := sc.client.Channel()
 

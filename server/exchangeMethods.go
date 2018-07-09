@@ -84,7 +84,9 @@ func (channel *Channel) exchangeDeclare(method *amqp.ExchangeDeclare) *amqp.Erro
 	}
 
 	channel.conn.getVirtualHost().AppendExchange(newExchange)
-	channel.SendMethod(&amqp.ExchangeDeclareOk{})
+	if !method.NoWait {
+		channel.SendMethod(&amqp.ExchangeDeclareOk{})
+	}
 
 	return nil
 }

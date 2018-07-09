@@ -19,6 +19,14 @@ func New(prefetchCount uint16, prefetchSize uint32) *AmqpQos {
 	}
 }
 
+func (qos *AmqpQos) PrefetchCount() uint16 {
+	return qos.prefetchCount
+}
+
+func (qos *AmqpQos) PrefetchSize() uint32 {
+	return qos.prefetchSize
+}
+
 func (qos *AmqpQos) Update(prefetchCount uint16, prefetchSize uint32) {
 	qos.prefetchCount = prefetchCount
 	qos.prefetchSize = prefetchSize

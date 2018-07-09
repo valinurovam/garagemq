@@ -4,7 +4,6 @@ import (
 	"io/ioutil"
 	"net"
 	"os"
-	"testing"
 
 	"github.com/sirupsen/logrus"
 	amqpclient "github.com/streadway/amqp"
@@ -28,36 +27,58 @@ type ServerClient struct {
 	clientEx *amqpclient.Connection
 }
 
-func (sc *ServerClient) clean() {
-	cfg := getDefaultServerConfig()
-	os.RemoveAll(cfg.Db.DefaultPath)
+type TestConfig struct {
+	srvConfig    config.Config
+	clientConfig amqpclient.Config
 }
 
-func getDefaultServerConfig() *config.Config {
-	return &config.Config{
-		Users: []config.ConfigUser{
-			{
-				Username: "guest",
-				Password: "$2a$14$OR8Od7QJ4yjck89RNWM0TeYJrQSIZLQ13ptktd3n.bStXuhZTcnuq", // guest hash
+func (sc *ServerClient) clean() {
+	cfg := getDefaultTestConfig()
+	os.RemoveAll(cfg.srvConfig.Db.DefaultPath)
+}
+
+func getDefaultTestConfig() TestConfig {
+	return TestConfig{
+		srvConfig: config.Config{
+			Users: []config.ConfigUser{
+				{
+					Username: "test",
+					Password: "084e0343a0486ff05530df6c705c8bb4", // guest md5 hash
+				},
+				{
+					Username: "guest",
+					Password: "084e0343a0486ff05530df6c705c8bb4", // guest md5 hash
+				},
+			},
+			Tcp: config.TcpConfig{
+				Nodelay:      false,
+				ReadBufSize:  0,
+				WriteBufSize: 0,
+			},
+			Queue: config.Queue{
+				ShardSize: 128,
+			},
+			Db: config.Db{
+				DefaultPath: "db_test",
+				Engine:      "badger",
+			},
+			Vhost: config.Vhost{
+				DefaultPath: "/",
+			},
+			Security: config.Security{
+				PasswordCheck: "md5",
+			},
+			Connection: config.Connection{
+				ChannelsMax:  4096,
+				FrameMaxSize: 65536,
 			},
 		},
-		Tcp: config.TcpConfig{
-			Nodelay:      false,
-			ReadBufSize:  0,
-			WriteBufSize: 0,
-		},
-		Queue: config.Queue{
-			ShardSize: 128,
-		},
-		Db: config.Db{
-			DefaultPath: "db_test",
-			Engine:      "badger",
-		},
+		clientConfig: amqpclient.Config{},
 	}
 }
-func getNewSC(config *config.Config) (*ServerClient, error) {
+func getNewSC(config TestConfig) (*ServerClient, error) {
 	sc := &ServerClient{}
-	sc.server = NewServer("localhost", "0", amqp.ProtoRabbit, config)
+	sc.server = NewServer("localhost", "0", amqp.ProtoRabbit, &config.srvConfig)
 	sc.server.initServerStorage()
 	sc.server.initUsers()
 	sc.server.initDefaultVirtualHosts()
@@ -69,19 +90,19 @@ func getNewSC(config *config.Config) (*ServerClient, error) {
 	sc.server.acceptConnection(fromClient)
 	sc.server.acceptConnection(fromClientEx)
 
-	clientConfig := amqpclient.Config{
-		Dial: func(network, addr string) (net.Conn, error) {
-			return toServer, nil
-		},
+	clientConfig := config.clientConfig
+	clientConfig.Dial = func(network, addr string) (net.Conn, error) {
+		return toServer, nil
 	}
+
 	sc.client, err = amqpclient.DialConfig("amqp://localhost:0", clientConfig)
 	if err != nil {
 		return nil, err
 	}
-	clientConfigEx := amqpclient.Config{
-		Dial: func(network, addr string) (net.Conn, error) {
-			return toServerEx, nil
-		},
+
+	clientConfigEx := config.clientConfig
+	clientConfigEx.Dial = func(network, addr string) (net.Conn, error) {
+		return toServerEx, nil
 	}
 	sc.clientEx, err = amqpclient.DialConfig("amqp://localhost:0", clientConfigEx)
 	if err != nil {
@@ -120,26 +141,7 @@ func networkSim() (net.Conn, net.Conn, *net.TCPConn, *net.TCPConn, error) {
 	return toServer1, toServer2, fromClient1, fromClient2, nil
 }
 
-func Test_Connection_Success(t *testing.T) {
-	sc, err := getNewSC(getDefaultServerConfig())
-	defer sc.clean()
-	if err != nil {
-		t.Fatal(err)
-	}
-}
-
-func Test_Connection_Failed_WhenWrongAuth(t *testing.T) {
-	cfg := getDefaultServerConfig()
-	cfg.Users = []config.ConfigUser{
-		{
-			Username: "guest",
-			Password: "guest?",
-		},
-	}
-	sc, err := getNewSC(cfg)
-	defer sc.clean()
-	if err == nil {
-		// TODO Remove this. For DEF Only
-		//t.Fatal("Expected auth error")
-	}
+func getServerChannel(sc *ServerClient, id uint16) *Channel {
+	channels := sc.server.connections[sc.server.connSeq-1].channels
+	return channels[id]
 }

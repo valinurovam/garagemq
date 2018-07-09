@@ -23,6 +23,7 @@ const (
 )
 
 type Channel struct {
+	active         bool
 	id             uint16
 	conn           *Connection
 	server         *Server
@@ -49,6 +50,7 @@ type UnackedMessage struct {
 
 func NewChannel(id uint16, conn *Connection) (*Channel) {
 	channel := &Channel{
+		active:       true,
 		id:           id,
 		conn:         conn,
 		server:       conn.server,
@@ -166,6 +168,14 @@ func (channel *Channel) handleContentHeader(headerFrame *amqp.Frame) *amqp.Error
 }
 
 func (channel *Channel) handleContentBody(bodyFrame *amqp.Frame) *amqp.Error {
+	if channel.currentMessage == nil {
+		return amqp.NewConnectionError(amqp.FrameError, "unexpected content body frame", 0, 0)
+	}
+
+	if channel.currentMessage.Header == nil {
+		return amqp.NewConnectionError(amqp.FrameError, "unexpected content body frame - no header yet", 0, 0)
+	}
+
 	channel.currentMessage.Append(bodyFrame)
 
 	if channel.currentMessage.BodySize < channel.currentMessage.Header.BodySize {
@@ -175,6 +185,13 @@ func (channel *Channel) handleContentBody(bodyFrame *amqp.Frame) *amqp.Error {
 	vhost := channel.conn.getVirtualHost()
 	message := channel.currentMessage
 	exchange := vhost.GetExchange(message.Exchange)
+	if exchange == nil {
+		channel.SendContent(
+			&amqp.BasicReturn{ReplyCode: amqp.NoConsumers, ReplyText: "No route", Exchange: message.Exchange, RoutingKey: message.RoutingKey},
+			message,
+		)
+		return nil
+	}
 	matchedQueues := exchange.GetMatchedQueues(message)
 
 	if len(matchedQueues) == 0 && message.Mandatory {
@@ -263,9 +280,9 @@ func (channel *Channel) close() {
 
 func (channel *Channel) updateQos(prefetchCount uint16, prefetchSize uint32, global bool) {
 	if global {
-		channel.qos.Update(prefetchCount, prefetchSize)
-	} else {
 		channel.conn.qos.Update(prefetchCount, prefetchSize)
+	} else {
+		channel.qos.Update(prefetchCount, prefetchSize)
 	}
 }
 
@@ -347,4 +364,28 @@ func (channel *Channel) checkQueueLockWithError(qu interfaces.AmqpQueue, method 
 	}
 
 	return nil
+}
+
+func (channel *Channel) IsActive() bool {
+	return channel.active
+}
+
+func (channel *Channel) changeFlow(active bool) {
+	if channel.active == active {
+		return
+	}
+	channel.active = active
+
+	channel.cmrLock.Lock()
+	if channel.active {
+		for _, cmr := range channel.consumers {
+			cmr.UnPause()
+			cmr.Consume()
+		}
+	} else {
+		for _, cmr := range channel.consumers {
+			cmr.Pause()
+		}
+	}
+	channel.cmrLock.Unlock()
 }

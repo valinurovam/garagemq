@@ -12,6 +12,10 @@ func (channel *Channel) channelRoute(method amqp.Method) *amqp.Error {
 		return channel.channelClose(method)
 	case *amqp.ChannelCloseOk:
 		return channel.channelCloseOk(method)
+	case *amqp.ChannelFlow:
+		return channel.channelFlow(method)
+	case *amqp.ChannelFlowOk:
+		return amqp.NewConnectionError(amqp.NotImplemented, "method ChannelFlowOk does not implemented yet", method.ClassIdentifier(), method.MethodIdentifier())
 	}
 
 	return amqp.NewConnectionError(amqp.NotImplemented, "unable to route channel method "+method.Name(), method.ClassIdentifier(), method.MethodIdentifier())
@@ -38,5 +42,11 @@ func (channel *Channel) channelClose(method *amqp.ChannelClose) (err *amqp.Error
 
 func (channel *Channel) channelCloseOk(method *amqp.ChannelCloseOk) (err *amqp.Error) {
 	channel.status = ChannelClosed
+	return nil
+}
+
+func (channel *Channel) channelFlow(method *amqp.ChannelFlow) (err *amqp.Error) {
+	channel.changeFlow(method.Active)
+	channel.SendMethod(&amqp.ChannelFlowOk{Active: method.Active})
 	return nil
 }

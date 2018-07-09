@@ -18,14 +18,8 @@ func (channel *Channel) connectionRoute(method amqp.Method) *amqp.Error {
 		return channel.connectionOpen(method)
 	case *amqp.ConnectionClose:
 		return channel.connectionClose(method)
-	case *amqp.ConnectionSecureOk:
-		return channel.connectionSecureOk(method)
 	case *amqp.ConnectionCloseOk:
 		return channel.connectionCloseOk(method)
-	case *amqp.ConnectionBlocked:
-		return channel.connectionBlocked(method)
-	case *amqp.ConnectionUnblocked:
-		return channel.connectionUnblocked(method)
 	}
 
 	return amqp.NewConnectionError(amqp.NotImplemented, "unable to route connection method", method.ClassIdentifier(), method.MethodIdentifier())
@@ -122,16 +116,4 @@ func (channel *Channel) connectionClose(method *amqp.ConnectionClose) *amqp.Erro
 func (channel *Channel) connectionCloseOk(method *amqp.ConnectionCloseOk) *amqp.Error {
 	channel.conn.close()
 	return nil
-}
-
-func (channel *Channel) connectionSecureOk(method *amqp.ConnectionSecureOk) *amqp.Error {
-	return amqp.NewConnectionError(amqp.NotImplemented, "method ConnectionSecureOk does not implemented yet", method.ClassIdentifier(), method.MethodIdentifier())
-}
-
-func (channel *Channel) connectionBlocked(method *amqp.ConnectionBlocked) *amqp.Error {
-	return amqp.NewConnectionError(amqp.NotImplemented, "method ConnectionBlocked does not implemented yet", method.ClassIdentifier(), method.MethodIdentifier())
-}
-
-func (channel *Channel) connectionUnblocked(method *amqp.ConnectionUnblocked) *amqp.Error {
-	return amqp.NewConnectionError(amqp.NotImplemented, "method ConnectionUnblocked does not implemented yet", method.ClassIdentifier(), method.MethodIdentifier())
 }

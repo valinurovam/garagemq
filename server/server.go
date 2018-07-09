@@ -159,7 +159,11 @@ func (srv *Server) checkAuth(saslData auth.SaslData) bool {
 			continue
 		}
 
-		return auth.CheckPasswordHash(saslData.Password, passwordHash);
+		return auth.CheckPasswordHash(
+			saslData.Password,
+			passwordHash,
+			srv.config.Security.PasswordCheck == "md5",
+		);
 	}
 	return false
 }
@@ -176,26 +180,19 @@ func (srv *Server) initServerStorage() {
 
 func (srv *Server) initDefaultVirtualHosts() {
 	log.WithFields(log.Fields{
-		"vhost": "/",
+		"vhost": srv.config.Vhost.DefaultPath,
 	}).Info("Initialize default vhost")
 
 	log.Info("Initialize host message msgStorage")
-	msgStorage := msgstorage.New(srv.getStorageInstance("/"), srv.protoVersion)
+	msgStorage := msgstorage.New(srv.getStorageInstance("vhost_default"), srv.protoVersion)
 
 	srv.vhostsLock.Lock()
 	defer srv.vhostsLock.Unlock()
-	srv.vhosts["/"] = vhost.New("/", true, msgStorage, srv.storage, srv.config)
+	srv.vhosts[srv.config.Vhost.DefaultPath] = vhost.New(srv.config.Vhost.DefaultPath, true, msgStorage, srv.storage, srv.config)
 }
 
 func (srv *Server) getStorageInstance(name string) interfaces.DbStorage {
-	var stName string
-	if name == "/" {
-		stName = "default"
-	} else {
-		stName = name
-	}
-
-	stPath := fmt.Sprintf("%s/%s/%s", srv.config.Db.DefaultPath, srv.config.Db.Engine, stName)
+	stPath := fmt.Sprintf("%s/%s/%s", srv.config.Db.DefaultPath, srv.config.Db.Engine, name)
 
 	if err := os.MkdirAll(stPath, 0777); err != nil {
 		// TODO is here true way to handle error?
@@ -203,7 +200,6 @@ func (srv *Server) getStorageInstance(name string) interfaces.DbStorage {
 	}
 
 	log.WithFields(log.Fields{
-		"vhost":  "/",
 		"path":   stPath,
 		"engine": srv.config.Db.Engine,
 	}).Info("Open db storage")

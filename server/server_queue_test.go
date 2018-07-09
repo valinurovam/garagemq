@@ -8,7 +8,7 @@ import (
 )
 
 func Test_QueueDeclare_Success(t *testing.T) {
-	sc, _ := getNewSC(getDefaultServerConfig())
+	sc, _ := getNewSC(getDefaultTestConfig())
 	defer sc.clean()
 	ch, _ := sc.client.Channel()
 
@@ -22,7 +22,7 @@ func Test_QueueDeclare_Success(t *testing.T) {
 }
 
 func Test_QueueDeclareDurable_Success(t *testing.T) {
-	sc, _ := getNewSC(getDefaultServerConfig())
+	sc, _ := getNewSC(getDefaultTestConfig())
 	defer sc.clean()
 	ch, _ := sc.client.Channel()
 
@@ -51,7 +51,7 @@ func Test_QueueDeclareDurable_Success(t *testing.T) {
 }
 
 func Test_QueueDeclare_HasDefaultRoute(t *testing.T) {
-	sc, _ := getNewSC(getDefaultServerConfig())
+	sc, _ := getNewSC(getDefaultTestConfig())
 	defer sc.clean()
 	ch, _ := sc.client.Channel()
 
@@ -73,7 +73,7 @@ func Test_QueueDeclare_HasDefaultRoute(t *testing.T) {
 }
 
 func Test_QueueDeclare_Success_RedeclareEqual(t *testing.T) {
-	sc, _ := getNewSC(getDefaultServerConfig())
+	sc, _ := getNewSC(getDefaultTestConfig())
 	defer sc.clean()
 	ch, _ := sc.client.Channel()
 
@@ -85,7 +85,7 @@ func Test_QueueDeclare_Success_RedeclareEqual(t *testing.T) {
 }
 
 func Test_QueueDeclare_Failed_RedeclareNotEqual(t *testing.T) {
-	sc, _ := getNewSC(getDefaultServerConfig())
+	sc, _ := getNewSC(getDefaultTestConfig())
 	defer sc.clean()
 	ch, _ := sc.client.Channel()
 
@@ -97,7 +97,7 @@ func Test_QueueDeclare_Failed_RedeclareNotEqual(t *testing.T) {
 }
 
 func Test_QueueDeclare_Failed_EmptyName(t *testing.T) {
-	sc, _ := getNewSC(getDefaultServerConfig())
+	sc, _ := getNewSC(getDefaultTestConfig())
 	defer sc.clean()
 	ch, _ := sc.client.Channel()
 
@@ -107,7 +107,7 @@ func Test_QueueDeclare_Failed_EmptyName(t *testing.T) {
 }
 
 func Test_QueueDeclarePassive_Success(t *testing.T) {
-	sc, _ := getNewSC(getDefaultServerConfig())
+	sc, _ := getNewSC(getDefaultTestConfig())
 	defer sc.clean()
 	ch, _ := sc.client.Channel()
 
@@ -119,7 +119,7 @@ func Test_QueueDeclarePassive_Success(t *testing.T) {
 }
 
 func Test_QueueDeclarePassive_Failed_NotExists(t *testing.T) {
-	sc, _ := getNewSC(getDefaultServerConfig())
+	sc, _ := getNewSC(getDefaultTestConfig())
 	defer sc.clean()
 	ch, _ := sc.client.Channel()
 
@@ -130,8 +130,21 @@ func Test_QueueDeclarePassive_Failed_NotExists(t *testing.T) {
 	}
 }
 
+func Test_QueueDeclarePassive_Failed_Locked(t *testing.T) {
+	sc, _ := getNewSC(getDefaultTestConfig())
+	defer sc.clean()
+	ch, _ := sc.client.Channel()
+	exCH, _ := sc.clientEx.Channel()
+
+	ch.QueueDeclare("test", false, false, true, false, emptyTable)
+
+	if _, err := exCH.QueueDeclarePassive("test", false, false, false, false, emptyTable); err == nil {
+		t.Fatal("Expected: queue is locked error")
+	}
+}
+
 func Test_QueueDeclareExclusive_Success(t *testing.T) {
-	sc, _ := getNewSC(getDefaultServerConfig())
+	sc, _ := getNewSC(getDefaultTestConfig())
 	defer sc.clean()
 	ch, _ := sc.client.Channel()
 
@@ -145,7 +158,7 @@ func Test_QueueDeclareExclusive_Success(t *testing.T) {
 }
 
 func Test_QueueDeclareExclusive_Failed_Locked(t *testing.T) {
-	sc, _ := getNewSC(getDefaultServerConfig())
+	sc, _ := getNewSC(getDefaultTestConfig())
 	defer sc.clean()
 	ch, _ := sc.client.Channel()
 	exCH, _ := sc.clientEx.Channel()
@@ -158,7 +171,7 @@ func Test_QueueDeclareExclusive_Failed_Locked(t *testing.T) {
 }
 
 func Test_QueueDeclareNotExclusive_Success(t *testing.T) {
-	sc, _ := getNewSC(getDefaultServerConfig())
+	sc, _ := getNewSC(getDefaultTestConfig())
 	defer sc.clean()
 	ch, _ := sc.client.Channel()
 	exCH, _ := sc.clientEx.Channel()
@@ -171,7 +184,7 @@ func Test_QueueDeclareNotExclusive_Success(t *testing.T) {
 }
 
 func Test_QueueBind_Success(t *testing.T) {
-	sc, _ := getNewSC(getDefaultServerConfig())
+	sc, _ := getNewSC(getDefaultTestConfig())
 	defer sc.clean()
 	ch, _ := sc.client.Channel()
 
@@ -194,7 +207,7 @@ func Test_QueueBind_Success(t *testing.T) {
 }
 
 func Test_QueueBind_Success_Rebind(t *testing.T) {
-	sc, _ := getNewSC(getDefaultServerConfig())
+	sc, _ := getNewSC(getDefaultTestConfig())
 	defer sc.clean()
 	ch, _ := sc.client.Channel()
 
@@ -217,8 +230,34 @@ func Test_QueueBind_Success_Rebind(t *testing.T) {
 	}
 }
 
+func Test_QueueBind_Failed_ExchangeNotExists(t *testing.T) {
+	sc, _ := getNewSC(getDefaultTestConfig())
+	defer sc.clean()
+	ch, _ := sc.client.Channel()
+
+	ch.ExchangeDeclare("testEx", "direct", false, false, false, false, emptyTable)
+	ch.QueueDeclare("testQu", false, false, true, false, emptyTable)
+
+	if err := ch.QueueBind("testQu", "key", "test_Ex", false, emptyTable); err == nil {
+		t.Fatal("Expected: exchange does not exists")
+	}
+}
+
+func Test_QueueBind_Failed_QueueNotExists(t *testing.T) {
+	sc, _ := getNewSC(getDefaultTestConfig())
+	defer sc.clean()
+	ch, _ := sc.client.Channel()
+
+	ch.ExchangeDeclare("testEx", "direct", false, false, false, false, emptyTable)
+	ch.QueueDeclare("testQu", false, false, true, false, emptyTable)
+
+	if err := ch.QueueBind("test_Qu", "key", "testEx", false, emptyTable); err == nil {
+		t.Fatal("Expected: queue does not exists")
+	}
+}
+
 func Test_QueueBind_Failed_OnExclusiveQueue(t *testing.T) {
-	sc, _ := getNewSC(getDefaultServerConfig())
+	sc, _ := getNewSC(getDefaultTestConfig())
 	defer sc.clean()
 	ch, _ := sc.client.Channel()
 	chEx, _ := sc.clientEx.Channel()
@@ -232,7 +271,7 @@ func Test_QueueBind_Failed_OnExclusiveQueue(t *testing.T) {
 }
 
 func Test_QueueUnbind_Success(t *testing.T) {
-	sc, _ := getNewSC(getDefaultServerConfig())
+	sc, _ := getNewSC(getDefaultTestConfig())
 	defer sc.clean()
 	ch, _ := sc.client.Channel()
 
@@ -253,8 +292,50 @@ func Test_QueueUnbind_Success(t *testing.T) {
 	}
 }
 
+func Test_QueueUnbind_FailedExchangeNotExists(t *testing.T) {
+	sc, _ := getNewSC(getDefaultTestConfig())
+	defer sc.clean()
+	ch, _ := sc.client.Channel()
+
+	ch.ExchangeDeclare("testEx", "direct", false, false, false, false, emptyTable)
+	ch.QueueDeclare("testQu", false, false, false, false, emptyTable)
+
+	ch.QueueBind("testQu", "key", "testEx", false, emptyTable)
+	if err := ch.QueueUnbind("testQu", "key", "test_Ex", emptyTable); err == nil {
+		t.Fatal("Expected: exchange does not exists")
+	}
+}
+
+func Test_QueueUnbind_FailedQueueNotExists(t *testing.T) {
+	sc, _ := getNewSC(getDefaultTestConfig())
+	defer sc.clean()
+	ch, _ := sc.client.Channel()
+
+	ch.ExchangeDeclare("testEx", "direct", false, false, false, false, emptyTable)
+	ch.QueueDeclare("testQu", false, false, false, false, emptyTable)
+
+	ch.QueueBind("testQu", "key", "testEx", false, emptyTable)
+	if err := ch.QueueUnbind("test_Qu", "key", "testEx", emptyTable); err == nil {
+		t.Fatal("Expected: queue does not exists")
+	}
+}
+
+func Test_QueueUnbind_Failed_OnExclusiveQueue(t *testing.T) {
+	sc, _ := getNewSC(getDefaultTestConfig())
+	defer sc.clean()
+	ch, _ := sc.client.Channel()
+	chEx, _ := sc.clientEx.Channel()
+
+	ch.ExchangeDeclare("testEx", "direct", false, false, false, false, emptyTable)
+	ch.QueueDeclare("testQu", false, false, true, false, emptyTable)
+
+	if err := chEx.QueueUnbind("testQu", "key", "testEx", emptyTable); err == nil {
+		t.Fatal("Expected: queue is locked error")
+	}
+}
+
 func Test_QueuePurge_Success(t *testing.T) {
-	sc, _ := getNewSC(getDefaultServerConfig())
+	sc, _ := getNewSC(getDefaultTestConfig())
 	defer sc.clean()
 	ch, _ := sc.client.Channel()
 	queue, _ := ch.QueueDeclare("test", false, false, false, false, emptyTable)
@@ -284,8 +365,35 @@ func Test_QueuePurge_Success(t *testing.T) {
 	}
 }
 
+func Test_QueuePurge_Failed_QueueNotExists(t *testing.T) {
+	sc, _ := getNewSC(getDefaultTestConfig())
+	defer sc.clean()
+	ch, _ := sc.client.Channel()
+
+	ch.ExchangeDeclare("testEx", "direct", false, false, false, false, emptyTable)
+	ch.QueueDeclare("testQu", false, false, true, false, emptyTable)
+
+	if _, err := ch.QueuePurge("test_Qu", false); err == nil {
+		t.Fatal("Expected: queue does not exists")
+	}
+}
+
+func Test_QueuePurge_Failed_OnExclusiveQueue(t *testing.T) {
+	sc, _ := getNewSC(getDefaultTestConfig())
+	defer sc.clean()
+	ch, _ := sc.client.Channel()
+	chEx, _ := sc.clientEx.Channel()
+
+	ch.ExchangeDeclare("testEx", "direct", false, false, false, false, emptyTable)
+	ch.QueueDeclare("testQu", false, false, true, false, emptyTable)
+
+	if _, err := chEx.QueuePurge("testQu", false); err == nil {
+		t.Fatal("Expected: queue is locked error")
+	}
+}
+
 func Test_QueueDelete_Success(t *testing.T) {
-	sc, _ := getNewSC(getDefaultServerConfig())
+	sc, _ := getNewSC(getDefaultTestConfig())
 	defer sc.clean()
 	ch, _ := sc.client.Channel()
 	queue, _ := ch.QueueDeclare("test", false, false, false, false, emptyTable)
@@ -311,7 +419,7 @@ func Test_QueueDelete_Success(t *testing.T) {
 }
 
 func Test_QueueDeleteDurable_Success(t *testing.T) {
-	sc, _ := getNewSC(getDefaultServerConfig())
+	sc, _ := getNewSC(getDefaultTestConfig())
 	defer sc.clean()
 	ch, _ := sc.client.Channel()
 	queue, _ := ch.QueueDeclare("test", true, false, false, false, emptyTable)
@@ -353,7 +461,7 @@ func Test_QueueDeleteDurable_Success(t *testing.T) {
 }
 
 func Test_QueueDelete_Failed_NotEmpty(t *testing.T) {
-	sc, _ := getNewSC(getDefaultServerConfig())
+	sc, _ := getNewSC(getDefaultTestConfig())
 	defer sc.clean()
 	ch, _ := sc.client.Channel()
 	queue, _ := ch.QueueDeclare("test", false, false, false, false, emptyTable)
@@ -367,5 +475,32 @@ func Test_QueueDelete_Failed_NotEmpty(t *testing.T) {
 	var _, err = ch.QueueDelete("test", false, true, false)
 	if err == nil {
 		t.Fatal("Expected: queue has messages error")
+	}
+}
+
+func Test_QueueDelete_Failed_QueueNotExists(t *testing.T) {
+	sc, _ := getNewSC(getDefaultTestConfig())
+	defer sc.clean()
+	ch, _ := sc.client.Channel()
+
+	ch.ExchangeDeclare("testEx", "direct", false, false, false, false, emptyTable)
+	ch.QueueDeclare("testQu", false, false, true, false, emptyTable)
+
+	if _, err := ch.QueueDelete("test_Qu", false, false, false); err == nil {
+		t.Fatal("Expected: queue does not exists")
+	}
+}
+
+func Test_QueueDelete_Failed_OnExclusiveQueue(t *testing.T) {
+	sc, _ := getNewSC(getDefaultTestConfig())
+	defer sc.clean()
+	ch, _ := sc.client.Channel()
+	chEx, _ := sc.clientEx.Channel()
+
+	ch.ExchangeDeclare("testEx", "direct", false, false, false, false, emptyTable)
+	ch.QueueDeclare("testQu", false, false, true, false, emptyTable)
+
+	if _, err := chEx.QueueDelete("testQu", false, false, false); err == nil {
+		t.Fatal("Expected: queue is locked error")
 	}
 }

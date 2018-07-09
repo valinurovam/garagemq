@@ -1,10 +1,13 @@
 package config
 
 type Config struct {
-	Users []ConfigUser
-	Tcp   TcpConfig
-	Queue Queue
-	Db    Db
+	Users      []ConfigUser
+	Tcp        TcpConfig
+	Queue      Queue
+	Db         Db
+	Vhost      Vhost
+	Security   Security
+	Connection Connection
 }
 
 type ConfigUser struct {
@@ -25,4 +28,17 @@ type Queue struct {
 type Db struct {
 	DefaultPath string `yaml:"defaultPath"`
 	Engine      string `yaml:"engine"`
+}
+
+type Vhost struct {
+	DefaultPath string `yaml:"defaultPath"`
+}
+
+type Security struct {
+	PasswordCheck string `yaml:"passwordCheck"`
+}
+
+type Connection struct {
+	ChannelsMax  uint16 `yaml:"channelsMax"`
+	FrameMaxSize uint32 `yaml:"frameMaxSize"`
 }
