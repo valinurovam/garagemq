@@ -5,6 +5,14 @@ import "testing"
 func TestAmqpQos_IsActive(t *testing.T) {
 	q := New(1, 10)
 
+	if q.PrefetchSize() != 10 {
+		t.Fatalf("PrefetchSize: Expected %d, actual %d", 10, q.PrefetchSize())
+	}
+
+	if q.PrefetchCount() != 1 {
+		t.Fatalf("PrefetchCount: Expected %d, actual %d", 1, q.PrefetchCount())
+	}
+
 	if !q.IsActive() {
 		t.Fatalf("Expected active qos")
 	}

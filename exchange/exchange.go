@@ -1,6 +1,7 @@
 package exchange
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"sync"
@@ -16,14 +17,14 @@ const (
 	EX_TYPE_HEADERS
 )
 
-var exchangeTypeIdAliasMap = map[int]string{
+var exchangeTypeIdAliasMap = map[byte]string{
 	EX_TYPE_DIRECT:  "direct",
 	EX_TYPE_FANOUT:  "fanout",
 	EX_TYPE_TOPIC:   "topic",
 	EX_TYPE_HEADERS: "headers",
 }
 
-var exchangeTypeAliasIdMap = map[string]int{
+var exchangeTypeAliasIdMap = map[string]byte{
 	"direct":  EX_TYPE_DIRECT,
 	"fanout":  EX_TYPE_FANOUT,
 	"topic":   EX_TYPE_TOPIC,
@@ -32,7 +33,7 @@ var exchangeTypeAliasIdMap = map[string]int{
 
 type Exchange struct {
 	Name       string
-	ExType     int
+	exType     byte
 	durable    bool
 	autoDelete bool
 	internal   bool
@@ -42,24 +43,24 @@ type Exchange struct {
 	bindings   []interfaces.Binding
 }
 
-func GetExchangeTypeAlias(id int) (alias string, err error) {
+func GetExchangeTypeAlias(id byte) (alias string, err error) {
 	if alias, ok := exchangeTypeIdAliasMap[id]; ok {
 		return alias, nil
 	}
 	return "", errors.New(fmt.Sprintf("Undefined exchange type '%d'", id))
 }
 
-func GetExchangeTypeId(alias string) (id int, err error) {
+func GetExchangeTypeId(alias string) (id byte, err error) {
 	if id, ok := exchangeTypeAliasIdMap[alias]; ok {
 		return id, nil
 	}
 	return 0, errors.New(fmt.Sprintf("Undefined exchange alias '%s'", alias))
 }
 
-func New(name string, exType int, durable bool, autoDelete bool, internal bool, system bool, arguments *amqp.Table) *Exchange {
+func New(name string, exType byte, durable bool, autoDelete bool, internal bool, system bool) *Exchange {
 	return &Exchange{
 		Name:       name,
-		ExType:     exType,
+		exType:     exType,
 		durable:    durable,
 		autoDelete: autoDelete,
 		internal:   internal,
@@ -104,7 +105,7 @@ func (ex *Exchange) RemoveQueueBindings(queueName string) {
 
 func (ex *Exchange) GetMatchedQueues(message *amqp.Message) (matchedQueues map[string]bool) {
 	matchedQueues = make(map[string]bool)
-	switch ex.ExType {
+	switch ex.exType {
 	case EX_TYPE_DIRECT:
 		for _, bind := range ex.bindings {
 			if bind.MatchDirect(message.Exchange, message.RoutingKey) {
@@ -128,11 +129,11 @@ func (ex *Exchange) GetMatchedQueues(message *amqp.Message) (matchedQueues map[s
 	return
 }
 
-func (exA *Exchange) EqualWithErr(exB *Exchange) error {
+func (exA *Exchange) EqualWithErr(exB interfaces.Exchange) error {
 	errTemplate := "inequivalent arg '%s' for exchange '%s': received '%s' but current is '%s'"
-	if exA.ExType != exB.ExType {
-		aliasA, _ := GetExchangeTypeAlias(exA.ExType)
-		aliasB, _ := GetExchangeTypeAlias(exB.ExType)
+	if exA.exType != exB.ExType() {
+		aliasA, _ := GetExchangeTypeAlias(exA.exType)
+		aliasB, _ := GetExchangeTypeAlias(exB.ExType())
 		return errors.New(fmt.Sprintf(
 			errTemplate,
 			"type",
@@ -141,14 +142,14 @@ func (exA *Exchange) EqualWithErr(exB *Exchange) error {
 			aliasA,
 		))
 	}
-	if exA.durable != exB.durable {
-		return errors.New(fmt.Sprintf(errTemplate, "durable", exA.Name, exB.durable, exA.durable))
+	if exA.durable != exB.IsDurable() {
+		return errors.New(fmt.Sprintf(errTemplate, "durable", exA.Name, exB.IsDurable(), exA.durable))
 	}
-	if exA.autoDelete != exB.autoDelete {
-		return errors.New(fmt.Sprintf(errTemplate, "autoDelete", exA.Name, exB.autoDelete, exA.autoDelete))
+	if exA.autoDelete != exB.IsAutoDelete() {
+		return errors.New(fmt.Sprintf(errTemplate, "autoDelete", exA.Name, exB.IsAutoDelete(), exA.autoDelete))
 	}
-	if exA.internal != exB.internal {
-		return errors.New(fmt.Sprintf(errTemplate, "internal", exA.Name, exB.internal, exA.internal))
+	if exA.internal != exB.IsInternal() {
+		return errors.New(fmt.Sprintf(errTemplate, "internal", exA.Name, exB.IsInternal(), exA.internal))
 	}
 	return nil
 }
@@ -157,4 +158,42 @@ func (ex *Exchange) GetBindings() []interfaces.Binding {
 	ex.bindLock.Lock()
 	defer ex.bindLock.Unlock()
 	return ex.bindings
+}
+
+func (ex *Exchange) IsDurable() bool {
+	return ex.durable
+}
+
+func (ex *Exchange) IsSystem() bool {
+	return ex.system
+}
+
+func (ex *Exchange) IsAutoDelete() bool {
+	return ex.autoDelete
+}
+
+func (ex *Exchange) IsInternal() bool {
+	return ex.internal
+}
+
+func (ex *Exchange) Marshal(protoVersion string) []byte {
+	buf := bytes.NewBuffer(make([]byte, 0))
+	amqp.WriteShortstr(buf, ex.Name)
+	amqp.WriteOctet(buf, ex.exType)
+	return buf.Bytes()
+}
+
+func (ex *Exchange) Unmarshal(data []byte) {
+	buf := bytes.NewReader(data)
+	ex.Name, _ = amqp.ReadShortstr(buf)
+	ex.exType, _ = amqp.ReadOctet(buf)
+	ex.durable = true
+}
+
+func (ex *Exchange) GetName() string {
+	return ex.Name
+}
+
+func (ex *Exchange) ExType() byte {
+	return ex.exType
 }

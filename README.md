@@ -33,7 +33,7 @@ db:
 
 - [x] channel.open
 - [x] channel.openOk
-- [ ] channel.flow
+- [x] channel.flow
 - [ ] channel.flowOk
 - [x] channel.close
 - [x] channel.closeOk

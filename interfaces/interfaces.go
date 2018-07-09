@@ -71,3 +71,20 @@ type DbStorage interface {
 	Iterate(fn func(key []byte, value []byte))
 	Close() error
 }
+
+type Exchange interface {
+	Marshal(protoVersion string) []byte
+	GetName() string
+	Unmarshal(data []byte)
+	IsSystem() bool
+	IsDurable() bool
+	IsAutoDelete() bool
+	IsInternal() bool
+	ExType() byte
+	AppendBinding(newBind Binding)
+	RemoveBinding(rmBind Binding)
+	RemoveQueueBindings(queueName string)
+	GetMatchedQueues(message *amqp.Message) (matchedQueues map[string]bool)
+	EqualWithErr(exB Exchange) error
+	GetBindings() []Binding
+}

@@ -105,7 +105,7 @@ func (channel *Channel) queueDeclare(method *amqp.QueueDeclare) *amqp.Error {
 }
 
 func (channel *Channel) queueBind(method *amqp.QueueBind) *amqp.Error {
-	var ex *exchange.Exchange
+	var ex interfaces.Exchange
 	var qu interfaces.AmqpQueue
 	var err *amqp.Error
 
@@ -121,7 +121,7 @@ func (channel *Channel) queueBind(method *amqp.QueueBind) *amqp.Error {
 		return err
 	}
 
-	bind := binding.New(method.Queue, method.Exchange, method.RoutingKey, method.Arguments, ex.ExType == exchange.EX_TYPE_TOPIC)
+	bind := binding.New(method.Queue, method.Exchange, method.RoutingKey, method.Arguments, ex.ExType() == exchange.EX_TYPE_TOPIC)
 	ex.AppendBinding(bind)
 
 	if !method.NoWait {
@@ -132,7 +132,7 @@ func (channel *Channel) queueBind(method *amqp.QueueBind) *amqp.Error {
 }
 
 func (channel *Channel) queueUnbind(method *amqp.QueueUnbind) *amqp.Error {
-	var ex *exchange.Exchange
+	var ex interfaces.Exchange
 	var qu interfaces.AmqpQueue
 	var err *amqp.Error
 
@@ -148,7 +148,7 @@ func (channel *Channel) queueUnbind(method *amqp.QueueUnbind) *amqp.Error {
 		return err
 	}
 
-	bind := binding.New(method.Queue, method.Exchange, method.RoutingKey, method.Arguments, ex.ExType == exchange.EX_TYPE_TOPIC)
+	bind := binding.New(method.Queue, method.Exchange, method.RoutingKey, method.Arguments, ex.ExType() == exchange.EX_TYPE_TOPIC)
 	ex.RemoveBinding(bind)
 
 	channel.SendMethod(&amqp.QueueUnbindOk{})

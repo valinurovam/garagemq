@@ -1,6 +1,8 @@
 package server
 
 import (
+	"crypto/md5"
+	"encoding/hex"
 	"fmt"
 	"net"
 	"os"
@@ -62,10 +64,15 @@ func (srv *Server) Start() (err error) {
 
 	srv.initServerStorage()
 	srv.initUsers()
-	srv.initDefaultVirtualHosts()
+	if srv.storage.IsFirstStart() {
+		srv.initDefaultVirtualHosts()
+	} else {
+		srv.initVirtualHostsFromStorage()
+	}
 
 	go srv.listen()
 
+	srv.storage.UpdateLastStart()
 	srv.status = Started
 	select {}
 	return
@@ -189,9 +196,41 @@ func (srv *Server) initDefaultVirtualHosts() {
 	srv.vhostsLock.Lock()
 	defer srv.vhostsLock.Unlock()
 	srv.vhosts[srv.config.Vhost.DefaultPath] = vhost.New(srv.config.Vhost.DefaultPath, true, msgStorage, srv.storage, srv.config)
+	srv.storage.AddVhost(srv.config.Vhost.DefaultPath, true)
+}
+
+func (srv *Server) initVirtualHostsFromStorage() {
+	log.Info("Initialize vhosts")
+
+	vhosts := srv.storage.GetVhosts()
+	for host, system := range vhosts {
+		log.WithFields(log.Fields{
+			"vhost": srv.config.Vhost.DefaultPath,
+		}).Info("Initialize host message msgStorage")
+
+		var storageName string
+		if host == srv.config.Vhost.DefaultPath {
+			storageName = "vhost_default"
+		} else {
+			storageName = host
+		}
+		msgStorage := msgstorage.New(srv.getStorageInstance(storageName), srv.protoVersion)
+		srv.vhosts[host] = vhost.New(host, system, msgStorage, srv.storage, srv.config)
+	}
+
+
+	srv.vhostsLock.Lock()
+	defer srv.vhostsLock.Unlock()
 }
 
 func (srv *Server) getStorageInstance(name string) interfaces.DbStorage {
+	// very ugly solution, but don't know how to deal with "/" vhost for example
+	// rabbitmq generate random uniq id for msgstore and touch .vhost file with vhost name into folder
+
+	h := md5.New()
+	h.Write([]byte(name))
+	name = hex.EncodeToString(h.Sum(nil))
+
 	stPath := fmt.Sprintf("%s/%s/%s", srv.config.Db.DefaultPath, srv.config.Db.Engine, name)
 
 	if err := os.MkdirAll(stPath, 0777); err != nil {

@@ -10,7 +10,7 @@ import (
 func getTestEx() *Exchange {
 	return &Exchange{
 		Name:       "test",
-		ExType:     EX_TYPE_DIRECT,
+		exType:     EX_TYPE_DIRECT,
 		durable:    false,
 		autoDelete: false,
 		internal:   false,
@@ -21,7 +21,7 @@ func getTestEx() *Exchange {
 func TestNew(t *testing.T) {
 	e := getTestEx()
 
-	et := New(e.Name, e.ExType, e.durable, e.autoDelete, e.internal, e.system, &amqp.Table{})
+	et := New(e.Name, e.exType, e.durable, e.autoDelete, e.internal, e.system)
 	if err := e.EqualWithErr(et); err != nil {
 		t.Fatal(err)
 	}
@@ -104,7 +104,7 @@ func TestExchange_RemoveQueueBindings(t *testing.T) {
 func TestExchange_GetMatchedQueues_Direct(t *testing.T) {
 	e := &Exchange{
 		Name:       "test",
-		ExType:     EX_TYPE_DIRECT,
+		exType:     EX_TYPE_DIRECT,
 		durable:    false,
 		autoDelete: false,
 		internal:   false,
@@ -125,7 +125,7 @@ func TestExchange_GetMatchedQueues_Direct(t *testing.T) {
 func TestExchange_GetMatchedQueues_Fanout(t *testing.T) {
 	e := &Exchange{
 		Name:       "test",
-		ExType:     EX_TYPE_FANOUT,
+		exType:     EX_TYPE_FANOUT,
 		durable:    false,
 		autoDelete: false,
 		internal:   false,
@@ -149,7 +149,7 @@ func TestExchange_GetMatchedQueues_Topic(t *testing.T) {
 
 	e := &Exchange{
 		Name:       "test",
-		ExType:     EX_TYPE_TOPIC,
+		exType:     EX_TYPE_TOPIC,
 		durable:    false,
 		autoDelete: false,
 		internal:   false,
@@ -198,7 +198,7 @@ func TestExchange_GetMatchedQueues_Topic(t *testing.T) {
 func TestExchange_EqualWithErr_Success(t *testing.T) {
 	e1 := &Exchange{
 		Name:       "test",
-		ExType:     EX_TYPE_TOPIC,
+		exType:     EX_TYPE_TOPIC,
 		durable:    false,
 		autoDelete: false,
 		internal:   false,
@@ -207,7 +207,7 @@ func TestExchange_EqualWithErr_Success(t *testing.T) {
 
 	e2 := &Exchange{
 		Name:       "test",
-		ExType:     EX_TYPE_TOPIC,
+		exType:     EX_TYPE_TOPIC,
 		durable:    false,
 		autoDelete: false,
 		internal:   false,
@@ -222,7 +222,7 @@ func TestExchange_EqualWithErr_Success(t *testing.T) {
 func TestExchange_EqualWithErr_Failed_ExType(t *testing.T) {
 	e1 := &Exchange{
 		Name:       "test",
-		ExType:     EX_TYPE_TOPIC,
+		exType:     EX_TYPE_TOPIC,
 		durable:    false,
 		autoDelete: false,
 		internal:   false,
@@ -231,7 +231,7 @@ func TestExchange_EqualWithErr_Failed_ExType(t *testing.T) {
 
 	e2 := &Exchange{
 		Name:       "test",
-		ExType:     EX_TYPE_DIRECT,
+		exType:     EX_TYPE_DIRECT,
 		durable:    false,
 		autoDelete: false,
 		internal:   false,
@@ -246,7 +246,7 @@ func TestExchange_EqualWithErr_Failed_ExType(t *testing.T) {
 func TestExchange_EqualWithErr_Failed_Durable(t *testing.T) {
 	e1 := &Exchange{
 		Name:       "test",
-		ExType:     EX_TYPE_DIRECT,
+		exType:     EX_TYPE_DIRECT,
 		durable:    false,
 		autoDelete: false,
 		internal:   false,
@@ -255,7 +255,7 @@ func TestExchange_EqualWithErr_Failed_Durable(t *testing.T) {
 
 	e2 := &Exchange{
 		Name:       "test",
-		ExType:     EX_TYPE_DIRECT,
+		exType:     EX_TYPE_DIRECT,
 		durable:    true,
 		autoDelete: false,
 		internal:   false,
@@ -270,7 +270,7 @@ func TestExchange_EqualWithErr_Failed_Durable(t *testing.T) {
 func TestExchange_EqualWithErr_Failed_AutoDelete(t *testing.T) {
 	e1 := &Exchange{
 		Name:       "test",
-		ExType:     EX_TYPE_DIRECT,
+		exType:     EX_TYPE_DIRECT,
 		durable:    false,
 		autoDelete: false,
 		internal:   false,
@@ -279,7 +279,7 @@ func TestExchange_EqualWithErr_Failed_AutoDelete(t *testing.T) {
 
 	e2 := &Exchange{
 		Name:       "test",
-		ExType:     EX_TYPE_DIRECT,
+		exType:     EX_TYPE_DIRECT,
 		durable:    false,
 		autoDelete: true,
 		internal:   false,
@@ -294,7 +294,7 @@ func TestExchange_EqualWithErr_Failed_AutoDelete(t *testing.T) {
 func TestExchange_EqualWithErr_Failed_Internal(t *testing.T) {
 	e1 := &Exchange{
 		Name:       "test",
-		ExType:     EX_TYPE_DIRECT,
+		exType:     EX_TYPE_DIRECT,
 		durable:    false,
 		autoDelete: false,
 		internal:   false,
@@ -303,7 +303,7 @@ func TestExchange_EqualWithErr_Failed_Internal(t *testing.T) {
 
 	e2 := &Exchange{
 		Name:       "test",
-		ExType:     EX_TYPE_DIRECT,
+		exType:     EX_TYPE_DIRECT,
 		durable:    false,
 		autoDelete: false,
 		internal:   true,
@@ -333,7 +333,7 @@ func TestGetExchangeTypeAlias(t *testing.T) {
 }
 
 func TestGetExchangeTypeId(t *testing.T) {
-	var actual int
+	var actual byte
 	var err error
 	for alias, expected := range exchangeTypeAliasIdMap {
 		if actual, err = GetExchangeTypeId(alias); err != nil {

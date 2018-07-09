@@ -11,6 +11,8 @@ func (channel *Channel) exchangeRoute(method amqp.Method) *amqp.Error {
 	switch method := method.(type) {
 	case *amqp.ExchangeDeclare:
 		return channel.exchangeDeclare(method)
+	case *amqp.ExchangeDelete:
+		return channel.exchangeDelete(method)
 	}
 
 	return amqp.NewConnectionError(amqp.NotImplemented, "unable to route queue method "+method.Name(), method.ClassIdentifier(), method.MethodIdentifier())
@@ -67,7 +69,6 @@ func (channel *Channel) exchangeDeclare(method *amqp.ExchangeDeclare) *amqp.Erro
 		method.AutoDelete,
 		method.Internal,
 		false,
-		method.Arguments,
 	)
 
 	if existingExchange != nil {
@@ -88,5 +89,9 @@ func (channel *Channel) exchangeDeclare(method *amqp.ExchangeDeclare) *amqp.Erro
 		channel.SendMethod(&amqp.ExchangeDeclareOk{})
 	}
 
+	return nil
+}
+
+func (channel *Channel) exchangeDelete(method *amqp.ExchangeDelete) *amqp.Error {
 	return nil
 }

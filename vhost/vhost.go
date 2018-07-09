@@ -21,7 +21,7 @@ type VirtualHost struct {
 	name       string
 	system     bool
 	exLock     sync.Mutex
-	exchanges  map[string]*exchange.Exchange
+	exchanges  map[string]interfaces.Exchange
 	quLock     sync.Mutex
 	queues     map[string]interfaces.AmqpQueue
 	msgStorage *msgstorage.MsgStorage
@@ -34,7 +34,7 @@ func New(name string, system bool, msgStorage *msgstorage.MsgStorage, srvStorage
 	vhost := &VirtualHost{
 		name:       name,
 		system:     system,
-		exchanges:  make(map[string]*exchange.Exchange),
+		exchanges:  make(map[string]interfaces.Exchange),
 		queues:     make(map[string]interfaces.AmqpQueue),
 		msgStorage: msgStorage,
 		srvStorage: srvStorage,
@@ -46,6 +46,7 @@ func New(name string, system bool, msgStorage *msgstorage.MsgStorage, srvStorage
 	})
 
 	vhost.initSystemExchanges()
+	vhost.loadExchanges()
 	vhost.loadQueues()
 
 	vhost.logger.Info("Load messages into queues")
@@ -63,7 +64,7 @@ func New(name string, system bool, msgStorage *msgstorage.MsgStorage, srvStorage
 
 func (vhost *VirtualHost) initSystemExchanges() {
 	vhost.logger.Info("Initialize host default exchanges...")
-	for _, exType := range []int{
+	for _, exType := range []byte{
 		exchange.EX_TYPE_DIRECT,
 		exchange.EX_TYPE_FANOUT,
 		exchange.EX_TYPE_HEADERS,
@@ -71,10 +72,10 @@ func (vhost *VirtualHost) initSystemExchanges() {
 	} {
 		exTypeAlias, _ := exchange.GetExchangeTypeAlias(exType)
 		exName := "amq." + exTypeAlias
-		vhost.AppendExchange(exchange.New(exName, exType, true, false, false, true, &amqp.Table{}))
+		vhost.AppendExchange(exchange.New(exName, exType, true, false, false, true))
 	}
 
-	systemExchange := exchange.New(EX_DEFAULT_NAME, exchange.EX_TYPE_DIRECT, true, false, false, true, &amqp.Table{})
+	systemExchange := exchange.New(EX_DEFAULT_NAME, exchange.EX_TYPE_DIRECT, true, false, false, true)
 	vhost.AppendExchange(systemExchange)
 }
 
@@ -94,29 +95,33 @@ func (vhost *VirtualHost) getQueue(name string) interfaces.AmqpQueue {
 	return vhost.queues[name]
 }
 
-func (vhost *VirtualHost) GetExchange(name string) *exchange.Exchange {
+func (vhost *VirtualHost) GetExchange(name string) interfaces.Exchange {
 	vhost.exLock.Lock()
 	defer vhost.exLock.Unlock()
 	return vhost.getExchange(name)
 }
 
-func (vhost *VirtualHost) getExchange(name string) *exchange.Exchange {
+func (vhost *VirtualHost) getExchange(name string) interfaces.Exchange {
 	return vhost.exchanges[name]
 }
 
-func (vhost *VirtualHost) GetDefaultExchange() *exchange.Exchange {
+func (vhost *VirtualHost) GetDefaultExchange() interfaces.Exchange {
 	return vhost.exchanges[EX_DEFAULT_NAME]
 }
 
-func (vhost *VirtualHost) AppendExchange(ex *exchange.Exchange) {
+func (vhost *VirtualHost) AppendExchange(ex interfaces.Exchange) {
 	vhost.exLock.Lock()
 	defer vhost.exLock.Unlock()
-	exTypeAlias, _ := exchange.GetExchangeTypeAlias(ex.ExType)
+	exTypeAlias, _ := exchange.GetExchangeTypeAlias(ex.ExType())
 	vhost.logger.WithFields(log.Fields{
-		"name": ex.Name,
+		"name": ex.GetName(),
 		"type": exTypeAlias,
 	}).Info("Append exchange")
-	vhost.exchanges[ex.Name] = ex
+	vhost.exchanges[ex.GetName()] = ex
+
+	if ex.IsDurable() && !ex.IsSystem() {
+		vhost.srvStorage.AddExchange(vhost.name, ex)
+	}
 }
 
 func (vhost *VirtualHost) NewQueue(name string, connId uint64, exclusive bool, autoDelete bool, durable bool, shardSize int) interfaces.AmqpQueue {
@@ -159,6 +164,17 @@ func (vhost *VirtualHost) loadQueues() {
 		vhost.AppendQueue(
 			vhost.NewQueue(name, 0, false, false, true, vhost.srvConfig.Queue.ShardSize),
 		)
+	}
+}
+
+func (vhost *VirtualHost) loadExchanges() {
+	vhost.logger.Info("Initialize exchanges...")
+	exchanges := vhost.srvStorage.GetVhostExchanges(vhost.name)
+	if len(exchanges) == 0 {
+		return
+	}
+	for _, ex := range exchanges {
+		vhost.AppendExchange(ex)
 	}
 }
 

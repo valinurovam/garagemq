@@ -10,7 +10,6 @@ import (
 	log "github.com/sirupsen/logrus"
 	"github.com/valinurovam/garagemq/amqp"
 	"github.com/valinurovam/garagemq/consumer"
-	"github.com/valinurovam/garagemq/exchange"
 	"github.com/valinurovam/garagemq/interfaces"
 	"github.com/valinurovam/garagemq/qos"
 )
@@ -324,7 +323,7 @@ func (channel *Channel) handleAck(method *amqp.BasicAck) *amqp.Error {
 	return nil
 }
 
-func (channel *Channel) getExchangeWithError(exchangeName string, method amqp.Method) (exchange *exchange.Exchange, err *amqp.Error) {
+func (channel *Channel) getExchangeWithError(exchangeName string, method amqp.Method) (exchange interfaces.Exchange, err *amqp.Error) {
 	ex := channel.conn.getVirtualHost().GetExchange(exchangeName)
 	if ex == nil {
 		return nil, amqp.NewChannelError(

@@ -24,7 +24,7 @@ func Test_DefaultExchanges(t *testing.T) {
 		t.Fatal("Sytem exchange does not exists")
 	}
 
-	if systemExchange.ExType != exchange.EX_TYPE_DIRECT {
+	if systemExchange.ExType() != exchange.EX_TYPE_DIRECT {
 		t.Fatalf("Expected: 'direct' system exchange kind")
 	}
 }
@@ -40,6 +40,35 @@ func Test_ExchangeDeclare_Success(t *testing.T) {
 
 	if sc.server.GetVhost("/").GetExchange("test") == nil {
 		t.Fatal("Exchange does not exists after 'ExchangeDeclare'")
+	}
+}
+
+func Test_ExchangeDeclareDurable_Success(t *testing.T) {
+	sc, _ := getNewSC(getDefaultTestConfig())
+	defer sc.clean()
+	ch, _ := sc.client.Channel()
+
+	if err := ch.ExchangeDeclare("test", "direct", true, false, false, false, emptyTable); err != nil {
+		t.Fatal(err)
+	}
+
+	if sc.server.GetVhost("/").GetExchange("test") == nil {
+		t.Fatal("Exchange does not exists after 'ExchangeDeclareDurable'")
+	}
+
+	storedExchanges := sc.server.storage.GetVhostExchanges("/")
+	if len(storedExchanges) == 0 {
+		t.Fatal("Queue does not exists into storage after 'ExchangeDeclareDurable'")
+	}
+	found := false
+	for _, ex := range storedExchanges {
+		if ex.GetName() == "test" {
+			found = true
+		}
+	}
+
+	if !found {
+		t.Fatal("Exchange does not exists into storage after 'ExchangeDeclareDurable'")
 	}
 }
 
