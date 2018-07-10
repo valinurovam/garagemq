@@ -9,7 +9,6 @@ import (
 	"github.com/valinurovam/garagemq/binding"
 	"github.com/valinurovam/garagemq/config"
 	"github.com/valinurovam/garagemq/exchange"
-	"github.com/valinurovam/garagemq/interfaces"
 	"github.com/valinurovam/garagemq/msgstorage"
 	"github.com/valinurovam/garagemq/queue"
 	"github.com/valinurovam/garagemq/srvstorage"
@@ -21,9 +20,9 @@ type VirtualHost struct {
 	name       string
 	system     bool
 	exLock     sync.Mutex
-	exchanges  map[string]interfaces.Exchange
+	exchanges  map[string]*exchange.Exchange
 	quLock     sync.Mutex
-	queues     map[string]interfaces.AmqpQueue
+	queues     map[string]*queue.Queue
 	msgStorage *msgstorage.MsgStorage
 	srvStorage *srvstorage.SrvStorage
 	srvConfig  *config.Config
@@ -34,8 +33,8 @@ func New(name string, system bool, msgStorage *msgstorage.MsgStorage, srvStorage
 	vhost := &VirtualHost{
 		name:       name,
 		system:     system,
-		exchanges:  make(map[string]interfaces.Exchange),
-		queues:     make(map[string]interfaces.AmqpQueue),
+		exchanges:  make(map[string]*exchange.Exchange),
+		queues:     make(map[string]*queue.Queue),
 		msgStorage: msgStorage,
 		srvStorage: srvStorage,
 		srvConfig:  srvConfig,
@@ -50,7 +49,8 @@ func New(name string, system bool, msgStorage *msgstorage.MsgStorage, srvStorage
 	vhost.loadQueues()
 
 	vhost.logger.Info("Load messages into queues")
-	vhost.msgStorage.LoadIntoQueues(vhost.queues)
+
+	vhost.loadMessagesIntoQueues()
 	for _, q := range vhost.GetQueues() {
 		q.Start()
 		vhost.logger.WithFields(log.Fields{
@@ -79,37 +79,37 @@ func (vhost *VirtualHost) initSystemExchanges() {
 	vhost.AppendExchange(systemExchange)
 }
 
-func (vhost *VirtualHost) GetQueue(name string) interfaces.AmqpQueue {
+func (vhost *VirtualHost) GetQueue(name string) *queue.Queue {
 	vhost.quLock.Lock()
 	defer vhost.quLock.Unlock()
 	return vhost.getQueue(name)
 }
 
-func (vhost *VirtualHost) GetQueues() map[string]interfaces.AmqpQueue {
+func (vhost *VirtualHost) GetQueues() map[string]*queue.Queue {
 	vhost.quLock.Lock()
 	defer vhost.quLock.Unlock()
 	return vhost.queues
 }
 
-func (vhost *VirtualHost) getQueue(name string) interfaces.AmqpQueue {
+func (vhost *VirtualHost) getQueue(name string) *queue.Queue {
 	return vhost.queues[name]
 }
 
-func (vhost *VirtualHost) GetExchange(name string) interfaces.Exchange {
+func (vhost *VirtualHost) GetExchange(name string) *exchange.Exchange {
 	vhost.exLock.Lock()
 	defer vhost.exLock.Unlock()
 	return vhost.getExchange(name)
 }
 
-func (vhost *VirtualHost) getExchange(name string) interfaces.Exchange {
+func (vhost *VirtualHost) getExchange(name string) *exchange.Exchange {
 	return vhost.exchanges[name]
 }
 
-func (vhost *VirtualHost) GetDefaultExchange() interfaces.Exchange {
+func (vhost *VirtualHost) GetDefaultExchange() *exchange.Exchange {
 	return vhost.exchanges[EX_DEFAULT_NAME]
 }
 
-func (vhost *VirtualHost) AppendExchange(ex interfaces.Exchange) {
+func (vhost *VirtualHost) AppendExchange(ex *exchange.Exchange) {
 	vhost.exLock.Lock()
 	defer vhost.exLock.Unlock()
 	exTypeAlias, _ := exchange.GetExchangeTypeAlias(ex.ExType())
@@ -124,7 +124,7 @@ func (vhost *VirtualHost) AppendExchange(ex interfaces.Exchange) {
 	}
 }
 
-func (vhost *VirtualHost) NewQueue(name string, connId uint64, exclusive bool, autoDelete bool, durable bool, shardSize int) interfaces.AmqpQueue {
+func (vhost *VirtualHost) NewQueue(name string, connId uint64, exclusive bool, autoDelete bool, durable bool, shardSize int) *queue.Queue {
 	return queue.NewQueue(
 		name,
 		connId,
@@ -136,7 +136,7 @@ func (vhost *VirtualHost) NewQueue(name string, connId uint64, exclusive bool, a
 	)
 }
 
-func (vhost *VirtualHost) AppendQueue(qu interfaces.AmqpQueue) {
+func (vhost *VirtualHost) AppendQueue(qu *queue.Queue) {
 	vhost.quLock.Lock()
 	defer vhost.quLock.Unlock()
 	vhost.logger.WithFields(log.Fields{
@@ -165,6 +165,17 @@ func (vhost *VirtualHost) loadQueues() {
 			vhost.NewQueue(name, 0, false, false, true, vhost.srvConfig.Queue.ShardSize),
 		)
 	}
+}
+
+func (vhost *VirtualHost) loadMessagesIntoQueues() {
+	vhost.msgStorage.Iterate(func(queue string, message *amqp.Message) {
+		q, ok := vhost.queues[queue]
+		if !ok {
+			return
+		}
+
+		q.Push(message, true)
+	})
 }
 
 func (vhost *VirtualHost) loadExchanges() {

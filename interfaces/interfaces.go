@@ -2,40 +2,7 @@ package interfaces
 
 import (
 	"github.com/valinurovam/garagemq/amqp"
-	"github.com/valinurovam/garagemq/qos"
 )
-
-// TODO some interfaces looks like useless
-
-type Queue interface {
-	Push(item interface{})
-	Pop() (res interface{})
-	Length() int64
-}
-
-type AmqpQueue interface {
-	Start()
-	Stop() error
-	Push(message *amqp.Message)
-	PushFromStorage(message *amqp.Message)
-	Pop() *amqp.Message
-	PopQos(qosList []*qos.AmqpQos) *amqp.Message
-	AckMsg(id uint64)
-	RemoveConsumer(cTag string)
-	GetName() string
-	IsExclusive() bool
-	IsAutoDelete() bool
-	IsDurable() bool
-	IsActive() bool
-	ConnId() uint64
-	Length() uint64
-	ConsumersCount() int
-	Purge() uint64
-	AddConsumer(consumer Consumer, exclusive bool) error
-	EqualWithErr(qu AmqpQueue) error
-	Delete(ifUnused bool, ifEmpty bool) (uint64, error)
-	Marshal(protoVersion string) []byte
-}
 
 type Channel interface {
 	SendContent(method amqp.Method, message *amqp.Message)
@@ -47,21 +14,7 @@ type Channel interface {
 type Consumer interface {
 	Consume()
 	Tag() string
-	Start()
-	Stop()
-	Pause()
-	UnPause()
 	Cancel()
-}
-
-type Binding interface {
-	MatchDirect(exchange string, routingKey string) bool
-	MatchFanout(exchange string) bool
-	MatchTopic(exchange string, routingKey string) bool
-	GetExchange() string
-	GetRoutingKey() string
-	GetQueue() string
-	Equal(biding Binding) bool
 }
 
 type DbStorage interface {
@@ -70,21 +23,4 @@ type DbStorage interface {
 	Get(key string) (value []byte, err error)
 	Iterate(fn func(key []byte, value []byte))
 	Close() error
-}
-
-type Exchange interface {
-	Marshal(protoVersion string) []byte
-	GetName() string
-	Unmarshal(data []byte)
-	IsSystem() bool
-	IsDurable() bool
-	IsAutoDelete() bool
-	IsInternal() bool
-	ExType() byte
-	AppendBinding(newBind Binding)
-	RemoveBinding(rmBind Binding)
-	RemoveQueueBindings(queueName string)
-	GetMatchedQueues(message *amqp.Message) (matchedQueues map[string]bool)
-	EqualWithErr(exB Exchange) error
-	GetBindings() []Binding
 }

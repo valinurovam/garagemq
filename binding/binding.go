@@ -5,7 +5,6 @@ import (
 	"strings"
 
 	"github.com/valinurovam/garagemq/amqp"
-	"github.com/valinurovam/garagemq/interfaces"
 )
 
 type Binding struct {
@@ -17,7 +16,7 @@ type Binding struct {
 	topic      bool
 }
 
-func New(queue string, exchange string, routingKey string, arguments *amqp.Table, topic bool) interfaces.Binding {
+func New(queue string, exchange string, routingKey string, arguments *amqp.Table, topic bool) *Binding {
 	binding := &Binding{
 		Queue:      queue,
 		Exchange:   exchange,
@@ -99,7 +98,7 @@ func (b *Binding) GetQueue() string {
 	return b.Queue
 }
 
-func (bA *Binding) Equal(bB interfaces.Binding) bool {
+func (bA *Binding) Equal(bB *Binding) bool {
 	return bA.Exchange == bB.GetExchange() &&
 		bA.Queue == bB.GetQueue() &&
 		bA.RoutingKey == bB.GetRoutingKey()

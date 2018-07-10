@@ -9,6 +9,7 @@ import (
 
 	"github.com/valinurovam/garagemq/exchange"
 	"github.com/valinurovam/garagemq/interfaces"
+	"github.com/valinurovam/garagemq/queue"
 )
 
 const queuePrefix = "vhost.queue"
@@ -69,22 +70,22 @@ func (storage *SrvStorage) GetVhosts() map[string]bool {
 	return vhosts
 }
 
-func (storage *SrvStorage) AddExchange(vhost string, ex interfaces.Exchange) error {
+func (storage *SrvStorage) AddExchange(vhost string, ex *exchange.Exchange) error {
 	key := fmt.Sprintf("%s.%s.%s", exchangePrefix, vhost, ex.GetName())
 	return storage.db.Set(key, ex.Marshal(storage.protoVersion))
 }
 
-func (storage *SrvStorage) DelExchange(vhost string, ex interfaces.Exchange) error {
+func (storage *SrvStorage) DelExchange(vhost string, ex *exchange.Exchange) error {
 	key := fmt.Sprintf("%s.%s.%s", exchangePrefix, vhost, ex.GetName())
 	return storage.db.Del(key)
 }
 
-func (storage *SrvStorage) AddQueue(vhost string, queue interfaces.AmqpQueue) error {
+func (storage *SrvStorage) AddQueue(vhost string, queue *queue.Queue) error {
 	key := fmt.Sprintf("%s.%s.%s", queuePrefix, vhost, queue.GetName())
 	return storage.db.Set(key, queue.Marshal(storage.protoVersion))
 }
 
-func (storage *SrvStorage) DelQueue(vhost string, queue interfaces.AmqpQueue) error {
+func (storage *SrvStorage) DelQueue(vhost string, queue *queue.Queue) error {
 	key := fmt.Sprintf("%s.%s.%s", queuePrefix, vhost, queue.GetName())
 	return storage.db.Del(key)
 }
@@ -104,8 +105,8 @@ func (storage *SrvStorage) GetVhostQueues(vhost string) []string {
 	return queueNames
 }
 
-func (storage *SrvStorage) GetVhostExchanges(vhost string) []interfaces.Exchange {
-	exchanges := []interfaces.Exchange{}
+func (storage *SrvStorage) GetVhostExchanges(vhost string) []*exchange.Exchange {
+	exchanges := []*exchange.Exchange{}
 	storage.db.Iterate(
 		func(key []byte, value []byte) {
 			if !bytes.HasPrefix(key, []byte(exchangePrefix)) || getVhostFromKey(string(key)) != vhost {

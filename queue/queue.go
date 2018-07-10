@@ -78,17 +78,18 @@ func (queue *Queue) GetName() string {
 	return queue.name
 }
 
-func (queue *Queue) Push(message *amqp.Message) {
+func (queue *Queue) Push(message *amqp.Message, silent bool) {
+	if silent {
+		queue.SafeQueue.Push(message)
+		return
+	}
+
 	if queue.durable {
 		queue.storage.Add(message, queue.name)
 	}
 
 	queue.SafeQueue.Push(message)
 	queue.callConsumers()
-}
-
-func (queue *Queue) PushFromStorage(message *amqp.Message) {
-	queue.SafeQueue.Push(message)
 }
 
 func (queue *Queue) Pop() *amqp.Message {
@@ -239,7 +240,7 @@ func (queue *Queue) ConsumersCount() int {
 	return len(queue.consumers)
 }
 
-func (qA *Queue) EqualWithErr(qB interfaces.AmqpQueue) error {
+func (qA *Queue) EqualWithErr(qB *Queue) error {
 	errTemplate := "inequivalent arg '%s' for queue '%s': received '%s' but current is '%s'"
 	if qA.durable != qB.IsDurable() {
 		return errors.New(fmt.Sprintf(errTemplate, "durable", qA.name, qB.IsDurable(), qA.durable))

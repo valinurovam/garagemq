@@ -33,17 +33,13 @@ func (storage *MsgStorage) Del(id uint64, queue string) error {
 	return storage.db.Del(makeKey(id, queue))
 }
 
-func (storage *MsgStorage) LoadIntoQueues(queues map[string]interfaces.AmqpQueue) {
+func (storage *MsgStorage) Iterate(fn func(queue string, message *amqp.Message)) {
 	storage.db.Iterate(
 		func(key []byte, value []byte) {
 			queueName := getQueueFromKey(string(key))
-			queue, ok := queues[queueName]
-			if !ok {
-				return
-			}
 			message := &amqp.Message{}
 			message.Unmarshal(value, storage.protoVersion)
-			queue.PushFromStorage(message)
+			fn(queueName, message)
 		},
 	)
 }

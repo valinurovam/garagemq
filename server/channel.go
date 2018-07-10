@@ -10,8 +10,9 @@ import (
 	log "github.com/sirupsen/logrus"
 	"github.com/valinurovam/garagemq/amqp"
 	"github.com/valinurovam/garagemq/consumer"
-	"github.com/valinurovam/garagemq/interfaces"
+	"github.com/valinurovam/garagemq/exchange"
 	"github.com/valinurovam/garagemq/qos"
+	"github.com/valinurovam/garagemq/queue"
 )
 
 const (
@@ -33,7 +34,7 @@ type Channel struct {
 	protoVersion   string
 	currentMessage *amqp.Message
 	cmrLock        sync.Mutex
-	consumers      map[string]interfaces.Consumer
+	consumers      map[string]*consumer.Consumer
 	qos            *qos.AmqpQos
 	deliveryTag    uint64
 	ackLock        sync.Mutex
@@ -57,7 +58,7 @@ func NewChannel(id uint16, conn *Connection) (*Channel) {
 		outgoing:     conn.outgoing,
 		status:       ChannelNew,
 		protoVersion: conn.server.protoVersion,
-		consumers:    make(map[string]interfaces.Consumer),
+		consumers:    make(map[string]*consumer.Consumer),
 		qos:          qos.New(0, 0),
 		ackStore:     make(map[uint64]*UnackedMessage),
 	}
@@ -183,15 +184,15 @@ func (channel *Channel) handleContentBody(bodyFrame *amqp.Frame) *amqp.Error {
 
 	vhost := channel.conn.getVirtualHost()
 	message := channel.currentMessage
-	exchange := vhost.GetExchange(message.Exchange)
-	if exchange == nil {
+	ex := vhost.GetExchange(message.Exchange)
+	if ex == nil {
 		channel.SendContent(
 			&amqp.BasicReturn{ReplyCode: amqp.NoConsumers, ReplyText: "No route", Exchange: message.Exchange, RoutingKey: message.RoutingKey},
 			message,
 		)
 		return nil
 	}
-	matchedQueues := exchange.GetMatchedQueues(message)
+	matchedQueues := ex.GetMatchedQueues(message)
 
 	if len(matchedQueues) == 0 && message.Mandatory {
 		channel.SendContent(
@@ -202,8 +203,8 @@ func (channel *Channel) handleContentBody(bodyFrame *amqp.Frame) *amqp.Error {
 	}
 
 	for queueName, _ := range matchedQueues {
-		queue := channel.conn.getVirtualHost().GetQueue(queueName)
-		queue.Push(channel.currentMessage)
+		qu := channel.conn.getVirtualHost().GetQueue(queueName)
+		qu.Push(channel.currentMessage, false)
 	}
 
 	channel.logger.Debug("Incoming body <- ", bodyFrame)
@@ -234,11 +235,11 @@ func (channel *Channel) SendContent(method amqp.Method, message *amqp.Message) {
 		channel.outgoing <- payload
 	}
 }
-func (channel *Channel) addConsumer(method *amqp.BasicConsume) (cmr interfaces.Consumer, err *amqp.Error) {
+func (channel *Channel) addConsumer(method *amqp.BasicConsume) (cmr *consumer.Consumer, err *amqp.Error) {
 	channel.cmrLock.Lock()
 	defer channel.cmrLock.Unlock()
 
-	var qu interfaces.AmqpQueue
+	var qu *queue.Queue
 	if qu, err = channel.getQueueWithError(method.Queue, method); err != nil {
 		return nil, err
 	}
@@ -323,8 +324,8 @@ func (channel *Channel) handleAck(method *amqp.BasicAck) *amqp.Error {
 	return nil
 }
 
-func (channel *Channel) getExchangeWithError(exchangeName string, method amqp.Method) (exchange interfaces.Exchange, err *amqp.Error) {
-	ex := channel.conn.getVirtualHost().GetExchange(exchangeName)
+func (channel *Channel) getExchangeWithError(exchangeName string, method amqp.Method) (ex *exchange.Exchange, err *amqp.Error) {
+	ex = channel.conn.getVirtualHost().GetExchange(exchangeName)
 	if ex == nil {
 		return nil, amqp.NewChannelError(
 			amqp.NotFound,
@@ -336,7 +337,7 @@ func (channel *Channel) getExchangeWithError(exchangeName string, method amqp.Me
 	return ex, nil
 }
 
-func (channel *Channel) getQueueWithError(queueName string, method amqp.Method) (queue interfaces.AmqpQueue, err *amqp.Error) {
+func (channel *Channel) getQueueWithError(queueName string, method amqp.Method) (queue *queue.Queue, err *amqp.Error) {
 	qu := channel.conn.getVirtualHost().GetQueue(queueName)
 	if qu == nil || !qu.IsActive() {
 		return nil, amqp.NewChannelError(
@@ -349,7 +350,7 @@ func (channel *Channel) getQueueWithError(queueName string, method amqp.Method) 
 	return qu, nil
 }
 
-func (channel *Channel) checkQueueLockWithError(qu interfaces.AmqpQueue, method amqp.Method) *amqp.Error {
+func (channel *Channel) checkQueueLockWithError(qu *queue.Queue, method amqp.Method) *amqp.Error {
 	if qu == nil {
 		return nil
 	}

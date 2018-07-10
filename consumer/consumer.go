@@ -9,6 +9,7 @@ import (
 	"github.com/valinurovam/garagemq/amqp"
 	"github.com/valinurovam/garagemq/interfaces"
 	"github.com/valinurovam/garagemq/qos"
+	"github.com/valinurovam/garagemq/queue"
 )
 
 const (
@@ -25,14 +26,14 @@ type Consumer struct {
 	ConsumerTag string
 	noAck       bool
 	channel     interfaces.Channel
-	queue       interfaces.AmqpQueue
+	queue       *queue.Queue
 	status      int
 	qos         []*qos.AmqpQos
 	consume     chan bool
 	stopLock    sync.RWMutex
 }
 
-func New(queueName string, consumerTag string, noAck bool, channel interfaces.Channel, queue interfaces.AmqpQueue, qos []*qos.AmqpQos) *Consumer {
+func New(queueName string, consumerTag string, noAck bool, channel interfaces.Channel, queue *queue.Queue, qos []*qos.AmqpQos) *Consumer {
 	id := atomic.AddUint64(&cid, 1)
 	if consumerTag == "" {
 		consumerTag = generateTag(id)

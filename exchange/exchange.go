@@ -7,7 +7,7 @@ import (
 	"sync"
 
 	"github.com/valinurovam/garagemq/amqp"
-	"github.com/valinurovam/garagemq/interfaces"
+	"github.com/valinurovam/garagemq/binding"
 )
 
 const (
@@ -40,7 +40,7 @@ type Exchange struct {
 	system     bool
 	arguments  *amqp.Table
 	bindLock   sync.Mutex
-	bindings   []interfaces.Binding
+	bindings   []*binding.Binding
 }
 
 func GetExchangeTypeAlias(id byte) (alias string, err error) {
@@ -68,7 +68,7 @@ func New(name string, exType byte, durable bool, autoDelete bool, internal bool,
 	}
 }
 
-func (ex *Exchange) AppendBinding(newBind interfaces.Binding) {
+func (ex *Exchange) AppendBinding(newBind *binding.Binding) {
 	ex.bindLock.Lock()
 	defer ex.bindLock.Unlock()
 	for _, bind := range ex.bindings {
@@ -79,7 +79,7 @@ func (ex *Exchange) AppendBinding(newBind interfaces.Binding) {
 	ex.bindings = append(ex.bindings, newBind)
 }
 
-func (ex *Exchange) RemoveBinding(rmBind interfaces.Binding) {
+func (ex *Exchange) RemoveBinding(rmBind *binding.Binding) {
 	ex.bindLock.Lock()
 	defer ex.bindLock.Unlock()
 	for i, bind := range ex.bindings {
@@ -91,7 +91,7 @@ func (ex *Exchange) RemoveBinding(rmBind interfaces.Binding) {
 }
 
 func (ex *Exchange) RemoveQueueBindings(queueName string) {
-	var newBindings []interfaces.Binding
+	var newBindings []*binding.Binding
 	ex.bindLock.Lock()
 	defer ex.bindLock.Unlock()
 	for _, bind := range ex.bindings {
@@ -129,7 +129,7 @@ func (ex *Exchange) GetMatchedQueues(message *amqp.Message) (matchedQueues map[s
 	return
 }
 
-func (exA *Exchange) EqualWithErr(exB interfaces.Exchange) error {
+func (exA *Exchange) EqualWithErr(exB *Exchange) error {
 	errTemplate := "inequivalent arg '%s' for exchange '%s': received '%s' but current is '%s'"
 	if exA.exType != exB.ExType() {
 		aliasA, _ := GetExchangeTypeAlias(exA.exType)
@@ -154,7 +154,7 @@ func (exA *Exchange) EqualWithErr(exB interfaces.Exchange) error {
 	return nil
 }
 
-func (ex *Exchange) GetBindings() []interfaces.Binding {
+func (ex *Exchange) GetBindings() []*binding.Binding {
 	ex.bindLock.Lock()
 	defer ex.bindLock.Unlock()
 	return ex.bindings

@@ -4,7 +4,7 @@ import (
 	"github.com/valinurovam/garagemq/amqp"
 	"github.com/valinurovam/garagemq/binding"
 	"github.com/valinurovam/garagemq/exchange"
-	"github.com/valinurovam/garagemq/interfaces"
+	"github.com/valinurovam/garagemq/queue"
 )
 
 func (channel *Channel) queueRoute(method amqp.Method) *amqp.Error {
@@ -25,7 +25,7 @@ func (channel *Channel) queueRoute(method amqp.Method) *amqp.Error {
 }
 
 func (channel *Channel) queueDeclare(method *amqp.QueueDeclare) *amqp.Error {
-	var existingQueue interfaces.AmqpQueue
+	var existingQueue *queue.Queue
 	var notFoundErr, exclusiveErr *amqp.Error
 
 	if method.Queue == "" {
@@ -105,8 +105,8 @@ func (channel *Channel) queueDeclare(method *amqp.QueueDeclare) *amqp.Error {
 }
 
 func (channel *Channel) queueBind(method *amqp.QueueBind) *amqp.Error {
-	var ex interfaces.Exchange
-	var qu interfaces.AmqpQueue
+	var ex *exchange.Exchange
+	var qu *queue.Queue
 	var err *amqp.Error
 
 	if ex, err = channel.getExchangeWithError(method.Exchange, method); err != nil {
@@ -132,8 +132,8 @@ func (channel *Channel) queueBind(method *amqp.QueueBind) *amqp.Error {
 }
 
 func (channel *Channel) queueUnbind(method *amqp.QueueUnbind) *amqp.Error {
-	var ex interfaces.Exchange
-	var qu interfaces.AmqpQueue
+	var ex *exchange.Exchange
+	var qu *queue.Queue
 	var err *amqp.Error
 
 	if ex, err = channel.getExchangeWithError(method.Exchange, method); err != nil {
@@ -157,7 +157,7 @@ func (channel *Channel) queueUnbind(method *amqp.QueueUnbind) *amqp.Error {
 }
 
 func (channel *Channel) queuePurge(method *amqp.QueuePurge) *amqp.Error {
-	var qu interfaces.AmqpQueue
+	var qu *queue.Queue
 	var err *amqp.Error
 
 	if qu, err = channel.getQueueWithError(method.Queue, method); err != nil {
@@ -176,7 +176,7 @@ func (channel *Channel) queuePurge(method *amqp.QueuePurge) *amqp.Error {
 }
 
 func (channel *Channel) queueDelete(method *amqp.QueueDelete) *amqp.Error {
-	var qu interfaces.AmqpQueue
+	var qu *queue.Queue
 	var err *amqp.Error
 
 	if qu, err = channel.getQueueWithError(method.Queue, method); err != nil {

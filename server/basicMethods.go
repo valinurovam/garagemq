@@ -2,7 +2,7 @@ package server
 
 import (
 	"github.com/valinurovam/garagemq/amqp"
-	"github.com/valinurovam/garagemq/interfaces"
+	"github.com/valinurovam/garagemq/consumer"
 )
 
 func (channel *Channel) basicRoute(method amqp.Method) *amqp.Error {
@@ -48,7 +48,7 @@ func (channel *Channel) basicPublish(method *amqp.BasicPublish) (err *amqp.Error
 }
 
 func (channel *Channel) basicConsume(method *amqp.BasicConsume) (err *amqp.Error) {
-	var cmr interfaces.Consumer
+	var cmr *consumer.Consumer
 	if cmr, err = channel.addConsumer(method); err != nil {
 		return err
 	}

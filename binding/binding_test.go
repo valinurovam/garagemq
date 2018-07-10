@@ -6,10 +6,9 @@ import (
 
 	"github.com/valinurovam/garagemq/amqp"
 	"github.com/valinurovam/garagemq/binding"
-	"github.com/valinurovam/garagemq/interfaces"
 )
 
-func bindingsProviderData(topic bool) []interfaces.Binding {
+func bindingsProviderData(topic bool) []*binding.Binding {
 	bindData := map[string]string{
 		"t1":  "a.b.c",
 		"t2":  "a.*.c",
@@ -39,7 +38,7 @@ func bindingsProviderData(topic bool) []interfaces.Binding {
 		"t26": "#.b.#",
 	}
 
-	result := []interfaces.Binding{}
+	result := []*binding.Binding{}
 
 	for queue, key := range bindData {
 		result = append(result, binding.New(queue, "", key, &amqp.Table{}, topic))
