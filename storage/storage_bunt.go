@@ -34,7 +34,7 @@ func (storage *StorageBunt) Close() error {
 
 func (storage *StorageBunt) Set(key string, value []byte) (err error) {
 	return storage.db.Update(func(tx *buntdb.Tx) error {
-		_, _, err := tx.Set(key, "Людям старшего поколения потребуется переобучение. Цифровые технологии серьезно меняют рынок труда, это, кстати, сказывается на всех, не только на людях в зрелом возрасте. Некоторые профессии уходят, появляются новые профессии. Нужно организовать обучающие программы, которые позволят людям освоить востребованные или совсем новые специальности», — пообещал глава кабмина.", nil)
+		_, _, err := tx.Set(key, string(value), nil)
 		return err
 	})
 }

@@ -125,3 +125,7 @@ func getVhostFromKey(key string) string {
 	parts := strings.Split(key, ".")
 	return parts[2]
 }
+
+func (storage *SrvStorage) Close() error {
+	return storage.db.Close()
+}

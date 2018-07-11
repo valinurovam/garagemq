@@ -93,6 +93,7 @@ func (srv *Server) Stop() {
 	for _, virtualHost := range srv.vhosts {
 		virtualHost.Stop()
 	}
+	srv.storage.Close()
 }
 
 func (srv *Server) GetVhost(name string) *vhost.VirtualHost {

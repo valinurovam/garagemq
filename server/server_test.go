@@ -34,6 +34,9 @@ type TestConfig struct {
 
 func (sc *ServerClient) clean() {
 	cfg := getDefaultTestConfig()
+	// sc.server.Stop take a long time for tests and better just increase limits to open files
+	// ulimit -n 1024
+	//sc.server.Stop()
 	os.RemoveAll(cfg.srvConfig.Db.DefaultPath)
 }
 
@@ -85,7 +88,7 @@ func getNewSC(config TestConfig) (*ServerClient, error) {
 
 	toServer, toServerEx, fromClient, fromClientEx, err := networkSim()
 	if err != nil {
-		return nil, err
+		return sc, err
 	}
 	sc.server.acceptConnection(fromClient)
 	sc.server.acceptConnection(fromClientEx)
@@ -97,7 +100,7 @@ func getNewSC(config TestConfig) (*ServerClient, error) {
 
 	sc.client, err = amqpclient.DialConfig("amqp://localhost:0", clientConfig)
 	if err != nil {
-		return nil, err
+		return sc, err
 	}
 
 	clientConfigEx := config.clientConfig
@@ -106,7 +109,7 @@ func getNewSC(config TestConfig) (*ServerClient, error) {
 	}
 	sc.clientEx, err = amqpclient.DialConfig("amqp://localhost:0", clientConfigEx)
 	if err != nil {
-		return nil, err
+		return sc, err
 	}
 
 	return sc, nil
