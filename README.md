@@ -5,7 +5,7 @@
 - AMQP - RabbitMQ
 
 ### Backend for durable entities
-Backend is changeable through config `db.engine` 
+Database backend is changeable through config `db.engine` 
 ```
 db:
   defaultPath: db
@@ -34,7 +34,7 @@ db:
 - [x] channel.open
 - [x] channel.openOk
 - [x] channel.flow
-- [ ] channel.flowOk
+- [x] channel.flowOk
 - [x] channel.close
 - [x] channel.closeOk
 
@@ -72,11 +72,12 @@ RabbitMQ Qos means for channel(global=true) or each new consumer(global=false).
 - [x] basic.publish
 - [x] basic.return
 - [x] basic.deliver
-- [ ] basic.get
-- [ ] basic.getOk
-- [ ] basic.getEmpty 
+- [x] basic.get
+- [x] basic.getOk
+- [x] basic.getEmpty 
 - [x] basic.ack
-- [ ] basic.reject
+- [x] basic.nack
+- [x] basic.reject
 - [ ] basic.recoverAsync
 - [ ] basic.recover
 - [ ] basic.recoverOk 

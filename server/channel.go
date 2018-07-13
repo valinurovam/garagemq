@@ -43,9 +43,8 @@ type Channel struct {
 
 type UnackedMessage struct {
 	cTag  string
-	size  uint64
+	msg   *amqp.Message
 	queue string
-	id    uint64
 }
 
 func NewChannel(id uint16, conn *Connection) (*Channel) {
@@ -295,9 +294,8 @@ func (channel *Channel) AddUnackedMessage(dTag uint64, cTag string, queue string
 	defer channel.ackLock.Unlock()
 	channel.ackStore[dTag] = &UnackedMessage{
 		cTag:  cTag,
-		size:  message.BodySize,
+		msg:   message,
 		queue: queue,
-		id:    message.Id,
 	}
 }
 
@@ -307,21 +305,79 @@ func (channel *Channel) handleAck(method *amqp.BasicAck) *amqp.Error {
 	var uMsg *UnackedMessage
 	var msgFound bool
 
+	if method.Multiple {
+		for tag, uMsg := range channel.ackStore {
+			if method.DeliveryTag == 0 || method.DeliveryTag <= tag {
+				channel.ackMsg(uMsg, method.DeliveryTag)
+			}
+		}
+
+		return nil
+	}
+
 	if uMsg, msgFound = channel.ackStore[method.DeliveryTag]; !msgFound {
 		return amqp.NewChannelError(406, fmt.Sprintf("Delivery tag [%d] not found", method.DeliveryTag), method.ClassIdentifier(), method.MethodIdentifier())
 	}
 
-	delete(channel.ackStore, method.DeliveryTag)
-	channel.conn.getVirtualHost().GetQueue(uMsg.queue).AckMsg(uMsg.id)
-
-	channel.qos.Dec(1, uint32(uMsg.size))
-	channel.conn.qos.Dec(1, uint32(uMsg.size))
-
-	if cmr, ok := channel.consumers[uMsg.cTag]; ok {
-		cmr.Consume()
-	}
+	channel.ackMsg(uMsg, method.DeliveryTag)
 
 	return nil
+}
+
+func (channel *Channel) ackMsg(unackedMessage *UnackedMessage, deliveryTag uint64) {
+	delete(channel.ackStore, deliveryTag)
+	// TODO What if queue not exists?
+	channel.conn.getVirtualHost().GetQueue(unackedMessage.queue).AckMsg(unackedMessage.msg.Id)
+
+	channel.qos.Dec(1, uint32(unackedMessage.msg.BodySize))
+	channel.conn.qos.Dec(1, uint32(unackedMessage.msg.BodySize))
+
+	if cmr, ok := channel.consumers[unackedMessage.cTag]; ok {
+		cmr.Consume()
+	}
+}
+
+func (channel *Channel) handleReject(deliveryTag uint64, multiple bool, requeue bool, method amqp.Method) *amqp.Error {
+	channel.ackLock.Lock()
+	defer channel.ackLock.Unlock()
+	var uMsg *UnackedMessage
+	var msgFound bool
+
+	if multiple {
+		for tag, uMsg := range channel.ackStore {
+			if deliveryTag == 0 || deliveryTag <= tag {
+				channel.rejectMsg(uMsg, deliveryTag, requeue)
+			}
+		}
+
+		return nil
+	}
+
+	if uMsg, msgFound = channel.ackStore[deliveryTag]; !msgFound {
+		return amqp.NewChannelError(406, fmt.Sprintf("Delivery tag [%d] not found", deliveryTag), method.ClassIdentifier(), method.MethodIdentifier())
+	}
+
+	channel.rejectMsg(uMsg, deliveryTag, requeue)
+
+	return nil
+}
+
+func (channel *Channel) rejectMsg(unackedMessage *UnackedMessage, deliveryTag uint64, requeue bool) {
+	delete(channel.ackStore, deliveryTag)
+	// TODO What if queue not exists?
+	qu := channel.conn.getVirtualHost().GetQueue(unackedMessage.queue)
+	if requeue {
+		qu.Requeue(unackedMessage.msg)
+	} else {
+		qu.AckMsg(unackedMessage.msg.Id)
+	}
+
+	channel.qos.Dec(1, uint32(unackedMessage.msg.BodySize))
+	channel.conn.qos.Dec(1, uint32(unackedMessage.msg.BodySize))
+
+	if cmr, ok := channel.consumers[unackedMessage.cTag]; ok {
+		cmr.Consume()
+	}
 }
 
 func (channel *Channel) getExchangeWithError(exchangeName string, method amqp.Method) (ex *exchange.Exchange, err *amqp.Error) {

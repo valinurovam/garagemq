@@ -61,11 +61,19 @@ func (consumer *Consumer) Start() {
 }
 
 func (consumer *Consumer) startConsume() {
+	var message *amqp.Message
 	for _ = range consumer.consume {
 		if consumer.status == Stopped {
 			break
 		}
-		message := consumer.queue.PopQos(consumer.qos)
+
+
+		if consumer.noAck {
+			message = consumer.queue.Pop()
+		} else {
+			message = consumer.queue.PopQos(consumer.qos)
+		}
+
 		if message == nil {
 			continue
 		}

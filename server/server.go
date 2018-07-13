@@ -55,7 +55,7 @@ func NewServer(host string, port string, protoVersion string, config *config.Con
 	return
 }
 
-func (srv *Server) Start() (err error) {
+func (srv *Server) Start() {
 	log.WithFields(log.Fields{
 		"pid": os.Getpid(),
 	}).Info("Server starting")
@@ -75,7 +75,6 @@ func (srv *Server) Start() (err error) {
 	srv.storage.UpdateLastStart()
 	srv.status = Started
 	select {}
-	return
 }
 
 func (srv *Server) Stop() {
@@ -85,6 +84,8 @@ func (srv *Server) Stop() {
 
 	// stop accept new connections
 	srv.listener.Close()
+
+	// TODO Critical: close connections or just stop receive data!
 
 	// stop exchanges and queues
 	// cancel consumers

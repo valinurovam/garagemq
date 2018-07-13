@@ -45,6 +45,36 @@ func TestSafeQueue(t *testing.T) {
 	}
 }
 
+func TestSafeQueue_PushHead(t *testing.T) {
+	queue := safequeue.NewSafeQueue(SIZE)
+	queueLength := SIZE * 8
+	for item := 0; item < queueLength; item++ {
+		queue.Push(item)
+		queue.PushHead(item)
+	}
+
+	if queue.Length() != uint64(queueLength * 2) {
+		t.Fatalf("expected %d elements, have %d", queueLength, queue.Length())
+	}
+
+	var expected int
+	for item := 0; item < queueLength * 2; item++ {
+		pop := queue.Pop()
+		if queueLength > item {
+			expected = queueLength-item-1
+		} else {
+			expected = item-queueLength
+		}
+		if expected != pop {
+			t.Fatalf("Pop: expected %d, actual %d", expected, pop)
+		}
+	}
+
+	if queue.Length() != 0 {
+		t.Fatalf("expected %d elements, have %d", 0, queue.Length())
+	}
+}
+
 func TestSafeQueue_HeadItem(t *testing.T) {
 	queue := safequeue.NewSafeQueue(SIZE)
 	queueLength := SIZE

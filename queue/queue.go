@@ -131,6 +131,11 @@ func (queue *Queue) AckMsg(id uint64) {
 	}
 }
 
+func (queue *Queue) Requeue(message *amqp.Message) {
+	queue.SafeQueue.PushHead(message)
+	queue.callConsumers()
+}
+
 func (queue *Queue) Purge() (length uint64) {
 	queue.SafeQueue.Lock()
 	defer queue.SafeQueue.Unlock()
@@ -143,19 +148,13 @@ func (queue *Queue) Purge() (length uint64) {
 	return
 }
 
-// TODO Looks like hack
-func (queue *Queue) dirtyPurge() {
-	queue.SafeQueue = *safequeue.NewSafeQueue(queue.shardSize)
-}
-
 func (queue *Queue) Delete(ifUnused bool, ifEmpty bool) (uint64, error) {
 	queue.actLock.Lock()
 	queue.cmrLock.RLock()
-	oldQueue := queue.SafeQueue
-	oldQueue.Lock()
+	queue.SafeQueue.Lock()
 	defer queue.actLock.Unlock()
 	defer queue.cmrLock.RUnlock()
-	defer oldQueue.Unlock()
+	defer queue.SafeQueue.Unlock()
 
 	queue.active = false
 

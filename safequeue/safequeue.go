@@ -52,6 +52,26 @@ func (queue *SafeQueue) Push(item interface{}) {
 	}
 }
 
+func (queue *SafeQueue) PushHead(item interface{}) {
+	queue.Lock()
+	defer queue.Unlock()
+
+	if queue.headPos == 0 {
+		buffer := make([][]interface{}, len(queue.shards)+1)
+		copy(buffer[1:], queue.shards)
+		buffer[queue.headIdx] = make([]interface{}, queue.shardSize)
+
+		queue.shards = buffer
+		queue.tailIdx++
+		queue.headPos = queue.shardSize
+		queue.tail = queue.shards[queue.tailIdx]
+		queue.head = queue.shards[queue.headIdx]
+	}
+	queue.length++
+	queue.headPos--
+	queue.head[queue.headPos] = item
+}
+
 func (queue *SafeQueue) Pop() (item interface{}) {
 	queue.Lock()
 	item = queue.DirtyPop()
@@ -67,7 +87,6 @@ func (queue *SafeQueue) DirtyPop() (item interface{}) {
 	queue.headPos++
 	queue.length--
 	if queue.headPos == queue.shardSize {
-
 		buffer := make([][]interface{}, len(queue.shards)-1)
 		copy(buffer, queue.shards[queue.headIdx+1:])
 
