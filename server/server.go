@@ -85,15 +85,18 @@ func (srv *Server) Stop() {
 	// stop accept new connections
 	srv.listener.Close()
 
-	// TODO Critical: close connections or just stop receive data!
+	var wg sync.WaitGroup
+	for _, conn := range srv.connections {
+		wg.Add(1)
+		go conn.safeClose(&wg)
+	}
+	wg.Wait()
 
 	// stop exchanges and queues
-	// cancel consumers
-	// close connections
-	// stop vhosts
 	for _, virtualHost := range srv.vhosts {
 		virtualHost.Stop()
 	}
+
 	srv.storage.Close()
 }
 
@@ -219,7 +222,6 @@ func (srv *Server) initVirtualHostsFromStorage() {
 		msgStorage := msgstorage.New(srv.getStorageInstance(storageName), srv.protoVersion)
 		srv.vhosts[host] = vhost.New(host, system, msgStorage, srv.storage, srv.config)
 	}
-
 
 	srv.vhostsLock.Lock()
 	defer srv.vhostsLock.Unlock()

@@ -7,6 +7,7 @@ import (
 	"sort"
 	"sync"
 	"sync/atomic"
+	"time"
 
 	log "github.com/sirupsen/logrus"
 	"github.com/valinurovam/garagemq/amqp"
@@ -43,6 +44,7 @@ type Connection struct {
 	qos              *qos.AmqpQos
 	virtualHost      *vhost.VirtualHost
 	vhostName        string
+	closeCh          chan bool
 }
 
 func NewConnection(server *Server, netConn *net.TCPConn) (connection *Connection) {
@@ -55,6 +57,7 @@ func NewConnection(server *Server, netConn *net.TCPConn) (connection *Connection
 		maxChannels:  server.config.Connection.ChannelsMax,
 		maxFrameSize: server.config.Connection.FrameMaxSize,
 		qos:          qos.New(0, 0),
+		closeCh:      make(chan bool, 1),
 	}
 
 	connection.logger = log.WithFields(log.Fields{
@@ -74,7 +77,7 @@ func (conn *Connection) close() {
 
 	// channel0 should we be closed at the end
 	channelIds := make([]int, 0)
-	for chId, _ := range conn.channels {
+	for chId := range conn.channels {
 		channelIds = append(channelIds, int(chId))
 	}
 	sort.Sort(sort.Reverse(sort.IntSlice(channelIds)))
@@ -89,6 +92,28 @@ func (conn *Connection) close() {
 		"from":  conn.netConn.RemoteAddr(),
 	}).Info("Connection closed")
 	conn.server.removeConnection(conn.id)
+
+	conn.closeCh <- true
+}
+
+func (conn *Connection) safeClose(wg *sync.WaitGroup) {
+	conn.channels[0].SendMethod(&amqp.ConnectionClose{
+		ReplyCode: amqp.ConnectionForced,
+		ReplyText: "Server shutdown",
+		ClassId:   0,
+		MethodId:  0,
+	})
+
+	// let clients proper handle connection closing in 10 sec
+	timeOut := time.After(10 * time.Second)
+
+	select {
+	case <-timeOut:
+		conn.close()
+		wg.Done()
+	case <-conn.closeCh:
+		wg.Done()
+	}
 }
 
 func (conn *Connection) clearQueues() {
@@ -195,7 +220,7 @@ func (conn *Connection) handleIncoming() {
 		}
 
 		channel, ok := conn.channels[frame.ChannelId]
-		if (!ok) {
+		if !ok {
 			channel = NewChannel(frame.ChannelId, conn)
 			conn.channels[frame.ChannelId] = channel
 			conn.channels[frame.ChannelId].start()

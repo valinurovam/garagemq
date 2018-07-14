@@ -81,13 +81,14 @@ func (channel *Channel) start() {
 func (channel *Channel) handleIncoming() {
 	for {
 		frame := <-channel.incoming
-		channel.logger.Debug("Incoming frame <- ", frame.Type)
 
 		switch frame.Type {
 		case amqp.FrameMethod:
 			buffer := bytes.NewReader(frame.Payload)
 			method, err := amqp.ReadMethod(buffer, channel.protoVersion)
-			channel.logger.Debug("Incoming method <- " + method.Name())
+			if method.ClassIdentifier() != amqp.ClassBasic {
+				channel.logger.Debug("Incoming method <- " + method.Name())
+			}
 			if err != nil {
 				channel.logger.WithError(err).Error("Error on handling frame")
 				channel.sendError(amqp.NewConnectionError(amqp.FrameError, err.Error(), 0, 0))
@@ -162,7 +163,6 @@ func (channel *Channel) handleContentHeader(headerFrame *amqp.Frame) *amqp.Error
 		return amqp.NewConnectionError(amqp.FrameError, "error on parsing content header frame", 0, 0)
 	}
 
-	//channel.logger.Debug("Incoming header <- ", channel.currentMessage.Header)
 	return nil
 }
 
@@ -205,8 +205,6 @@ func (channel *Channel) handleContentBody(bodyFrame *amqp.Frame) *amqp.Error {
 		qu := channel.conn.getVirtualHost().GetQueue(queueName)
 		qu.Push(channel.currentMessage, false)
 	}
-
-	channel.logger.Debug("Incoming body <- ", bodyFrame)
 	return nil
 }
 
@@ -218,7 +216,10 @@ func (channel *Channel) SendMethod(method amqp.Method) {
 
 	closeAfter := method.ClassIdentifier() == amqp.ClassConnection && method.MethodIdentifier() == amqp.MethodConnectionCloseOk
 
-	channel.logger.Debug("Outgoing -> " + method.Name())
+	if method.ClassIdentifier() != amqp.ClassBasic {
+		channel.logger.Debug("Outgoing -> " + method.Name())
+	}
+
 	channel.outgoing <- &amqp.Frame{Type: byte(amqp.FrameMethod), ChannelId: channel.id, Payload: rawMethod.Bytes(), CloseAfter: closeAfter}
 }
 
@@ -275,6 +276,7 @@ func (channel *Channel) close() {
 			"consumerTag": cmr.Tag(),
 		}).Info("Consumer stopped")
 	}
+	channel.handleReject(0, true, true, &amqp.BasicNack{})
 }
 
 func (channel *Channel) updateQos(prefetchCount uint16, prefetchSize uint32, global bool) {
@@ -326,8 +328,10 @@ func (channel *Channel) handleAck(method *amqp.BasicAck) *amqp.Error {
 
 func (channel *Channel) ackMsg(unackedMessage *UnackedMessage, deliveryTag uint64) {
 	delete(channel.ackStore, deliveryTag)
-	// TODO What if queue not exists?
-	channel.conn.getVirtualHost().GetQueue(unackedMessage.queue).AckMsg(unackedMessage.msg.Id)
+	q := channel.conn.getVirtualHost().GetQueue(unackedMessage.queue)
+	if q != nil {
+		q.AckMsg(unackedMessage.msg.Id)
+	}
 
 	channel.qos.Dec(1, uint32(unackedMessage.msg.BodySize))
 	channel.conn.qos.Dec(1, uint32(unackedMessage.msg.BodySize))
@@ -364,11 +368,10 @@ func (channel *Channel) handleReject(deliveryTag uint64, multiple bool, requeue 
 
 func (channel *Channel) rejectMsg(unackedMessage *UnackedMessage, deliveryTag uint64, requeue bool) {
 	delete(channel.ackStore, deliveryTag)
-	// TODO What if queue not exists?
 	qu := channel.conn.getVirtualHost().GetQueue(unackedMessage.queue)
-	if requeue {
+	if qu != nil && requeue {
 		qu.Requeue(unackedMessage.msg)
-	} else {
+	} else if qu != nil {
 		qu.AckMsg(unackedMessage.msg.Id)
 	}
 

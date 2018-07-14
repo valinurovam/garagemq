@@ -24,7 +24,7 @@ type Queue struct {
 	call            chan bool
 	wasConsumed     bool
 	shardSize       int
-	actLock         sync.Mutex
+	actLock         sync.RWMutex
 	active          bool
 	storage         *msgstorage.MsgStorage
 	currentConsumer int
@@ -70,7 +70,6 @@ func (queue *Queue) Start() {
 
 func (queue *Queue) Stop() error {
 	queue.active = false
-	queue.cancelConsumers()
 	return nil
 }
 
@@ -93,6 +92,11 @@ func (queue *Queue) Push(message *amqp.Message, silent bool) {
 }
 
 func (queue *Queue) Pop() *amqp.Message {
+	queue.actLock.RLock()
+	defer queue.actLock.RUnlock()
+	if !queue.active {
+		return nil
+	}
 	if message := queue.SafeQueue.Pop(); message != nil {
 		return message.(*amqp.Message)
 	}
@@ -101,6 +105,11 @@ func (queue *Queue) Pop() *amqp.Message {
 }
 
 func (queue *Queue) PopQos(qosList []*qos.AmqpQos) *amqp.Message {
+	queue.actLock.RLock()
+	defer queue.actLock.RUnlock()
+	if !queue.active {
+		return nil
+	}
 	queue.SafeQueue.Lock()
 	defer queue.SafeQueue.Unlock()
 	if headItem := queue.SafeQueue.HeadItem(); headItem != nil {
@@ -150,10 +159,10 @@ func (queue *Queue) Purge() (length uint64) {
 
 func (queue *Queue) Delete(ifUnused bool, ifEmpty bool) (uint64, error) {
 	queue.actLock.Lock()
-	queue.cmrLock.RLock()
+	queue.cmrLock.Lock()
 	queue.SafeQueue.Lock()
 	defer queue.actLock.Unlock()
-	defer queue.cmrLock.RUnlock()
+	defer queue.cmrLock.Lock()
 	defer queue.SafeQueue.Unlock()
 
 	queue.active = false
