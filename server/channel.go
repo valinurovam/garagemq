@@ -3,6 +3,7 @@ package server
 import (
 	"bytes"
 	"fmt"
+	"sort"
 	"sync"
 	"sync/atomic"
 
@@ -327,8 +328,8 @@ func (channel *Channel) handleAck(method *amqp.BasicAck) *amqp.Error {
 
 	if method.Multiple {
 		for tag, uMsg := range channel.ackStore {
-			if method.DeliveryTag == 0 || method.DeliveryTag <= tag {
-				channel.ackMsg(uMsg, method.DeliveryTag)
+			if method.DeliveryTag == 0 || tag <= method.DeliveryTag  {
+				channel.ackMsg(uMsg, tag)
 			}
 		}
 
@@ -361,9 +362,19 @@ func (channel *Channel) handleReject(deliveryTag uint64, multiple bool, requeue 
 	var msgFound bool
 
 	if multiple {
-		for tag, uMsg := range channel.ackStore {
-			if deliveryTag == 0 || deliveryTag <= tag {
-				channel.rejectMsg(uMsg, deliveryTag, requeue)
+		deliveryTags := make([]uint64, 0)
+		for dTag, _ := range channel.ackStore {
+			deliveryTags = append(deliveryTags, dTag)
+		}
+		sort.Slice(
+			deliveryTags,
+			func(i, j int) bool {
+				return deliveryTags[i] > deliveryTags[j]
+			},
+		)
+		for _, tag := range deliveryTags {
+			if deliveryTag == 0 || tag <= deliveryTag {
+				channel.rejectMsg(channel.ackStore[tag], tag, requeue)
 			}
 		}
 
@@ -389,7 +400,6 @@ func (channel *Channel) rejectMsg(unackedMessage *UnackedMessage, deliveryTag ui
 	}
 
 	channel.decQosAndConsumerNext(unackedMessage)
-
 }
 
 func (channel *Channel) decQosAndConsumerNext(unackedMessage *UnackedMessage) {
@@ -404,7 +414,6 @@ func (channel *Channel) decQosAndConsumerNext(unackedMessage *UnackedMessage) {
 		channel.conn.qos.Dec(1, uint32(unackedMessage.msg.BodySize))
 	}
 }
-
 
 func (channel *Channel) getExchangeWithError(exchangeName string, method amqp.Method) (ex *exchange.Exchange, err *amqp.Error) {
 	ex = channel.conn.getVirtualHost().GetExchange(exchangeName)
