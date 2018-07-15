@@ -166,7 +166,7 @@ func (queue *Queue) Delete(ifUnused bool, ifEmpty bool) (uint64, error) {
 	queue.cmrLock.Lock()
 	queue.SafeQueue.Lock()
 	defer queue.actLock.Unlock()
-	defer queue.cmrLock.Lock()
+	defer queue.cmrLock.Unlock()
 	defer queue.SafeQueue.Unlock()
 
 	queue.active = false

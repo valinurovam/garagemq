@@ -6,7 +6,6 @@ import (
 	_ "net/http/pprof"
 	"os"
 	"runtime"
-	"syscall"
 
 	log "github.com/sirupsen/logrus"
 	"github.com/valinurovam/garagemq/amqp"
@@ -25,9 +24,10 @@ func main() {
 	// for hprof debugging
 	go http.ListenAndServe("0.0.0.0:8080", nil)
 
-	if n, _ := syscall.SysctlUint32("hw.ncpu"); n > 0 {
-		runtime.GOMAXPROCS(int(n))
-	}
+	//if n, _ := syscall.SysctlUint32("hw.ncpu"); n > 0 {
+	//	runtime.GOMAXPROCS(int(n))
+	//}
+	runtime.GOMAXPROCS(8)
 
 	config := config.Config{}
 	file, _ := ioutil.ReadFile("etc/config.yaml")

@@ -18,11 +18,11 @@ func Test_BasicQos_Channel_Success(t *testing.T) {
 	}
 
 	channel := getServerChannel(sc, 1)
-	if channel.qos.PrefetchCount() != uint16(prefetchCount) {
+	if channel.qos.PrefetchCount() != 0 {
 		t.Fatalf("Expected %d, actual %d", prefetchCount, channel.qos.PrefetchCount())
 	}
 
-	if channel.qos.PrefetchSize() != uint32(prefetchSize) {
+	if channel.qos.PrefetchSize() != 0 {
 		t.Fatalf("Expected %d, actual %d", prefetchSize, channel.qos.PrefetchSize())
 	}
 }
@@ -38,11 +38,11 @@ func Test_BasicQos_Global_Success(t *testing.T) {
 	}
 
 	channel := getServerChannel(sc, 1)
-	if channel.conn.qos.PrefetchCount() != uint16(prefetchCount) {
+	if channel.qos.PrefetchCount() != uint16(prefetchCount) {
 		t.Fatalf("Expected %d, actual %d", prefetchCount, channel.qos.PrefetchCount())
 	}
 
-	if channel.conn.qos.PrefetchSize() != uint32(prefetchSize) {
+	if channel.qos.PrefetchSize() != uint32(prefetchSize) {
 		t.Fatalf("Expected %d, actual %d", prefetchSize, channel.qos.PrefetchSize())
 	}
 }
