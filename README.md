@@ -60,7 +60,7 @@ db:
 
 #### basic
 
-Qos method implemented only for standard AMQP mode. It means that qos applies for connection(global=true) or channel(global=false). 
+Qos method implemented for standard AMQP and RabbitMQ mode. It means that by default qos applies for connection(global=true) or channel(global=false). 
 RabbitMQ Qos means for channel(global=true) or each new consumer(global=false).
 
 - [x] basic.qos

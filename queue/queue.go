@@ -141,7 +141,11 @@ func (queue *Queue) AckMsg(id uint64) {
 }
 
 func (queue *Queue) Requeue(message *amqp.Message) {
+	message.DeliveryCount++
 	queue.SafeQueue.PushHead(message)
+	if queue.durable {
+		queue.storage.Update(message, queue.name)
+	}
 	queue.callConsumers()
 }
 

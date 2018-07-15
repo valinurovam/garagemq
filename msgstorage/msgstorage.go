@@ -29,6 +29,14 @@ func (storage *MsgStorage) Add(message *amqp.Message, queue string) error {
 	}
 }
 
+func (storage *MsgStorage) Update(message *amqp.Message, queue string) error {
+	if data, err := message.Marshal(storage.protoVersion); err == nil {
+		return storage.db.Set(makeKey(message.Id, queue), data)
+	} else {
+		return err
+	}
+}
+
 func (storage *MsgStorage) Del(id uint64, queue string) error {
 	return storage.db.Del(makeKey(id, queue))
 }

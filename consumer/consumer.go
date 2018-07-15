@@ -67,7 +67,6 @@ func (consumer *Consumer) startConsume() {
 			break
 		}
 
-
 		if consumer.noAck {
 			message = consumer.queue.Pop()
 		} else {
@@ -86,7 +85,7 @@ func (consumer *Consumer) startConsume() {
 		consumer.channel.SendContent(&amqp.BasicDeliver{
 			ConsumerTag: consumer.ConsumerTag,
 			DeliveryTag: dTag,
-			Redelivered: false,
+			Redelivered: message.DeliveryCount > 1,
 			Exchange:    message.Exchange,
 			RoutingKey:  message.RoutingKey,
 		}, message)
@@ -132,4 +131,8 @@ func (consumer *Consumer) Cancel() {
 
 func (consumer *Consumer) Tag() string {
 	return consumer.ConsumerTag
+}
+
+func (consumer *Consumer) Qos() []*qos.AmqpQos {
+	return consumer.qos
 }

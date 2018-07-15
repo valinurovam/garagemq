@@ -36,6 +36,7 @@ type Channel struct {
 	cmrLock        sync.Mutex
 	consumers      map[string]*consumer.Consumer
 	qos            *qos.AmqpQos
+	consumerQos    *qos.AmqpQos
 	deliveryTag    uint64
 	ackLock        sync.Mutex
 	ackStore       map[uint64]*UnackedMessage
@@ -59,6 +60,7 @@ func NewChannel(id uint16, conn *Connection) (*Channel) {
 		protoVersion: conn.server.protoVersion,
 		consumers:    make(map[string]*consumer.Consumer),
 		qos:          qos.New(0, 0),
+		consumerQos:  qos.New(0, 0),
 		ackStore:     make(map[uint64]*UnackedMessage),
 	}
 
@@ -244,7 +246,15 @@ func (channel *Channel) addConsumer(method *amqp.BasicConsume) (cmr *consumer.Co
 		return nil, err
 	}
 
-	cmr = consumer.New(method.Queue, method.ConsumerTag, method.NoAck, channel, qu, []*qos.AmqpQos{channel.qos, channel.conn.qos})
+	var consumerQos []*qos.AmqpQos
+	if channel.server.protoVersion == amqp.Proto091 {
+		consumerQos = []*qos.AmqpQos{channel.qos, channel.conn.qos}
+	} else {
+		cmrQos := *channel.consumerQos
+		consumerQos = []*qos.AmqpQos{channel.qos, &cmrQos}
+	}
+
+	cmr = consumer.New(method.Queue, method.ConsumerTag, method.NoAck, channel, qu, consumerQos)
 	if _, ok := channel.consumers[cmr.Tag()]; ok {
 		return nil, amqp.NewChannelError(amqp.NotAllowed, fmt.Sprintf("Consumer with tag '%s' already exists", cmr.Tag()), method.ClassIdentifier(), method.MethodIdentifier())
 	}
@@ -280,10 +290,18 @@ func (channel *Channel) close() {
 }
 
 func (channel *Channel) updateQos(prefetchCount uint16, prefetchSize uint32, global bool) {
-	if global {
-		channel.conn.qos.Update(prefetchCount, prefetchSize)
+	if channel.server.protoVersion == amqp.Proto091 {
+		if global {
+			channel.conn.qos.Update(prefetchCount, prefetchSize)
+		} else {
+			channel.qos.Update(prefetchCount, prefetchSize)
+		}
 	} else {
-		channel.qos.Update(prefetchCount, prefetchSize)
+		if global {
+			channel.qos.Update(prefetchCount, prefetchSize)
+		} else {
+			channel.consumerQos.Update(prefetchCount, prefetchSize)
+		}
 	}
 }
 
@@ -333,12 +351,7 @@ func (channel *Channel) ackMsg(unackedMessage *UnackedMessage, deliveryTag uint6
 		q.AckMsg(unackedMessage.msg.Id)
 	}
 
-	channel.qos.Dec(1, uint32(unackedMessage.msg.BodySize))
-	channel.conn.qos.Dec(1, uint32(unackedMessage.msg.BodySize))
-
-	if cmr, ok := channel.consumers[unackedMessage.cTag]; ok {
-		cmr.Consume()
-	}
+	channel.decQosAndConsumerNext(unackedMessage)
 }
 
 func (channel *Channel) handleReject(deliveryTag uint64, multiple bool, requeue bool, method amqp.Method) *amqp.Error {
@@ -375,13 +388,23 @@ func (channel *Channel) rejectMsg(unackedMessage *UnackedMessage, deliveryTag ui
 		qu.AckMsg(unackedMessage.msg.Id)
 	}
 
-	channel.qos.Dec(1, uint32(unackedMessage.msg.BodySize))
-	channel.conn.qos.Dec(1, uint32(unackedMessage.msg.BodySize))
+	channel.decQosAndConsumerNext(unackedMessage)
 
+}
+
+func (channel *Channel) decQosAndConsumerNext(unackedMessage *UnackedMessage) {
 	if cmr, ok := channel.consumers[unackedMessage.cTag]; ok {
 		cmr.Consume()
+
+		for _, amqpQos := range cmr.Qos() {
+			amqpQos.Dec(1, uint32(unackedMessage.msg.BodySize))
+		}
+	} else {
+		channel.qos.Dec(1, uint32(unackedMessage.msg.BodySize))
+		channel.conn.qos.Dec(1, uint32(unackedMessage.msg.BodySize))
 	}
 }
+
 
 func (channel *Channel) getExchangeWithError(exchangeName string, method amqp.Method) (ex *exchange.Exchange, err *amqp.Error) {
 	ex = channel.conn.getVirtualHost().GetExchange(exchangeName)

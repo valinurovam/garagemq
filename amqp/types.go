@@ -28,26 +28,28 @@ type ContentHeader struct {
 }
 
 type Message struct {
-	Id         uint64
-	Header     *ContentHeader
-	Exchange   string
-	RoutingKey string
-	Mandatory  bool
-	Immediate  bool
-	BodySize   uint64
-	Body       []*Frame
+	Id            uint64
+	Header        *ContentHeader
+	Exchange      string
+	RoutingKey    string
+	Mandatory     bool
+	Immediate     bool
+	BodySize      uint64
+	Body          []*Frame
+	DeliveryCount uint32
 }
 
 var msgId uint64
 
 func NewMessage(method *BasicPublish) *Message {
 	return &Message{
-		Id:         atomic.AddUint64(&msgId, 1),
-		Exchange:   method.Exchange,
-		RoutingKey: method.RoutingKey,
-		Mandatory:  method.Mandatory,
-		Immediate:  method.Immediate,
-		BodySize:   0,
+		Id:            atomic.AddUint64(&msgId, 1),
+		Exchange:      method.Exchange,
+		RoutingKey:    method.RoutingKey,
+		Mandatory:     method.Mandatory,
+		Immediate:     method.Immediate,
+		BodySize:      0,
+		DeliveryCount: 0,
 	}
 }
 
@@ -61,7 +63,7 @@ func (message *Message) Marshal(protoVersion string) (data []byte, err error) {
 	if err = WriteLonglong(buffer, message.Id); err != nil {
 		return nil, err
 	}
-	// TODO Remove ProtoRabbit
+
 	if err = WriteContentHeader(buffer, message.Header, protoVersion); err != nil {
 		return nil, err
 	}
@@ -82,6 +84,11 @@ func (message *Message) Marshal(protoVersion string) (data []byte, err error) {
 		}
 	}
 	WriteLongstr(buffer, body.Bytes())
+
+	if err = WriteLong(buffer, message.DeliveryCount); err != nil {
+		return nil, err
+	}
+
 	return buffer.Bytes(), nil
 }
 
@@ -90,7 +97,7 @@ func (message *Message) Unmarshal(buffer []byte, protoVersion string) (err error
 	if message.Id, err = ReadLonglong(reader); err != nil {
 		return err
 	}
-	// TODO Remove ProtoRabbit
+
 	if message.Header, err = ReadContentHeader(reader, protoVersion); err != nil {
 		return err
 	}
@@ -110,6 +117,10 @@ func (message *Message) Unmarshal(buffer []byte, protoVersion string) (err error
 	for bodyBuffer.Len() != 0 {
 		body, _ := ReadFrame(bodyBuffer)
 		message.Body = append(message.Body, body)
+	}
+
+	if message.DeliveryCount, err = ReadLong(reader); err != nil {
+		return err
 	}
 	return nil
 }
