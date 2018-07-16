@@ -260,9 +260,7 @@ func (srv *Server) getStorageInstance(name string) interfaces.DbStorage {
 
 func (srv *Server) onSignal(sig os.Signal) {
 	switch sig {
-	case syscall.SIGTERM:
-		fallthrough
-	case syscall.SIGINT:
+	case syscall.SIGTERM, syscall.SIGINT:
 		srv.Stop()
 		os.Exit(0)
 	}

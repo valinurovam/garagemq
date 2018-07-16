@@ -12,10 +12,11 @@ import (
 	"github.com/valinurovam/garagemq/safequeue"
 )
 
+// Queue is an implementation of the AMQP-queue entity
 type Queue struct {
 	safequeue.SafeQueue
 	name            string
-	connId          uint64
+	connID          uint64
 	exclusive       bool
 	autoDelete      bool
 	durable         bool
@@ -30,11 +31,12 @@ type Queue struct {
 	currentConsumer int
 }
 
-func NewQueue(name string, connId uint64, exclusive bool, autoDelete bool, durable bool, shardSize int, storage *msgstorage.MsgStorage) *Queue {
+// NewQueue returns new instance of Queue
+func NewQueue(name string, connID uint64, exclusive bool, autoDelete bool, durable bool, shardSize int, storage *msgstorage.MsgStorage) *Queue {
 	return &Queue{
 		SafeQueue:       *safequeue.NewSafeQueue(shardSize),
 		name:            name,
-		connId:          connId,
+		connID:          connID,
 		exclusive:       exclusive,
 		autoDelete:      autoDelete,
 		durable:         durable,
@@ -50,7 +52,7 @@ func NewQueue(name string, connId uint64, exclusive bool, autoDelete bool, durab
 func (queue *Queue) Start() {
 	queue.active = true
 	go func() {
-		for _ = range queue.call {
+		for range queue.call {
 			func() {
 				queue.cmrLock.RLock()
 				defer queue.cmrLock.RUnlock()
@@ -83,7 +85,7 @@ func (queue *Queue) Push(message *amqp.Message, silent bool) {
 		return
 	}
 
-	if queue.durable {
+	if queue.durable && message.IsPersistent() {
 		queue.storage.Add(message, queue.name)
 	}
 
@@ -134,16 +136,16 @@ func (queue *Queue) PopQos(qosList []*qos.AmqpQos) *amqp.Message {
 	return nil
 }
 
-func (queue *Queue) AckMsg(id uint64) {
-	if queue.durable {
-		queue.storage.Del(id, queue.name)
+func (queue *Queue) AckMsg(message *amqp.Message) {
+	if queue.durable && message.IsPersistent(){
+		queue.storage.Del(message.Id, queue.name)
 	}
 }
 
 func (queue *Queue) Requeue(message *amqp.Message) {
 	message.DeliveryCount++
 	queue.SafeQueue.PushHead(message)
-	if queue.durable {
+	if queue.durable && message.IsPersistent() {
 		queue.storage.Update(message, queue.name)
 	}
 	queue.callConsumers()
@@ -194,12 +196,12 @@ func (queue *Queue) AddConsumer(consumer interfaces.Consumer, exclusive bool) er
 	defer queue.cmrLock.Unlock()
 
 	if !queue.active {
-		return errors.New(fmt.Sprintf("queue is not active"))
+		return fmt.Errorf(("queue is not active"))
 	}
 	queue.wasConsumed = true
 
 	if exclusive && len(queue.consumers) != 0 {
-		return errors.New(fmt.Sprintf("queue is busy by %d consumers", len(queue.consumers)))
+		return fmt.Errorf("queue is busy by %d consumers", len(queue.consumers))
 	}
 	queue.consumers = append(queue.consumers, consumer)
 
@@ -252,18 +254,22 @@ func (queue *Queue) ConsumersCount() int {
 	return len(queue.consumers)
 }
 
-func (qA *Queue) EqualWithErr(qB *Queue) error {
+func (queue *Queue) EqualWithErr(qB *Queue) error {
 	errTemplate := "inequivalent arg '%s' for queue '%s': received '%s' but current is '%s'"
-	if qA.durable != qB.IsDurable() {
-		return errors.New(fmt.Sprintf(errTemplate, "durable", qA.name, qB.IsDurable(), qA.durable))
+	if queue.durable != qB.IsDurable() {
+		return fmt.Errorf(errTemplate, "durable", queue.name, qB.IsDurable(), queue.durable)
 	}
-	if qA.autoDelete != qB.IsAutoDelete() {
-		return errors.New(fmt.Sprintf(errTemplate, "autoDelete", qA.name, qB.IsAutoDelete(), qA.autoDelete))
+	if queue.autoDelete != qB.autoDelete {
+		return fmt.Errorf(errTemplate, "autoDelete", queue.name, qB.autoDelete, queue.autoDelete)
 	}
-	if qA.exclusive != qB.IsExclusive() {
-		return errors.New(fmt.Sprintf(errTemplate, "exclusive", qA.name, qB.IsExclusive(), qA.exclusive))
+	if queue.exclusive != qB.IsExclusive() {
+		return fmt.Errorf(errTemplate, "exclusive", queue.name, qB.IsExclusive(), queue.exclusive)
 	}
 	return nil
+}
+
+func (queue *Queue) MsgStorage() *msgstorage.MsgStorage {
+	return queue.storage
 }
 
 func (queue *Queue) Marshal(protoVersion string) []byte {
@@ -278,16 +284,12 @@ func (queue *Queue) IsDurable() bool {
 	return queue.durable
 }
 
-func (queue *Queue) IsAutoDelete() bool {
-	return queue.autoDelete
-}
-
 func (queue *Queue) IsExclusive() bool {
 	return queue.exclusive
 }
 
-func (queue *Queue) ConnId() uint64 {
-	return queue.connId
+func (queue *Queue) ConnID() uint64 {
+	return queue.connID
 }
 
 func (queue *Queue) IsActive() bool {

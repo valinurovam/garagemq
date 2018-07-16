@@ -17,12 +17,15 @@ import (
 )
 
 const (
-	ChannelNew     = iota
-	ChannelOpen
-	ChannelClosing
-	ChannelClosed
+	channelNew     = iota
+	channelOpen
+	channelClosing
+	channelClosed
 )
 
+// Channel is an implementation of the AMQP-channel entity
+// Within a single socket connection, there can be multiple
+// independent threads of control, called "channels"
 type Channel struct {
 	active         bool
 	id             uint16
@@ -43,12 +46,14 @@ type Channel struct {
 	ackStore       map[uint64]*UnackedMessage
 }
 
+// UnackedMessage represents the unacknowledged message
 type UnackedMessage struct {
 	cTag  string
 	msg   *amqp.Message
 	queue string
 }
 
+// NewChannel returns new instance of Channel
 func NewChannel(id uint16, conn *Connection) (*Channel) {
 	channel := &Channel{
 		active:       true,
@@ -57,7 +62,7 @@ func NewChannel(id uint16, conn *Connection) (*Channel) {
 		server:       conn.server,
 		incoming:     make(chan *amqp.Frame, 100),
 		outgoing:     conn.outgoing,
-		status:       ChannelNew,
+		status:       channelNew,
 		protoVersion: conn.server.protoVersion,
 		consumers:    make(map[string]*consumer.Consumer),
 		qos:          qos.New(0, 0),
@@ -116,7 +121,7 @@ func (channel *Channel) sendError(err *amqp.Error) {
 	channel.logger.Error(err)
 	switch err.ErrorType {
 	case amqp.ErrorOnChannel:
-		channel.status = ChannelClosing
+		channel.status = channelClosing
 		channel.SendMethod(&amqp.ChannelClose{
 			ReplyCode: err.ReplyCode,
 			ReplyText: err.ReplyText,
@@ -204,7 +209,7 @@ func (channel *Channel) handleContentBody(bodyFrame *amqp.Frame) *amqp.Error {
 		return nil
 	}
 
-	for queueName, _ := range matchedQueues {
+	for queueName := range matchedQueues {
 		qu := channel.conn.getVirtualHost().GetQueue(queueName)
 		qu.Push(channel.currentMessage, false)
 	}
@@ -328,7 +333,7 @@ func (channel *Channel) handleAck(method *amqp.BasicAck) *amqp.Error {
 
 	if method.Multiple {
 		for tag, uMsg := range channel.ackStore {
-			if method.DeliveryTag == 0 || tag <= method.DeliveryTag  {
+			if method.DeliveryTag == 0 || tag <= method.DeliveryTag {
 				channel.ackMsg(uMsg, tag)
 			}
 		}
@@ -349,7 +354,7 @@ func (channel *Channel) ackMsg(unackedMessage *UnackedMessage, deliveryTag uint6
 	delete(channel.ackStore, deliveryTag)
 	q := channel.conn.getVirtualHost().GetQueue(unackedMessage.queue)
 	if q != nil {
-		q.AckMsg(unackedMessage.msg.Id)
+		q.AckMsg(unackedMessage.msg)
 	}
 
 	channel.decQosAndConsumerNext(unackedMessage)
@@ -363,7 +368,7 @@ func (channel *Channel) handleReject(deliveryTag uint64, multiple bool, requeue 
 
 	if multiple {
 		deliveryTags := make([]uint64, 0)
-		for dTag, _ := range channel.ackStore {
+		for dTag := range channel.ackStore {
 			deliveryTags = append(deliveryTags, dTag)
 		}
 		sort.Slice(
@@ -396,7 +401,7 @@ func (channel *Channel) rejectMsg(unackedMessage *UnackedMessage, deliveryTag ui
 	if qu != nil && requeue {
 		qu.Requeue(unackedMessage.msg)
 	} else if qu != nil {
-		qu.AckMsg(unackedMessage.msg.Id)
+		qu.AckMsg(unackedMessage.msg)
 	}
 
 	channel.decQosAndConsumerNext(unackedMessage)
@@ -445,7 +450,7 @@ func (channel *Channel) checkQueueLockWithError(qu *queue.Queue, method amqp.Met
 	if qu == nil {
 		return nil
 	}
-	if qu.IsExclusive() && qu.ConnId() != channel.conn.id {
+	if qu.IsExclusive() && qu.ConnID() != channel.conn.id {
 		return amqp.NewChannelError(
 			amqp.ResourceLocked,
 			fmt.Sprintf("queue '%s' is locked to another connection", qu.GetName()),

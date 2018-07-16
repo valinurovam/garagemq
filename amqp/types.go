@@ -53,6 +53,11 @@ func NewMessage(method *BasicPublish) *Message {
 	}
 }
 
+func (message *Message) IsPersistent() bool {
+	deliveryMode := message.Header.PropertyList.DeliveryMode
+	return deliveryMode != nil && *deliveryMode == 2
+}
+
 func (message *Message) Append(body *Frame) {
 	message.Body = append(message.Body, body)
 	message.BodySize += uint64(len(body.Payload))

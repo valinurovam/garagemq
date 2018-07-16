@@ -44,6 +44,8 @@ db:
 - [x] exchange.declareOk
 - [ ] exchange.delete
 - [ ] exchange.deleteOk
+- [ ] exchange.bind
+- [ ] exchange.unbind
 
 #### queue
 
@@ -81,7 +83,12 @@ RabbitMQ Qos means for channel(global=true) or each new consumer(global=false).
 - [ ] basic.recoverAsync
 - [ ] basic.recover
 - [ ] basic.recoverOk 
- 
+
+#### confirm
+
+- [ ] confirm.select
+- [ ] confirm.selectOk
+
 #### tx
 
 - [ ] tx.select

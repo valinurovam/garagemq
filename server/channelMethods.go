@@ -23,25 +23,25 @@ func (channel *Channel) channelRoute(method amqp.Method) *amqp.Error {
 
 func (channel *Channel) channelOpen(method *amqp.ChannelOpen) (err *amqp.Error) {
 	// The client MUST NOT use this method on an already­opened channel
-	if channel.status == ChannelOpen {
+	if channel.status == channelOpen {
 		return amqp.NewConnectionError(amqp.ChannelError, "channel already open", method.ClassIdentifier(), method.MethodIdentifier())
 	}
 
 	channel.SendMethod(&amqp.ChannelOpenOk{})
-	channel.status = ChannelOpen
+	channel.status = channelOpen
 
 	return nil
 }
 
 func (channel *Channel) channelClose(method *amqp.ChannelClose) (err *amqp.Error) {
-	channel.status = ChannelClosed
+	channel.status = channelClosed
 	channel.SendMethod(&amqp.ChannelCloseOk{})
 	channel.close()
 	return nil
 }
 
 func (channel *Channel) channelCloseOk(method *amqp.ChannelCloseOk) (err *amqp.Error) {
-	channel.status = ChannelClosed
+	channel.status = channelClosed
 	return nil
 }
 

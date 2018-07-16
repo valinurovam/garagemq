@@ -123,7 +123,7 @@ func (conn *Connection) clearQueues() {
 		return
 	}
 	for _, queue := range virtualHost.GetQueues() {
-		if queue.IsExclusive() && queue.ConnId() == conn.id {
+		if queue.IsExclusive() && queue.ConnID() == conn.id {
 			virtualHost.DeleteQueue(queue.GetName(), false, false)
 		}
 	}
