@@ -118,3 +118,33 @@ func TestMessage_Marshal_Unmarshal(t *testing.T) {
 		t.Fatalf("Marshaled and unmarshaled structures not equal")
 	}
 }
+
+func TestMessage_IsPersistent(t *testing.T) {
+	var dMode byte = 2
+	message := &Message{
+		ID: 1,
+		Header: &ContentHeader{
+			ClassID:       ClassBasic,
+			Weight:        0,
+			BodySize:      4,
+			propertyFlags: 32768,
+			PropertyList: &BasicPropertyList{
+				DeliveryMode:    &dMode,
+			},
+		},
+	}
+	if !message.IsPersistent() {
+		t.Fatalf("Expected persistent message")
+	}
+}
+
+func TestConfirmMeta_CanConfirm(t *testing.T) {
+	meta := &ConfirmMeta{
+		ExpectedConfirms: 5,
+		ActualConfirms: 5,
+	}
+
+	if !meta.CanConfirm() {
+		t.Fatalf("Expected CanConfirm true")
+	}
+}

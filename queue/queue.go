@@ -270,10 +270,6 @@ func (queue *Queue) EqualWithErr(qB *Queue) error {
 	return nil
 }
 
-func (queue *Queue) MsgStorage() *msgstorage.MsgStorage {
-	return queue.storage
-}
-
 func (queue *Queue) Marshal(protoVersion string) []byte {
 	return []byte(queue.name)
 }

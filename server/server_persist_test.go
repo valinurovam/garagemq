@@ -1,0 +1,52 @@
+package server
+
+import (
+	"testing"
+
+	"github.com/valinurovam/garagemq/exchange"
+)
+
+func Test_ServerPersist_Queue_Success(t *testing.T) {
+	sc, _ := getNewSC(getDefaultTestConfig())
+	defer sc.clean()
+	ch, _ := sc.client.Channel()
+
+	ch.QueueDeclare("testQu", true, false, false, false, emptyTable)
+	sc.server.Stop()
+
+	sc, _ = getNewSC(getDefaultTestConfig())
+	ch, _ = sc.client.Channel()
+
+	if _, err := ch.QueueDeclarePassive("testQu", false, false, false, false, emptyTable); err != nil {
+		t.Fatal("Expected queue exists after server restart", err)
+	}
+}
+
+func Test_ServerPersist_Exchange_Success(t *testing.T) {
+	sc, _ := getNewSC(getDefaultTestConfig())
+	defer sc.clean()
+	ch, _ := sc.client.Channel()
+
+	ch.ExchangeDeclare("testExDirect", "direct", true, false, false, false, emptyTable)
+	ch.ExchangeDeclare("testExTopic", "topic", true, false, false, false, emptyTable)
+	sc.server.Stop()
+
+	sc, _ = getNewSC(getDefaultTestConfig())
+	ch, _ = sc.client.Channel()
+
+	if err := ch.ExchangeDeclarePassive("testExDirect", "direct", true, false, false, false, emptyTable); err != nil {
+		t.Fatal("Expected exchange exists after server restart", err)
+	}
+	ex := sc.server.GetVhost("/").GetExchange("testExDirect")
+	if ex.ExType() != exchange.EX_TYPE_DIRECT {
+		t.Fatal("Expected direct exchange")
+	}
+
+	if err := ch.ExchangeDeclarePassive("testExTopic", "topic", true, false, false, false, emptyTable); err != nil {
+		t.Fatal("Expected exchange exists after server restart", err)
+	}
+	ex = sc.server.GetVhost("/").GetExchange("testExTopic")
+	if ex.ExType() != exchange.EX_TYPE_TOPIC {
+		t.Fatal("Expected topic exchange")
+	}
+}

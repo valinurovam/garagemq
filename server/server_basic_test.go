@@ -187,22 +187,29 @@ func Test_BasicPublish_Persistent_Success(t *testing.T) {
 		"",
 		qu.Name,
 		false, false,
-		amqp.Publishing{ContentType: "text/plain", Body: []byte("test"), DeliveryMode: amqp.Persistent},
+		amqp.Publishing{ContentType: "text/plain", Body: []byte("testMessage"), DeliveryMode: amqp.Persistent},
 	); err != nil {
 		t.Fatal(err)
 	}
 
 	// wait call persistStorage()
 	time.Sleep(50 * time.Millisecond)
+	sc.server.Stop()
 
-	found := false
-	storage := sc.server.GetVhost("/").GetQueue(qu.Name).MsgStorage()
-	storage.Iterate(func(queue string, message *amqp2.Message) {
-		found = true
-	})
+	sc, _ = getNewSC(getDefaultTestConfig())
+	ch, _ = sc.client.Channel()
 
-	if !found {
-		t.Fatal("Message not found into msgstorage after publish with persistent flag")
+	msg, ok, errGet := ch.Get("testQu", true)
+	if errGet != nil {
+		t.Fatal(errGet)
+	}
+
+	if !ok {
+		t.Fatal("Persistent message not found after server restart")
+	}
+
+	if !bytes.Equal(msg.Body, []byte("testMessage")) {
+		t.Fatal("Received strange message after server restart")
 	}
 }
 
@@ -225,13 +232,14 @@ func Test_BasicPublish_Persistent_Failed_QueueNonDurable(t *testing.T) {
 	time.Sleep(5 * time.Millisecond)
 
 	found := false
-	storage := sc.server.GetVhost("/").GetQueue(qu.Name).MsgStorage()
+	vhost := sc.server.GetVhost("/")
+	storage := vhost.msgStorage
 	storage.Iterate(func(queue string, message *amqp2.Message) {
 		found = true
 	})
 
 	if found {
-		t.Fatal("Message found into msgstorage after publish with persistent flag, but non durable queue")
+		t.Fatal("Persistent message found after server restart on message store")
 	}
 }
 

@@ -10,9 +10,11 @@ AMQP-server implemented with #golang
 
 ### TODO
 - [ ] Add comments
+- [ ] Optimize binds
 - [ ] Fix golint exceptions
 - [ ] Replication
 - [ ] Own backend for durable entities and persistent messages
+- [ ] Migrate to message reference counting
 
 ### Backend for durable entities and persistent messages
 Database backend is changeable through config `db.engine` 
