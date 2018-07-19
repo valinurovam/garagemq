@@ -2,7 +2,6 @@
 package amqp
 
 import (
-	"errors"
 	"fmt"
 	"io"
 	"time"
@@ -19,6 +18,9 @@ type Method interface {
 
 // Connection methods
 
+// ConnectionStart This method starts the connection negotiation process by telling the client the
+// protocol version that the server proposes, along with a list of security mechanisms
+// which the client can use for authentication.
 type ConnectionStart struct {
 	VersionMajor     byte
 	VersionMinor     byte
@@ -27,22 +29,27 @@ type ConnectionStart struct {
 	Locales          []byte
 }
 
+// Name returns method name as string, usefully for logging
 func (method *ConnectionStart) Name() string {
 	return "ConnectionStart"
 }
 
+// FrameType returns method frame type
 func (method *ConnectionStart) FrameType() byte {
 	return 1
 }
 
+// ClassIdentifier returns method classID
 func (method *ConnectionStart) ClassIdentifier() uint16 {
 	return 10
 }
 
+// MethodIdentifier returns method methodID
 func (method *ConnectionStart) MethodIdentifier() uint16 {
 	return 10
 }
 
+// Read method from io reader
 func (method *ConnectionStart) Read(reader io.Reader, protoVersion string) (err error) {
 
 	method.VersionMajor, err = ReadOctet(reader)
@@ -73,6 +80,7 @@ func (method *ConnectionStart) Read(reader io.Reader, protoVersion string) (err 
 	return
 }
 
+// Write method from io reader
 func (method *ConnectionStart) Write(writer io.Writer, protoVersion string) (err error) {
 
 	if err = WriteOctet(writer, method.VersionMajor); err != nil {
@@ -98,6 +106,7 @@ func (method *ConnectionStart) Write(writer io.Writer, protoVersion string) (err
 	return
 }
 
+// ConnectionStartOk This method selects a SASL security mechanism.
 type ConnectionStartOk struct {
 	ClientProperties *Table
 	Mechanism        string
@@ -105,22 +114,27 @@ type ConnectionStartOk struct {
 	Locale           string
 }
 
+// Name returns method name as string, usefully for logging
 func (method *ConnectionStartOk) Name() string {
 	return "ConnectionStartOk"
 }
 
+// FrameType returns method frame type
 func (method *ConnectionStartOk) FrameType() byte {
 	return 1
 }
 
+// ClassIdentifier returns method classID
 func (method *ConnectionStartOk) ClassIdentifier() uint16 {
 	return 10
 }
 
+// MethodIdentifier returns method methodID
 func (method *ConnectionStartOk) MethodIdentifier() uint16 {
 	return 11
 }
 
+// Read method from io reader
 func (method *ConnectionStartOk) Read(reader io.Reader, protoVersion string) (err error) {
 
 	method.ClientProperties, err = ReadTable(reader, protoVersion)
@@ -146,6 +160,7 @@ func (method *ConnectionStartOk) Read(reader io.Reader, protoVersion string) (er
 	return
 }
 
+// Write method from io reader
 func (method *ConnectionStartOk) Write(writer io.Writer, protoVersion string) (err error) {
 
 	if err = WriteTable(writer, method.ClientProperties, protoVersion); err != nil {
@@ -167,26 +182,34 @@ func (method *ConnectionStartOk) Write(writer io.Writer, protoVersion string) (e
 	return
 }
 
+// ConnectionSecure The SASL protocol works by exchanging challenges and responses until both peers have
+// received sufficient information to authenticate each other. This method challenges
+// the client to provide more information.
 type ConnectionSecure struct {
 	Challenge []byte
 }
 
+// Name returns method name as string, usefully for logging
 func (method *ConnectionSecure) Name() string {
 	return "ConnectionSecure"
 }
 
+// FrameType returns method frame type
 func (method *ConnectionSecure) FrameType() byte {
 	return 1
 }
 
+// ClassIdentifier returns method classID
 func (method *ConnectionSecure) ClassIdentifier() uint16 {
 	return 10
 }
 
+// MethodIdentifier returns method methodID
 func (method *ConnectionSecure) MethodIdentifier() uint16 {
 	return 20
 }
 
+// Read method from io reader
 func (method *ConnectionSecure) Read(reader io.Reader, protoVersion string) (err error) {
 
 	method.Challenge, err = ReadLongstr(reader)
@@ -197,6 +220,7 @@ func (method *ConnectionSecure) Read(reader io.Reader, protoVersion string) (err
 	return
 }
 
+// Write method from io reader
 func (method *ConnectionSecure) Write(writer io.Writer, protoVersion string) (err error) {
 
 	if err = WriteLongstr(writer, method.Challenge); err != nil {
@@ -206,26 +230,33 @@ func (method *ConnectionSecure) Write(writer io.Writer, protoVersion string) (er
 	return
 }
 
+// ConnectionSecureOk This method attempts to authenticate, passing a block of SASL data for the security
+// mechanism at the server side.
 type ConnectionSecureOk struct {
 	Response []byte
 }
 
+// Name returns method name as string, usefully for logging
 func (method *ConnectionSecureOk) Name() string {
 	return "ConnectionSecureOk"
 }
 
+// FrameType returns method frame type
 func (method *ConnectionSecureOk) FrameType() byte {
 	return 1
 }
 
+// ClassIdentifier returns method classID
 func (method *ConnectionSecureOk) ClassIdentifier() uint16 {
 	return 10
 }
 
+// MethodIdentifier returns method methodID
 func (method *ConnectionSecureOk) MethodIdentifier() uint16 {
 	return 21
 }
 
+// Read method from io reader
 func (method *ConnectionSecureOk) Read(reader io.Reader, protoVersion string) (err error) {
 
 	method.Response, err = ReadLongstr(reader)
@@ -236,6 +267,7 @@ func (method *ConnectionSecureOk) Read(reader io.Reader, protoVersion string) (e
 	return
 }
 
+// Write method from io reader
 func (method *ConnectionSecureOk) Write(writer io.Writer, protoVersion string) (err error) {
 
 	if err = WriteLongstr(writer, method.Response); err != nil {
@@ -245,28 +277,35 @@ func (method *ConnectionSecureOk) Write(writer io.Writer, protoVersion string) (
 	return
 }
 
+// ConnectionTune This method proposes a set of connection configuration values to the client. The
+// client can accept and/or adjust these.
 type ConnectionTune struct {
 	ChannelMax uint16
 	FrameMax   uint32
 	Heartbeat  uint16
 }
 
+// Name returns method name as string, usefully for logging
 func (method *ConnectionTune) Name() string {
 	return "ConnectionTune"
 }
 
+// FrameType returns method frame type
 func (method *ConnectionTune) FrameType() byte {
 	return 1
 }
 
+// ClassIdentifier returns method classID
 func (method *ConnectionTune) ClassIdentifier() uint16 {
 	return 10
 }
 
+// MethodIdentifier returns method methodID
 func (method *ConnectionTune) MethodIdentifier() uint16 {
 	return 30
 }
 
+// Read method from io reader
 func (method *ConnectionTune) Read(reader io.Reader, protoVersion string) (err error) {
 
 	method.ChannelMax, err = ReadShort(reader)
@@ -287,6 +326,7 @@ func (method *ConnectionTune) Read(reader io.Reader, protoVersion string) (err e
 	return
 }
 
+// Write method from io reader
 func (method *ConnectionTune) Write(writer io.Writer, protoVersion string) (err error) {
 
 	if err = WriteShort(writer, method.ChannelMax); err != nil {
@@ -304,28 +344,35 @@ func (method *ConnectionTune) Write(writer io.Writer, protoVersion string) (err 
 	return
 }
 
+// ConnectionTuneOk This method sends the client's connection tuning parameters to the server.
+// Certain fields are negotiated, others provide capability information.
 type ConnectionTuneOk struct {
 	ChannelMax uint16
 	FrameMax   uint32
 	Heartbeat  uint16
 }
 
+// Name returns method name as string, usefully for logging
 func (method *ConnectionTuneOk) Name() string {
 	return "ConnectionTuneOk"
 }
 
+// FrameType returns method frame type
 func (method *ConnectionTuneOk) FrameType() byte {
 	return 1
 }
 
+// ClassIdentifier returns method classID
 func (method *ConnectionTuneOk) ClassIdentifier() uint16 {
 	return 10
 }
 
+// MethodIdentifier returns method methodID
 func (method *ConnectionTuneOk) MethodIdentifier() uint16 {
 	return 31
 }
 
+// Read method from io reader
 func (method *ConnectionTuneOk) Read(reader io.Reader, protoVersion string) (err error) {
 
 	method.ChannelMax, err = ReadShort(reader)
@@ -346,6 +393,7 @@ func (method *ConnectionTuneOk) Read(reader io.Reader, protoVersion string) (err
 	return
 }
 
+// Write method from io reader
 func (method *ConnectionTuneOk) Write(writer io.Writer, protoVersion string) (err error) {
 
 	if err = WriteShort(writer, method.ChannelMax); err != nil {
@@ -363,28 +411,37 @@ func (method *ConnectionTuneOk) Write(writer io.Writer, protoVersion string) (er
 	return
 }
 
+// ConnectionOpen This method opens a connection to a virtual host, which is a collection of
+// resources, and acts to separate multiple application domains within a server.
+// The server may apply arbitrary limits per virtual host, such as the number
+// of each type of entity that may be used, per connection and/or in total.
 type ConnectionOpen struct {
 	VirtualHost string
 	Reserved1   string
 	Reserved2   bool
 }
 
+// Name returns method name as string, usefully for logging
 func (method *ConnectionOpen) Name() string {
 	return "ConnectionOpen"
 }
 
+// FrameType returns method frame type
 func (method *ConnectionOpen) FrameType() byte {
 	return 1
 }
 
+// ClassIdentifier returns method classID
 func (method *ConnectionOpen) ClassIdentifier() uint16 {
 	return 10
 }
 
+// MethodIdentifier returns method methodID
 func (method *ConnectionOpen) MethodIdentifier() uint16 {
 	return 40
 }
 
+// Read method from io reader
 func (method *ConnectionOpen) Read(reader io.Reader, protoVersion string) (err error) {
 
 	method.VirtualHost, err = ReadShortstr(reader)
@@ -404,6 +461,7 @@ func (method *ConnectionOpen) Read(reader io.Reader, protoVersion string) (err e
 	return
 }
 
+// Write method from io reader
 func (method *ConnectionOpen) Write(writer io.Writer, protoVersion string) (err error) {
 
 	if err = WriteShortstr(writer, method.VirtualHost); err != nil {
@@ -427,26 +485,32 @@ func (method *ConnectionOpen) Write(writer io.Writer, protoVersion string) (err 
 	return
 }
 
+// ConnectionOpenOk This method signals to the client that the connection is ready for use.
 type ConnectionOpenOk struct {
 	Reserved1 string
 }
 
+// Name returns method name as string, usefully for logging
 func (method *ConnectionOpenOk) Name() string {
 	return "ConnectionOpenOk"
 }
 
+// FrameType returns method frame type
 func (method *ConnectionOpenOk) FrameType() byte {
 	return 1
 }
 
+// ClassIdentifier returns method classID
 func (method *ConnectionOpenOk) ClassIdentifier() uint16 {
 	return 10
 }
 
+// MethodIdentifier returns method methodID
 func (method *ConnectionOpenOk) MethodIdentifier() uint16 {
 	return 41
 }
 
+// Read method from io reader
 func (method *ConnectionOpenOk) Read(reader io.Reader, protoVersion string) (err error) {
 
 	method.Reserved1, err = ReadShortstr(reader)
@@ -457,6 +521,7 @@ func (method *ConnectionOpenOk) Read(reader io.Reader, protoVersion string) (err
 	return
 }
 
+// Write method from io reader
 func (method *ConnectionOpenOk) Write(writer io.Writer, protoVersion string) (err error) {
 
 	if err = WriteShortstr(writer, method.Reserved1); err != nil {
@@ -466,6 +531,10 @@ func (method *ConnectionOpenOk) Write(writer io.Writer, protoVersion string) (er
 	return
 }
 
+// ConnectionClose This method indicates that the sender wants to close the connection. This may be
+// due to internal conditions (e.g. a forced shut-down) or due to an error handling
+// a specific method, i.e. an exception. When a close is due to an exception, the
+// sender provides the class and method id of the method which caused the exception.
 type ConnectionClose struct {
 	ReplyCode uint16
 	ReplyText string
@@ -473,22 +542,27 @@ type ConnectionClose struct {
 	MethodId  uint16
 }
 
+// Name returns method name as string, usefully for logging
 func (method *ConnectionClose) Name() string {
 	return "ConnectionClose"
 }
 
+// FrameType returns method frame type
 func (method *ConnectionClose) FrameType() byte {
 	return 1
 }
 
+// ClassIdentifier returns method classID
 func (method *ConnectionClose) ClassIdentifier() uint16 {
 	return 10
 }
 
+// MethodIdentifier returns method methodID
 func (method *ConnectionClose) MethodIdentifier() uint16 {
 	return 50
 }
 
+// Read method from io reader
 func (method *ConnectionClose) Read(reader io.Reader, protoVersion string) (err error) {
 
 	method.ReplyCode, err = ReadShort(reader)
@@ -514,6 +588,7 @@ func (method *ConnectionClose) Read(reader io.Reader, protoVersion string) (err 
 	return
 }
 
+// Write method from io reader
 func (method *ConnectionClose) Write(writer io.Writer, protoVersion string) (err error) {
 
 	if err = WriteShort(writer, method.ReplyCode); err != nil {
@@ -535,55 +610,70 @@ func (method *ConnectionClose) Write(writer io.Writer, protoVersion string) (err
 	return
 }
 
+// ConnectionCloseOk This method confirms a Connection.Close method and tells the recipient that it is
+// safe to release resources for the connection and close the socket.
 type ConnectionCloseOk struct {
 }
 
+// Name returns method name as string, usefully for logging
 func (method *ConnectionCloseOk) Name() string {
 	return "ConnectionCloseOk"
 }
 
+// FrameType returns method frame type
 func (method *ConnectionCloseOk) FrameType() byte {
 	return 1
 }
 
+// ClassIdentifier returns method classID
 func (method *ConnectionCloseOk) ClassIdentifier() uint16 {
 	return 10
 }
 
+// MethodIdentifier returns method methodID
 func (method *ConnectionCloseOk) MethodIdentifier() uint16 {
 	return 51
 }
 
+// Read method from io reader
 func (method *ConnectionCloseOk) Read(reader io.Reader, protoVersion string) (err error) {
 
 	return
 }
 
+// Write method from io reader
 func (method *ConnectionCloseOk) Write(writer io.Writer, protoVersion string) (err error) {
 
 	return
 }
 
+// ConnectionBlocked This method indicates that a connection has been blocked
+// and does not accept new publishes.
 type ConnectionBlocked struct {
 	Reason string
 }
 
+// Name returns method name as string, usefully for logging
 func (method *ConnectionBlocked) Name() string {
 	return "ConnectionBlocked"
 }
 
+// FrameType returns method frame type
 func (method *ConnectionBlocked) FrameType() byte {
 	return 1
 }
 
+// ClassIdentifier returns method classID
 func (method *ConnectionBlocked) ClassIdentifier() uint16 {
 	return 10
 }
 
+// MethodIdentifier returns method methodID
 func (method *ConnectionBlocked) MethodIdentifier() uint16 {
 	return 60
 }
 
+// Read method from io reader
 func (method *ConnectionBlocked) Read(reader io.Reader, protoVersion string) (err error) {
 
 	method.Reason, err = ReadShortstr(reader)
@@ -594,6 +684,7 @@ func (method *ConnectionBlocked) Read(reader io.Reader, protoVersion string) (er
 	return
 }
 
+// Write method from io reader
 func (method *ConnectionBlocked) Write(writer io.Writer, protoVersion string) (err error) {
 
 	if err = WriteShortstr(writer, method.Reason); err != nil {
@@ -603,30 +694,38 @@ func (method *ConnectionBlocked) Write(writer io.Writer, protoVersion string) (e
 	return
 }
 
+// ConnectionUnblocked This method indicates that a connection has been unblocked
+// and now accepts publishes.
 type ConnectionUnblocked struct {
 }
 
+// Name returns method name as string, usefully for logging
 func (method *ConnectionUnblocked) Name() string {
 	return "ConnectionUnblocked"
 }
 
+// FrameType returns method frame type
 func (method *ConnectionUnblocked) FrameType() byte {
 	return 1
 }
 
+// ClassIdentifier returns method classID
 func (method *ConnectionUnblocked) ClassIdentifier() uint16 {
 	return 10
 }
 
+// MethodIdentifier returns method methodID
 func (method *ConnectionUnblocked) MethodIdentifier() uint16 {
 	return 61
 }
 
+// Read method from io reader
 func (method *ConnectionUnblocked) Read(reader io.Reader, protoVersion string) (err error) {
 
 	return
 }
 
+// Write method from io reader
 func (method *ConnectionUnblocked) Write(writer io.Writer, protoVersion string) (err error) {
 
 	return
@@ -634,26 +733,32 @@ func (method *ConnectionUnblocked) Write(writer io.Writer, protoVersion string) 
 
 // Channel methods
 
+// ChannelOpen This method opens a channel to the server.
 type ChannelOpen struct {
 	Reserved1 string
 }
 
+// Name returns method name as string, usefully for logging
 func (method *ChannelOpen) Name() string {
 	return "ChannelOpen"
 }
 
+// FrameType returns method frame type
 func (method *ChannelOpen) FrameType() byte {
 	return 1
 }
 
+// ClassIdentifier returns method classID
 func (method *ChannelOpen) ClassIdentifier() uint16 {
 	return 20
 }
 
+// MethodIdentifier returns method methodID
 func (method *ChannelOpen) MethodIdentifier() uint16 {
 	return 10
 }
 
+// Read method from io reader
 func (method *ChannelOpen) Read(reader io.Reader, protoVersion string) (err error) {
 
 	method.Reserved1, err = ReadShortstr(reader)
@@ -664,6 +769,7 @@ func (method *ChannelOpen) Read(reader io.Reader, protoVersion string) (err erro
 	return
 }
 
+// Write method from io reader
 func (method *ChannelOpen) Write(writer io.Writer, protoVersion string) (err error) {
 
 	if err = WriteShortstr(writer, method.Reserved1); err != nil {
@@ -673,26 +779,32 @@ func (method *ChannelOpen) Write(writer io.Writer, protoVersion string) (err err
 	return
 }
 
+// ChannelOpenOk This method signals to the client that the channel is ready for use.
 type ChannelOpenOk struct {
 	Reserved1 []byte
 }
 
+// Name returns method name as string, usefully for logging
 func (method *ChannelOpenOk) Name() string {
 	return "ChannelOpenOk"
 }
 
+// FrameType returns method frame type
 func (method *ChannelOpenOk) FrameType() byte {
 	return 1
 }
 
+// ClassIdentifier returns method classID
 func (method *ChannelOpenOk) ClassIdentifier() uint16 {
 	return 20
 }
 
+// MethodIdentifier returns method methodID
 func (method *ChannelOpenOk) MethodIdentifier() uint16 {
 	return 11
 }
 
+// Read method from io reader
 func (method *ChannelOpenOk) Read(reader io.Reader, protoVersion string) (err error) {
 
 	method.Reserved1, err = ReadLongstr(reader)
@@ -703,6 +815,7 @@ func (method *ChannelOpenOk) Read(reader io.Reader, protoVersion string) (err er
 	return
 }
 
+// Write method from io reader
 func (method *ChannelOpenOk) Write(writer io.Writer, protoVersion string) (err error) {
 
 	if err = WriteLongstr(writer, method.Reserved1); err != nil {
@@ -712,26 +825,36 @@ func (method *ChannelOpenOk) Write(writer io.Writer, protoVersion string) (err e
 	return
 }
 
+// ChannelFlow This method asks the peer to pause or restart the flow of content data sent by
+// a consumer. This is a simple flow-control mechanism that a peer can use to avoid
+// overflowing its queues or otherwise finding itself receiving more messages than
+// it can process. Note that this method is not intended for window control. It does
+// not affect contents returned by Basic.Get-Ok methods.
 type ChannelFlow struct {
 	Active bool
 }
 
+// Name returns method name as string, usefully for logging
 func (method *ChannelFlow) Name() string {
 	return "ChannelFlow"
 }
 
+// FrameType returns method frame type
 func (method *ChannelFlow) FrameType() byte {
 	return 1
 }
 
+// ClassIdentifier returns method classID
 func (method *ChannelFlow) ClassIdentifier() uint16 {
 	return 20
 }
 
+// MethodIdentifier returns method methodID
 func (method *ChannelFlow) MethodIdentifier() uint16 {
 	return 20
 }
 
+// Read method from io reader
 func (method *ChannelFlow) Read(reader io.Reader, protoVersion string) (err error) {
 
 	bits, err := ReadOctet(reader)
@@ -741,6 +864,7 @@ func (method *ChannelFlow) Read(reader io.Reader, protoVersion string) (err erro
 	return
 }
 
+// Write method from io reader
 func (method *ChannelFlow) Write(writer io.Writer, protoVersion string) (err error) {
 
 	var bits byte
@@ -756,26 +880,32 @@ func (method *ChannelFlow) Write(writer io.Writer, protoVersion string) (err err
 	return
 }
 
+// ChannelFlowOk Confirms to the peer that a flow command was received and processed.
 type ChannelFlowOk struct {
 	Active bool
 }
 
+// Name returns method name as string, usefully for logging
 func (method *ChannelFlowOk) Name() string {
 	return "ChannelFlowOk"
 }
 
+// FrameType returns method frame type
 func (method *ChannelFlowOk) FrameType() byte {
 	return 1
 }
 
+// ClassIdentifier returns method classID
 func (method *ChannelFlowOk) ClassIdentifier() uint16 {
 	return 20
 }
 
+// MethodIdentifier returns method methodID
 func (method *ChannelFlowOk) MethodIdentifier() uint16 {
 	return 21
 }
 
+// Read method from io reader
 func (method *ChannelFlowOk) Read(reader io.Reader, protoVersion string) (err error) {
 
 	bits, err := ReadOctet(reader)
@@ -785,6 +915,7 @@ func (method *ChannelFlowOk) Read(reader io.Reader, protoVersion string) (err er
 	return
 }
 
+// Write method from io reader
 func (method *ChannelFlowOk) Write(writer io.Writer, protoVersion string) (err error) {
 
 	var bits byte
@@ -800,6 +931,10 @@ func (method *ChannelFlowOk) Write(writer io.Writer, protoVersion string) (err e
 	return
 }
 
+// ChannelClose This method indicates that the sender wants to close the channel. This may be due to
+// internal conditions (e.g. a forced shut-down) or due to an error handling a specific
+// method, i.e. an exception. When a close is due to an exception, the sender provides
+// the class and method id of the method which caused the exception.
 type ChannelClose struct {
 	ReplyCode uint16
 	ReplyText string
@@ -807,22 +942,27 @@ type ChannelClose struct {
 	MethodId  uint16
 }
 
+// Name returns method name as string, usefully for logging
 func (method *ChannelClose) Name() string {
 	return "ChannelClose"
 }
 
+// FrameType returns method frame type
 func (method *ChannelClose) FrameType() byte {
 	return 1
 }
 
+// ClassIdentifier returns method classID
 func (method *ChannelClose) ClassIdentifier() uint16 {
 	return 20
 }
 
+// MethodIdentifier returns method methodID
 func (method *ChannelClose) MethodIdentifier() uint16 {
 	return 40
 }
 
+// Read method from io reader
 func (method *ChannelClose) Read(reader io.Reader, protoVersion string) (err error) {
 
 	method.ReplyCode, err = ReadShort(reader)
@@ -848,6 +988,7 @@ func (method *ChannelClose) Read(reader io.Reader, protoVersion string) (err err
 	return
 }
 
+// Write method from io reader
 func (method *ChannelClose) Write(writer io.Writer, protoVersion string) (err error) {
 
 	if err = WriteShort(writer, method.ReplyCode); err != nil {
@@ -869,30 +1010,38 @@ func (method *ChannelClose) Write(writer io.Writer, protoVersion string) (err er
 	return
 }
 
+// ChannelCloseOk This method confirms a Channel.Close method and tells the recipient that it is safe
+// to release resources for the channel.
 type ChannelCloseOk struct {
 }
 
+// Name returns method name as string, usefully for logging
 func (method *ChannelCloseOk) Name() string {
 	return "ChannelCloseOk"
 }
 
+// FrameType returns method frame type
 func (method *ChannelCloseOk) FrameType() byte {
 	return 1
 }
 
+// ClassIdentifier returns method classID
 func (method *ChannelCloseOk) ClassIdentifier() uint16 {
 	return 20
 }
 
+// MethodIdentifier returns method methodID
 func (method *ChannelCloseOk) MethodIdentifier() uint16 {
 	return 41
 }
 
+// Read method from io reader
 func (method *ChannelCloseOk) Read(reader io.Reader, protoVersion string) (err error) {
 
 	return
 }
 
+// Write method from io reader
 func (method *ChannelCloseOk) Write(writer io.Writer, protoVersion string) (err error) {
 
 	return
@@ -900,6 +1049,8 @@ func (method *ChannelCloseOk) Write(writer io.Writer, protoVersion string) (err 
 
 // Exchange methods
 
+// ExchangeDeclare This method creates an exchange if it does not already exist, and if the exchange
+// exists, verifies that it is of the correct and expected class.
 type ExchangeDeclare struct {
 	Reserved1  uint16
 	Exchange   string
@@ -912,22 +1063,27 @@ type ExchangeDeclare struct {
 	Arguments  *Table
 }
 
+// Name returns method name as string, usefully for logging
 func (method *ExchangeDeclare) Name() string {
 	return "ExchangeDeclare"
 }
 
+// FrameType returns method frame type
 func (method *ExchangeDeclare) FrameType() byte {
 	return 1
 }
 
+// ClassIdentifier returns method classID
 func (method *ExchangeDeclare) ClassIdentifier() uint16 {
 	return 40
 }
 
+// MethodIdentifier returns method methodID
 func (method *ExchangeDeclare) MethodIdentifier() uint16 {
 	return 10
 }
 
+// Read method from io reader
 func (method *ExchangeDeclare) Read(reader io.Reader, protoVersion string) (err error) {
 
 	method.Reserved1, err = ReadShort(reader)
@@ -965,6 +1121,7 @@ func (method *ExchangeDeclare) Read(reader io.Reader, protoVersion string) (err 
 	return
 }
 
+// Write method from io reader
 func (method *ExchangeDeclare) Write(writer io.Writer, protoVersion string) (err error) {
 
 	if err = WriteShort(writer, method.Reserved1); err != nil {
@@ -1012,35 +1169,45 @@ func (method *ExchangeDeclare) Write(writer io.Writer, protoVersion string) (err
 	return
 }
 
+// ExchangeDeclareOk This method confirms a Declare method and confirms the name of the exchange,
+// essential for automatically-named exchanges.
 type ExchangeDeclareOk struct {
 }
 
+// Name returns method name as string, usefully for logging
 func (method *ExchangeDeclareOk) Name() string {
 	return "ExchangeDeclareOk"
 }
 
+// FrameType returns method frame type
 func (method *ExchangeDeclareOk) FrameType() byte {
 	return 1
 }
 
+// ClassIdentifier returns method classID
 func (method *ExchangeDeclareOk) ClassIdentifier() uint16 {
 	return 40
 }
 
+// MethodIdentifier returns method methodID
 func (method *ExchangeDeclareOk) MethodIdentifier() uint16 {
 	return 11
 }
 
+// Read method from io reader
 func (method *ExchangeDeclareOk) Read(reader io.Reader, protoVersion string) (err error) {
 
 	return
 }
 
+// Write method from io reader
 func (method *ExchangeDeclareOk) Write(writer io.Writer, protoVersion string) (err error) {
 
 	return
 }
 
+// ExchangeDelete This method deletes an exchange. When an exchange is deleted all queue bindings on
+// the exchange are cancelled.
 type ExchangeDelete struct {
 	Reserved1 uint16
 	Exchange  string
@@ -1048,22 +1215,27 @@ type ExchangeDelete struct {
 	NoWait    bool
 }
 
+// Name returns method name as string, usefully for logging
 func (method *ExchangeDelete) Name() string {
 	return "ExchangeDelete"
 }
 
+// FrameType returns method frame type
 func (method *ExchangeDelete) FrameType() byte {
 	return 1
 }
 
+// ClassIdentifier returns method classID
 func (method *ExchangeDelete) ClassIdentifier() uint16 {
 	return 40
 }
 
+// MethodIdentifier returns method methodID
 func (method *ExchangeDelete) MethodIdentifier() uint16 {
 	return 20
 }
 
+// Read method from io reader
 func (method *ExchangeDelete) Read(reader io.Reader, protoVersion string) (err error) {
 
 	method.Reserved1, err = ReadShort(reader)
@@ -1085,6 +1257,7 @@ func (method *ExchangeDelete) Read(reader io.Reader, protoVersion string) (err e
 	return
 }
 
+// Write method from io reader
 func (method *ExchangeDelete) Write(writer io.Writer, protoVersion string) (err error) {
 
 	if err = WriteShort(writer, method.Reserved1); err != nil {
@@ -1112,35 +1285,43 @@ func (method *ExchangeDelete) Write(writer io.Writer, protoVersion string) (err 
 	return
 }
 
+// ExchangeDeleteOk This method confirms the deletion of an exchange.
 type ExchangeDeleteOk struct {
 }
 
+// Name returns method name as string, usefully for logging
 func (method *ExchangeDeleteOk) Name() string {
 	return "ExchangeDeleteOk"
 }
 
+// FrameType returns method frame type
 func (method *ExchangeDeleteOk) FrameType() byte {
 	return 1
 }
 
+// ClassIdentifier returns method classID
 func (method *ExchangeDeleteOk) ClassIdentifier() uint16 {
 	return 40
 }
 
+// MethodIdentifier returns method methodID
 func (method *ExchangeDeleteOk) MethodIdentifier() uint16 {
 	return 21
 }
 
+// Read method from io reader
 func (method *ExchangeDeleteOk) Read(reader io.Reader, protoVersion string) (err error) {
 
 	return
 }
 
+// Write method from io reader
 func (method *ExchangeDeleteOk) Write(writer io.Writer, protoVersion string) (err error) {
 
 	return
 }
 
+// ExchangeBind This method binds an exchange to an exchange.
 type ExchangeBind struct {
 	Reserved1   uint16
 	Destination string
@@ -1150,22 +1331,27 @@ type ExchangeBind struct {
 	Arguments   *Table
 }
 
+// Name returns method name as string, usefully for logging
 func (method *ExchangeBind) Name() string {
 	return "ExchangeBind"
 }
 
+// FrameType returns method frame type
 func (method *ExchangeBind) FrameType() byte {
 	return 1
 }
 
+// ClassIdentifier returns method classID
 func (method *ExchangeBind) ClassIdentifier() uint16 {
 	return 40
 }
 
+// MethodIdentifier returns method methodID
 func (method *ExchangeBind) MethodIdentifier() uint16 {
 	return 30
 }
 
+// Read method from io reader
 func (method *ExchangeBind) Read(reader io.Reader, protoVersion string) (err error) {
 
 	method.Reserved1, err = ReadShort(reader)
@@ -1200,6 +1386,7 @@ func (method *ExchangeBind) Read(reader io.Reader, protoVersion string) (err err
 	return
 }
 
+// Write method from io reader
 func (method *ExchangeBind) Write(writer io.Writer, protoVersion string) (err error) {
 
 	if err = WriteShort(writer, method.Reserved1); err != nil {
@@ -1235,35 +1422,43 @@ func (method *ExchangeBind) Write(writer io.Writer, protoVersion string) (err er
 	return
 }
 
+// ExchangeBindOk This method confirms that the bind was successful.
 type ExchangeBindOk struct {
 }
 
+// Name returns method name as string, usefully for logging
 func (method *ExchangeBindOk) Name() string {
 	return "ExchangeBindOk"
 }
 
+// FrameType returns method frame type
 func (method *ExchangeBindOk) FrameType() byte {
 	return 1
 }
 
+// ClassIdentifier returns method classID
 func (method *ExchangeBindOk) ClassIdentifier() uint16 {
 	return 40
 }
 
+// MethodIdentifier returns method methodID
 func (method *ExchangeBindOk) MethodIdentifier() uint16 {
 	return 31
 }
 
+// Read method from io reader
 func (method *ExchangeBindOk) Read(reader io.Reader, protoVersion string) (err error) {
 
 	return
 }
 
+// Write method from io reader
 func (method *ExchangeBindOk) Write(writer io.Writer, protoVersion string) (err error) {
 
 	return
 }
 
+// ExchangeUnbind This method unbinds an exchange from an exchange.
 type ExchangeUnbind struct {
 	Reserved1   uint16
 	Destination string
@@ -1273,22 +1468,27 @@ type ExchangeUnbind struct {
 	Arguments   *Table
 }
 
+// Name returns method name as string, usefully for logging
 func (method *ExchangeUnbind) Name() string {
 	return "ExchangeUnbind"
 }
 
+// FrameType returns method frame type
 func (method *ExchangeUnbind) FrameType() byte {
 	return 1
 }
 
+// ClassIdentifier returns method classID
 func (method *ExchangeUnbind) ClassIdentifier() uint16 {
 	return 40
 }
 
+// MethodIdentifier returns method methodID
 func (method *ExchangeUnbind) MethodIdentifier() uint16 {
 	return 40
 }
 
+// Read method from io reader
 func (method *ExchangeUnbind) Read(reader io.Reader, protoVersion string) (err error) {
 
 	method.Reserved1, err = ReadShort(reader)
@@ -1323,6 +1523,7 @@ func (method *ExchangeUnbind) Read(reader io.Reader, protoVersion string) (err e
 	return
 }
 
+// Write method from io reader
 func (method *ExchangeUnbind) Write(writer io.Writer, protoVersion string) (err error) {
 
 	if err = WriteShort(writer, method.Reserved1); err != nil {
@@ -1358,30 +1559,37 @@ func (method *ExchangeUnbind) Write(writer io.Writer, protoVersion string) (err 
 	return
 }
 
+// ExchangeUnbindOk This method confirms that the unbind was successful.
 type ExchangeUnbindOk struct {
 }
 
+// Name returns method name as string, usefully for logging
 func (method *ExchangeUnbindOk) Name() string {
 	return "ExchangeUnbindOk"
 }
 
+// FrameType returns method frame type
 func (method *ExchangeUnbindOk) FrameType() byte {
 	return 1
 }
 
+// ClassIdentifier returns method classID
 func (method *ExchangeUnbindOk) ClassIdentifier() uint16 {
 	return 40
 }
 
+// MethodIdentifier returns method methodID
 func (method *ExchangeUnbindOk) MethodIdentifier() uint16 {
 	return 51
 }
 
+// Read method from io reader
 func (method *ExchangeUnbindOk) Read(reader io.Reader, protoVersion string) (err error) {
 
 	return
 }
 
+// Write method from io reader
 func (method *ExchangeUnbindOk) Write(writer io.Writer, protoVersion string) (err error) {
 
 	return
@@ -1389,6 +1597,9 @@ func (method *ExchangeUnbindOk) Write(writer io.Writer, protoVersion string) (er
 
 // Queue methods
 
+// QueueDeclare This method creates or checks a queue. When creating a new queue the client can
+// specify various properties that control the durability of the queue and its
+// contents, and the level of sharing for the queue.
 type QueueDeclare struct {
 	Reserved1  uint16
 	Queue      string
@@ -1400,22 +1611,27 @@ type QueueDeclare struct {
 	Arguments  *Table
 }
 
+// Name returns method name as string, usefully for logging
 func (method *QueueDeclare) Name() string {
 	return "QueueDeclare"
 }
 
+// FrameType returns method frame type
 func (method *QueueDeclare) FrameType() byte {
 	return 1
 }
 
+// ClassIdentifier returns method classID
 func (method *QueueDeclare) ClassIdentifier() uint16 {
 	return 50
 }
 
+// MethodIdentifier returns method methodID
 func (method *QueueDeclare) MethodIdentifier() uint16 {
 	return 10
 }
 
+// Read method from io reader
 func (method *QueueDeclare) Read(reader io.Reader, protoVersion string) (err error) {
 
 	method.Reserved1, err = ReadShort(reader)
@@ -1448,6 +1664,7 @@ func (method *QueueDeclare) Read(reader io.Reader, protoVersion string) (err err
 	return
 }
 
+// Write method from io reader
 func (method *QueueDeclare) Write(writer io.Writer, protoVersion string) (err error) {
 
 	if err = WriteShort(writer, method.Reserved1); err != nil {
@@ -1491,28 +1708,35 @@ func (method *QueueDeclare) Write(writer io.Writer, protoVersion string) (err er
 	return
 }
 
+// QueueDeclareOk This method confirms a Declare method and confirms the name of the queue, essential
+// for automatically-named queues.
 type QueueDeclareOk struct {
 	Queue         string
 	MessageCount  uint32
 	ConsumerCount uint32
 }
 
+// Name returns method name as string, usefully for logging
 func (method *QueueDeclareOk) Name() string {
 	return "QueueDeclareOk"
 }
 
+// FrameType returns method frame type
 func (method *QueueDeclareOk) FrameType() byte {
 	return 1
 }
 
+// ClassIdentifier returns method classID
 func (method *QueueDeclareOk) ClassIdentifier() uint16 {
 	return 50
 }
 
+// MethodIdentifier returns method methodID
 func (method *QueueDeclareOk) MethodIdentifier() uint16 {
 	return 11
 }
 
+// Read method from io reader
 func (method *QueueDeclareOk) Read(reader io.Reader, protoVersion string) (err error) {
 
 	method.Queue, err = ReadShortstr(reader)
@@ -1533,6 +1757,7 @@ func (method *QueueDeclareOk) Read(reader io.Reader, protoVersion string) (err e
 	return
 }
 
+// Write method from io reader
 func (method *QueueDeclareOk) Write(writer io.Writer, protoVersion string) (err error) {
 
 	if err = WriteShortstr(writer, method.Queue); err != nil {
@@ -1550,6 +1775,10 @@ func (method *QueueDeclareOk) Write(writer io.Writer, protoVersion string) (err 
 	return
 }
 
+// QueueBind This method binds a queue to an exchange. Until a queue is bound it will not
+// receive any messages. In a classic messaging model, store-and-forward queues
+// are bound to a direct exchange and subscription queues are bound to a topic
+// exchange.
 type QueueBind struct {
 	Reserved1  uint16
 	Queue      string
@@ -1559,22 +1788,27 @@ type QueueBind struct {
 	Arguments  *Table
 }
 
+// Name returns method name as string, usefully for logging
 func (method *QueueBind) Name() string {
 	return "QueueBind"
 }
 
+// FrameType returns method frame type
 func (method *QueueBind) FrameType() byte {
 	return 1
 }
 
+// ClassIdentifier returns method classID
 func (method *QueueBind) ClassIdentifier() uint16 {
 	return 50
 }
 
+// MethodIdentifier returns method methodID
 func (method *QueueBind) MethodIdentifier() uint16 {
 	return 20
 }
 
+// Read method from io reader
 func (method *QueueBind) Read(reader io.Reader, protoVersion string) (err error) {
 
 	method.Reserved1, err = ReadShort(reader)
@@ -1609,6 +1843,7 @@ func (method *QueueBind) Read(reader io.Reader, protoVersion string) (err error)
 	return
 }
 
+// Write method from io reader
 func (method *QueueBind) Write(writer io.Writer, protoVersion string) (err error) {
 
 	if err = WriteShort(writer, method.Reserved1); err != nil {
@@ -1644,35 +1879,43 @@ func (method *QueueBind) Write(writer io.Writer, protoVersion string) (err error
 	return
 }
 
+// QueueBindOk This method confirms that the bind was successful.
 type QueueBindOk struct {
 }
 
+// Name returns method name as string, usefully for logging
 func (method *QueueBindOk) Name() string {
 	return "QueueBindOk"
 }
 
+// FrameType returns method frame type
 func (method *QueueBindOk) FrameType() byte {
 	return 1
 }
 
+// ClassIdentifier returns method classID
 func (method *QueueBindOk) ClassIdentifier() uint16 {
 	return 50
 }
 
+// MethodIdentifier returns method methodID
 func (method *QueueBindOk) MethodIdentifier() uint16 {
 	return 21
 }
 
+// Read method from io reader
 func (method *QueueBindOk) Read(reader io.Reader, protoVersion string) (err error) {
 
 	return
 }
 
+// Write method from io reader
 func (method *QueueBindOk) Write(writer io.Writer, protoVersion string) (err error) {
 
 	return
 }
 
+// QueueUnbind This method unbinds a queue from an exchange.
 type QueueUnbind struct {
 	Reserved1  uint16
 	Queue      string
@@ -1681,22 +1924,27 @@ type QueueUnbind struct {
 	Arguments  *Table
 }
 
+// Name returns method name as string, usefully for logging
 func (method *QueueUnbind) Name() string {
 	return "QueueUnbind"
 }
 
+// FrameType returns method frame type
 func (method *QueueUnbind) FrameType() byte {
 	return 1
 }
 
+// ClassIdentifier returns method classID
 func (method *QueueUnbind) ClassIdentifier() uint16 {
 	return 50
 }
 
+// MethodIdentifier returns method methodID
 func (method *QueueUnbind) MethodIdentifier() uint16 {
 	return 50
 }
 
+// Read method from io reader
 func (method *QueueUnbind) Read(reader io.Reader, protoVersion string) (err error) {
 
 	method.Reserved1, err = ReadShort(reader)
@@ -1727,6 +1975,7 @@ func (method *QueueUnbind) Read(reader io.Reader, protoVersion string) (err erro
 	return
 }
 
+// Write method from io reader
 func (method *QueueUnbind) Write(writer io.Writer, protoVersion string) (err error) {
 
 	if err = WriteShort(writer, method.Reserved1); err != nil {
@@ -1752,57 +2001,71 @@ func (method *QueueUnbind) Write(writer io.Writer, protoVersion string) (err err
 	return
 }
 
+// QueueUnbindOk This method confirms that the unbind was successful.
 type QueueUnbindOk struct {
 }
 
+// Name returns method name as string, usefully for logging
 func (method *QueueUnbindOk) Name() string {
 	return "QueueUnbindOk"
 }
 
+// FrameType returns method frame type
 func (method *QueueUnbindOk) FrameType() byte {
 	return 1
 }
 
+// ClassIdentifier returns method classID
 func (method *QueueUnbindOk) ClassIdentifier() uint16 {
 	return 50
 }
 
+// MethodIdentifier returns method methodID
 func (method *QueueUnbindOk) MethodIdentifier() uint16 {
 	return 51
 }
 
+// Read method from io reader
 func (method *QueueUnbindOk) Read(reader io.Reader, protoVersion string) (err error) {
 
 	return
 }
 
+// Write method from io reader
 func (method *QueueUnbindOk) Write(writer io.Writer, protoVersion string) (err error) {
 
 	return
 }
 
+// QueuePurge This method removes all messages from a queue which are not awaiting
+// acknowledgment.
 type QueuePurge struct {
 	Reserved1 uint16
 	Queue     string
 	NoWait    bool
 }
 
+// Name returns method name as string, usefully for logging
 func (method *QueuePurge) Name() string {
 	return "QueuePurge"
 }
 
+// FrameType returns method frame type
 func (method *QueuePurge) FrameType() byte {
 	return 1
 }
 
+// ClassIdentifier returns method classID
 func (method *QueuePurge) ClassIdentifier() uint16 {
 	return 50
 }
 
+// MethodIdentifier returns method methodID
 func (method *QueuePurge) MethodIdentifier() uint16 {
 	return 30
 }
 
+// Read method from io reader
 func (method *QueuePurge) Read(reader io.Reader, protoVersion string) (err error) {
 
 	method.Reserved1, err = ReadShort(reader)
@@ -1822,6 +2085,7 @@ func (method *QueuePurge) Read(reader io.Reader, protoVersion string) (err error
 	return
 }
 
+// Write method from io reader
 func (method *QueuePurge) Write(writer io.Writer, protoVersion string) (err error) {
 
 	if err = WriteShort(writer, method.Reserved1); err != nil {
@@ -1845,26 +2109,32 @@ func (method *QueuePurge) Write(writer io.Writer, protoVersion string) (err erro
 	return
 }
 
+// QueuePurgeOk This method confirms the purge of a queue.
 type QueuePurgeOk struct {
 	MessageCount uint32
 }
 
+// Name returns method name as string, usefully for logging
 func (method *QueuePurgeOk) Name() string {
 	return "QueuePurgeOk"
 }
 
+// FrameType returns method frame type
 func (method *QueuePurgeOk) FrameType() byte {
 	return 1
 }
 
+// ClassIdentifier returns method classID
 func (method *QueuePurgeOk) ClassIdentifier() uint16 {
 	return 50
 }
 
+// MethodIdentifier returns method methodID
 func (method *QueuePurgeOk) MethodIdentifier() uint16 {
 	return 31
 }
 
+// Read method from io reader
 func (method *QueuePurgeOk) Read(reader io.Reader, protoVersion string) (err error) {
 
 	method.MessageCount, err = ReadLong(reader)
@@ -1875,6 +2145,7 @@ func (method *QueuePurgeOk) Read(reader io.Reader, protoVersion string) (err err
 	return
 }
 
+// Write method from io reader
 func (method *QueuePurgeOk) Write(writer io.Writer, protoVersion string) (err error) {
 
 	if err = WriteLong(writer, method.MessageCount); err != nil {
@@ -1884,6 +2155,9 @@ func (method *QueuePurgeOk) Write(writer io.Writer, protoVersion string) (err er
 	return
 }
 
+// QueueDelete This method deletes a queue. When a queue is deleted any pending messages are sent
+// to a dead-letter queue if this is defined in the server configuration, and all
+// consumers on the queue are cancelled.
 type QueueDelete struct {
 	Reserved1 uint16
 	Queue     string
@@ -1892,22 +2166,27 @@ type QueueDelete struct {
 	NoWait    bool
 }
 
+// Name returns method name as string, usefully for logging
 func (method *QueueDelete) Name() string {
 	return "QueueDelete"
 }
 
+// FrameType returns method frame type
 func (method *QueueDelete) FrameType() byte {
 	return 1
 }
 
+// ClassIdentifier returns method classID
 func (method *QueueDelete) ClassIdentifier() uint16 {
 	return 50
 }
 
+// MethodIdentifier returns method methodID
 func (method *QueueDelete) MethodIdentifier() uint16 {
 	return 40
 }
 
+// Read method from io reader
 func (method *QueueDelete) Read(reader io.Reader, protoVersion string) (err error) {
 
 	method.Reserved1, err = ReadShort(reader)
@@ -1931,6 +2210,7 @@ func (method *QueueDelete) Read(reader io.Reader, protoVersion string) (err erro
 	return
 }
 
+// Write method from io reader
 func (method *QueueDelete) Write(writer io.Writer, protoVersion string) (err error) {
 
 	if err = WriteShort(writer, method.Reserved1); err != nil {
@@ -1962,26 +2242,32 @@ func (method *QueueDelete) Write(writer io.Writer, protoVersion string) (err err
 	return
 }
 
+// QueueDeleteOk This method confirms the deletion of a queue.
 type QueueDeleteOk struct {
 	MessageCount uint32
 }
 
+// Name returns method name as string, usefully for logging
 func (method *QueueDeleteOk) Name() string {
 	return "QueueDeleteOk"
 }
 
+// FrameType returns method frame type
 func (method *QueueDeleteOk) FrameType() byte {
 	return 1
 }
 
+// ClassIdentifier returns method classID
 func (method *QueueDeleteOk) ClassIdentifier() uint16 {
 	return 50
 }
 
+// MethodIdentifier returns method methodID
 func (method *QueueDeleteOk) MethodIdentifier() uint16 {
 	return 41
 }
 
+// Read method from io reader
 func (method *QueueDeleteOk) Read(reader io.Reader, protoVersion string) (err error) {
 
 	method.MessageCount, err = ReadLong(reader)
@@ -1992,6 +2278,7 @@ func (method *QueueDeleteOk) Read(reader io.Reader, protoVersion string) (err er
 	return
 }
 
+// Write method from io reader
 func (method *QueueDeleteOk) Write(writer io.Writer, protoVersion string) (err error) {
 
 	if err = WriteLong(writer, method.MessageCount); err != nil {
@@ -2239,28 +2526,38 @@ func (pList *BasicPropertyList) Write(writer io.Writer, protoVersion string) (pr
 	return
 }
 
+// BasicQos This method requests a specific quality of service. The QoS can be specified for the
+// current channel or for all channels on the connection. The particular properties and
+// semantics of a qos method always depend on the content class semantics. Though the
+// qos method could in principle apply to both peers, it is currently meaningful only
+// for the server.
 type BasicQos struct {
 	PrefetchSize  uint32
 	PrefetchCount uint16
 	Global        bool
 }
 
+// Name returns method name as string, usefully for logging
 func (method *BasicQos) Name() string {
 	return "BasicQos"
 }
 
+// FrameType returns method frame type
 func (method *BasicQos) FrameType() byte {
 	return 1
 }
 
+// ClassIdentifier returns method classID
 func (method *BasicQos) ClassIdentifier() uint16 {
 	return 60
 }
 
+// MethodIdentifier returns method methodID
 func (method *BasicQos) MethodIdentifier() uint16 {
 	return 10
 }
 
+// Read method from io reader
 func (method *BasicQos) Read(reader io.Reader, protoVersion string) (err error) {
 
 	method.PrefetchSize, err = ReadLong(reader)
@@ -2280,6 +2577,7 @@ func (method *BasicQos) Read(reader io.Reader, protoVersion string) (err error) 
 	return
 }
 
+// Write method from io reader
 func (method *BasicQos) Write(writer io.Writer, protoVersion string) (err error) {
 
 	if err = WriteLong(writer, method.PrefetchSize); err != nil {
@@ -2303,35 +2601,47 @@ func (method *BasicQos) Write(writer io.Writer, protoVersion string) (err error)
 	return
 }
 
+// BasicQosOk This method tells the client that the requested QoS levels could be handled by the
+// server. The requested QoS applies to all active consumers until a new QoS is
+// defined.
 type BasicQosOk struct {
 }
 
+// Name returns method name as string, usefully for logging
 func (method *BasicQosOk) Name() string {
 	return "BasicQosOk"
 }
 
+// FrameType returns method frame type
 func (method *BasicQosOk) FrameType() byte {
 	return 1
 }
 
+// ClassIdentifier returns method classID
 func (method *BasicQosOk) ClassIdentifier() uint16 {
 	return 60
 }
 
+// MethodIdentifier returns method methodID
 func (method *BasicQosOk) MethodIdentifier() uint16 {
 	return 11
 }
 
+// Read method from io reader
 func (method *BasicQosOk) Read(reader io.Reader, protoVersion string) (err error) {
 
 	return
 }
 
+// Write method from io reader
 func (method *BasicQosOk) Write(writer io.Writer, protoVersion string) (err error) {
 
 	return
 }
 
+// BasicConsume This method asks the server to start a "consumer", which is a transient request for
+// messages from a specific queue. Consumers last as long as the channel they were
+// declared on, or until the client cancels them.
 type BasicConsume struct {
 	Reserved1   uint16
 	Queue       string
@@ -2343,22 +2653,27 @@ type BasicConsume struct {
 	Arguments   *Table
 }
 
+// Name returns method name as string, usefully for logging
 func (method *BasicConsume) Name() string {
 	return "BasicConsume"
 }
 
+// FrameType returns method frame type
 func (method *BasicConsume) FrameType() byte {
 	return 1
 }
 
+// ClassIdentifier returns method classID
 func (method *BasicConsume) ClassIdentifier() uint16 {
 	return 60
 }
 
+// MethodIdentifier returns method methodID
 func (method *BasicConsume) MethodIdentifier() uint16 {
 	return 20
 }
 
+// Read method from io reader
 func (method *BasicConsume) Read(reader io.Reader, protoVersion string) (err error) {
 
 	method.Reserved1, err = ReadShort(reader)
@@ -2394,6 +2709,7 @@ func (method *BasicConsume) Read(reader io.Reader, protoVersion string) (err err
 	return
 }
 
+// Write method from io reader
 func (method *BasicConsume) Write(writer io.Writer, protoVersion string) (err error) {
 
 	if err = WriteShort(writer, method.Reserved1); err != nil {
@@ -2437,26 +2753,33 @@ func (method *BasicConsume) Write(writer io.Writer, protoVersion string) (err er
 	return
 }
 
+// BasicConsumeOk The server provides the client with a consumer tag, which is used by the client
+// for methods called on the consumer at a later stage.
 type BasicConsumeOk struct {
 	ConsumerTag string
 }
 
+// Name returns method name as string, usefully for logging
 func (method *BasicConsumeOk) Name() string {
 	return "BasicConsumeOk"
 }
 
+// FrameType returns method frame type
 func (method *BasicConsumeOk) FrameType() byte {
 	return 1
 }
 
+// ClassIdentifier returns method classID
 func (method *BasicConsumeOk) ClassIdentifier() uint16 {
 	return 60
 }
 
+// MethodIdentifier returns method methodID
 func (method *BasicConsumeOk) MethodIdentifier() uint16 {
 	return 21
 }
 
+// Read method from io reader
 func (method *BasicConsumeOk) Read(reader io.Reader, protoVersion string) (err error) {
 
 	method.ConsumerTag, err = ReadShortstr(reader)
@@ -2467,6 +2790,7 @@ func (method *BasicConsumeOk) Read(reader io.Reader, protoVersion string) (err e
 	return
 }
 
+// Write method from io reader
 func (method *BasicConsumeOk) Write(writer io.Writer, protoVersion string) (err error) {
 
 	if err = WriteShortstr(writer, method.ConsumerTag); err != nil {
@@ -2476,27 +2800,47 @@ func (method *BasicConsumeOk) Write(writer io.Writer, protoVersion string) (err 
 	return
 }
 
+// BasicCancel This method cancels a consumer. This does not affect already delivered
+// messages, but it does mean the server will not send any more messages for
+// that consumer. The client may receive an arbitrary number of messages in
+// between sending the cancel method and receiving the cancel-ok reply.
+//
+// It may also be sent from the server to the client in the event
+// of the consumer being unexpectedly cancelled (i.e. cancelled
+// for any reason other than the server receiving the
+// corresponding basic.cancel from the client). This allows
+// clients to be notified of the loss of consumers due to events
+// such as queue deletion. Note that as it is not a MUST for
+// clients to accept this method from the client, it is advisable
+// for the broker to be able to identify those clients that are
+// capable of accepting the method, through some means of
+// capability negotiation.
 type BasicCancel struct {
 	ConsumerTag string
 	NoWait      bool
 }
 
+// Name returns method name as string, usefully for logging
 func (method *BasicCancel) Name() string {
 	return "BasicCancel"
 }
 
+// FrameType returns method frame type
 func (method *BasicCancel) FrameType() byte {
 	return 1
 }
 
+// ClassIdentifier returns method classID
 func (method *BasicCancel) ClassIdentifier() uint16 {
 	return 60
 }
 
+// MethodIdentifier returns method methodID
 func (method *BasicCancel) MethodIdentifier() uint16 {
 	return 30
 }
 
+// Read method from io reader
 func (method *BasicCancel) Read(reader io.Reader, protoVersion string) (err error) {
 
 	method.ConsumerTag, err = ReadShortstr(reader)
@@ -2511,6 +2855,7 @@ func (method *BasicCancel) Read(reader io.Reader, protoVersion string) (err erro
 	return
 }
 
+// Write method from io reader
 func (method *BasicCancel) Write(writer io.Writer, protoVersion string) (err error) {
 
 	if err = WriteShortstr(writer, method.ConsumerTag); err != nil {
@@ -2530,26 +2875,32 @@ func (method *BasicCancel) Write(writer io.Writer, protoVersion string) (err err
 	return
 }
 
+// BasicCancelOk This method confirms that the cancellation was completed.
 type BasicCancelOk struct {
 	ConsumerTag string
 }
 
+// Name returns method name as string, usefully for logging
 func (method *BasicCancelOk) Name() string {
 	return "BasicCancelOk"
 }
 
+// FrameType returns method frame type
 func (method *BasicCancelOk) FrameType() byte {
 	return 1
 }
 
+// ClassIdentifier returns method classID
 func (method *BasicCancelOk) ClassIdentifier() uint16 {
 	return 60
 }
 
+// MethodIdentifier returns method methodID
 func (method *BasicCancelOk) MethodIdentifier() uint16 {
 	return 31
 }
 
+// Read method from io reader
 func (method *BasicCancelOk) Read(reader io.Reader, protoVersion string) (err error) {
 
 	method.ConsumerTag, err = ReadShortstr(reader)
@@ -2560,6 +2911,7 @@ func (method *BasicCancelOk) Read(reader io.Reader, protoVersion string) (err er
 	return
 }
 
+// Write method from io reader
 func (method *BasicCancelOk) Write(writer io.Writer, protoVersion string) (err error) {
 
 	if err = WriteShortstr(writer, method.ConsumerTag); err != nil {
@@ -2569,6 +2921,9 @@ func (method *BasicCancelOk) Write(writer io.Writer, protoVersion string) (err e
 	return
 }
 
+// BasicPublish This method publishes a message to a specific exchange. The message will be routed
+// to queues as defined by the exchange configuration and distributed to any active
+// consumers when the transaction, if any, is committed.
 type BasicPublish struct {
 	Reserved1  uint16
 	Exchange   string
@@ -2577,22 +2932,27 @@ type BasicPublish struct {
 	Immediate  bool
 }
 
+// Name returns method name as string, usefully for logging
 func (method *BasicPublish) Name() string {
 	return "BasicPublish"
 }
 
+// FrameType returns method frame type
 func (method *BasicPublish) FrameType() byte {
 	return 1
 }
 
+// ClassIdentifier returns method classID
 func (method *BasicPublish) ClassIdentifier() uint16 {
 	return 60
 }
 
+// MethodIdentifier returns method methodID
 func (method *BasicPublish) MethodIdentifier() uint16 {
 	return 40
 }
 
+// Read method from io reader
 func (method *BasicPublish) Read(reader io.Reader, protoVersion string) (err error) {
 
 	method.Reserved1, err = ReadShort(reader)
@@ -2619,6 +2979,7 @@ func (method *BasicPublish) Read(reader io.Reader, protoVersion string) (err err
 	return
 }
 
+// Write method from io reader
 func (method *BasicPublish) Write(writer io.Writer, protoVersion string) (err error) {
 
 	if err = WriteShort(writer, method.Reserved1); err != nil {
@@ -2650,6 +3011,10 @@ func (method *BasicPublish) Write(writer io.Writer, protoVersion string) (err er
 	return
 }
 
+// BasicReturn This method returns an undeliverable message that was published with the "immediate"
+// flag set, or an unroutable message published with the "mandatory" flag set. The
+// reply code and text provide information about the reason that the message was
+// undeliverable.
 type BasicReturn struct {
 	ReplyCode  uint16
 	ReplyText  string
@@ -2657,22 +3022,27 @@ type BasicReturn struct {
 	RoutingKey string
 }
 
+// Name returns method name as string, usefully for logging
 func (method *BasicReturn) Name() string {
 	return "BasicReturn"
 }
 
+// FrameType returns method frame type
 func (method *BasicReturn) FrameType() byte {
 	return 1
 }
 
+// ClassIdentifier returns method classID
 func (method *BasicReturn) ClassIdentifier() uint16 {
 	return 60
 }
 
+// MethodIdentifier returns method methodID
 func (method *BasicReturn) MethodIdentifier() uint16 {
 	return 50
 }
 
+// Read method from io reader
 func (method *BasicReturn) Read(reader io.Reader, protoVersion string) (err error) {
 
 	method.ReplyCode, err = ReadShort(reader)
@@ -2698,6 +3068,7 @@ func (method *BasicReturn) Read(reader io.Reader, protoVersion string) (err erro
 	return
 }
 
+// Write method from io reader
 func (method *BasicReturn) Write(writer io.Writer, protoVersion string) (err error) {
 
 	if err = WriteShort(writer, method.ReplyCode); err != nil {
@@ -2719,6 +3090,10 @@ func (method *BasicReturn) Write(writer io.Writer, protoVersion string) (err err
 	return
 }
 
+// BasicDeliver This method delivers a message to the client, via a consumer. In the asynchronous
+// message delivery model, the client starts a consumer using the Consume method, then
+// the server responds with Deliver methods as and when messages arrive for that
+// consumer.
 type BasicDeliver struct {
 	ConsumerTag string
 	DeliveryTag uint64
@@ -2727,22 +3102,27 @@ type BasicDeliver struct {
 	RoutingKey  string
 }
 
+// Name returns method name as string, usefully for logging
 func (method *BasicDeliver) Name() string {
 	return "BasicDeliver"
 }
 
+// FrameType returns method frame type
 func (method *BasicDeliver) FrameType() byte {
 	return 1
 }
 
+// ClassIdentifier returns method classID
 func (method *BasicDeliver) ClassIdentifier() uint16 {
 	return 60
 }
 
+// MethodIdentifier returns method methodID
 func (method *BasicDeliver) MethodIdentifier() uint16 {
 	return 60
 }
 
+// Read method from io reader
 func (method *BasicDeliver) Read(reader io.Reader, protoVersion string) (err error) {
 
 	method.ConsumerTag, err = ReadShortstr(reader)
@@ -2772,6 +3152,7 @@ func (method *BasicDeliver) Read(reader io.Reader, protoVersion string) (err err
 	return
 }
 
+// Write method from io reader
 func (method *BasicDeliver) Write(writer io.Writer, protoVersion string) (err error) {
 
 	if err = WriteShortstr(writer, method.ConsumerTag); err != nil {
@@ -2803,28 +3184,36 @@ func (method *BasicDeliver) Write(writer io.Writer, protoVersion string) (err er
 	return
 }
 
+// BasicGet This method provides a direct access to the messages in a queue using a synchronous
+// dialogue that is designed for specific types of application where synchronous
+// functionality is more important than performance.
 type BasicGet struct {
 	Reserved1 uint16
 	Queue     string
 	NoAck     bool
 }
 
+// Name returns method name as string, usefully for logging
 func (method *BasicGet) Name() string {
 	return "BasicGet"
 }
 
+// FrameType returns method frame type
 func (method *BasicGet) FrameType() byte {
 	return 1
 }
 
+// ClassIdentifier returns method classID
 func (method *BasicGet) ClassIdentifier() uint16 {
 	return 60
 }
 
+// MethodIdentifier returns method methodID
 func (method *BasicGet) MethodIdentifier() uint16 {
 	return 70
 }
 
+// Read method from io reader
 func (method *BasicGet) Read(reader io.Reader, protoVersion string) (err error) {
 
 	method.Reserved1, err = ReadShort(reader)
@@ -2844,6 +3233,7 @@ func (method *BasicGet) Read(reader io.Reader, protoVersion string) (err error) 
 	return
 }
 
+// Write method from io reader
 func (method *BasicGet) Write(writer io.Writer, protoVersion string) (err error) {
 
 	if err = WriteShort(writer, method.Reserved1); err != nil {
@@ -2867,6 +3257,9 @@ func (method *BasicGet) Write(writer io.Writer, protoVersion string) (err error)
 	return
 }
 
+// BasicGetOk This method delivers a message to the client following a get method. A message
+// delivered by 'get-ok' must be acknowledged unless the no-ack option was set in the
+// get method.
 type BasicGetOk struct {
 	DeliveryTag  uint64
 	Redelivered  bool
@@ -2875,22 +3268,27 @@ type BasicGetOk struct {
 	MessageCount uint32
 }
 
+// Name returns method name as string, usefully for logging
 func (method *BasicGetOk) Name() string {
 	return "BasicGetOk"
 }
 
+// FrameType returns method frame type
 func (method *BasicGetOk) FrameType() byte {
 	return 1
 }
 
+// ClassIdentifier returns method classID
 func (method *BasicGetOk) ClassIdentifier() uint16 {
 	return 60
 }
 
+// MethodIdentifier returns method methodID
 func (method *BasicGetOk) MethodIdentifier() uint16 {
 	return 71
 }
 
+// Read method from io reader
 func (method *BasicGetOk) Read(reader io.Reader, protoVersion string) (err error) {
 
 	method.DeliveryTag, err = ReadLonglong(reader)
@@ -2920,6 +3318,7 @@ func (method *BasicGetOk) Read(reader io.Reader, protoVersion string) (err error
 	return
 }
 
+// Write method from io reader
 func (method *BasicGetOk) Write(writer io.Writer, protoVersion string) (err error) {
 
 	if err = WriteLonglong(writer, method.DeliveryTag); err != nil {
@@ -2951,26 +3350,33 @@ func (method *BasicGetOk) Write(writer io.Writer, protoVersion string) (err erro
 	return
 }
 
+// BasicGetEmpty This method tells the client that the queue has no messages available for the
+// client.
 type BasicGetEmpty struct {
 	Reserved1 string
 }
 
+// Name returns method name as string, usefully for logging
 func (method *BasicGetEmpty) Name() string {
 	return "BasicGetEmpty"
 }
 
+// FrameType returns method frame type
 func (method *BasicGetEmpty) FrameType() byte {
 	return 1
 }
 
+// ClassIdentifier returns method classID
 func (method *BasicGetEmpty) ClassIdentifier() uint16 {
 	return 60
 }
 
+// MethodIdentifier returns method methodID
 func (method *BasicGetEmpty) MethodIdentifier() uint16 {
 	return 72
 }
 
+// Read method from io reader
 func (method *BasicGetEmpty) Read(reader io.Reader, protoVersion string) (err error) {
 
 	method.Reserved1, err = ReadShortstr(reader)
@@ -2981,6 +3387,7 @@ func (method *BasicGetEmpty) Read(reader io.Reader, protoVersion string) (err er
 	return
 }
 
+// Write method from io reader
 func (method *BasicGetEmpty) Write(writer io.Writer, protoVersion string) (err error) {
 
 	if err = WriteShortstr(writer, method.Reserved1); err != nil {
@@ -2990,27 +3397,41 @@ func (method *BasicGetEmpty) Write(writer io.Writer, protoVersion string) (err e
 	return
 }
 
+// BasicAck When sent by the client, this method acknowledges one or more
+// messages delivered via the Deliver or Get-Ok methods.
+//
+// When sent by server, this method acknowledges one or more
+// messages published with the Publish method on a channel in
+// confirm mode.
+//
+// The acknowledgement can be for a single message or a set of
+// messages up to and including a specific message.
 type BasicAck struct {
 	DeliveryTag uint64
 	Multiple    bool
 }
 
+// Name returns method name as string, usefully for logging
 func (method *BasicAck) Name() string {
 	return "BasicAck"
 }
 
+// FrameType returns method frame type
 func (method *BasicAck) FrameType() byte {
 	return 1
 }
 
+// ClassIdentifier returns method classID
 func (method *BasicAck) ClassIdentifier() uint16 {
 	return 60
 }
 
+// MethodIdentifier returns method methodID
 func (method *BasicAck) MethodIdentifier() uint16 {
 	return 80
 }
 
+// Read method from io reader
 func (method *BasicAck) Read(reader io.Reader, protoVersion string) (err error) {
 
 	method.DeliveryTag, err = ReadLonglong(reader)
@@ -3025,6 +3446,7 @@ func (method *BasicAck) Read(reader io.Reader, protoVersion string) (err error) 
 	return
 }
 
+// Write method from io reader
 func (method *BasicAck) Write(writer io.Writer, protoVersion string) (err error) {
 
 	if err = WriteLonglong(writer, method.DeliveryTag); err != nil {
@@ -3044,27 +3466,35 @@ func (method *BasicAck) Write(writer io.Writer, protoVersion string) (err error)
 	return
 }
 
+// BasicReject This method allows a client to reject a message. It can be used to interrupt and
+// cancel large incoming messages, or return untreatable messages to their original
+// queue.
 type BasicReject struct {
 	DeliveryTag uint64
 	Requeue     bool
 }
 
+// Name returns method name as string, usefully for logging
 func (method *BasicReject) Name() string {
 	return "BasicReject"
 }
 
+// FrameType returns method frame type
 func (method *BasicReject) FrameType() byte {
 	return 1
 }
 
+// ClassIdentifier returns method classID
 func (method *BasicReject) ClassIdentifier() uint16 {
 	return 60
 }
 
+// MethodIdentifier returns method methodID
 func (method *BasicReject) MethodIdentifier() uint16 {
 	return 90
 }
 
+// Read method from io reader
 func (method *BasicReject) Read(reader io.Reader, protoVersion string) (err error) {
 
 	method.DeliveryTag, err = ReadLonglong(reader)
@@ -3079,6 +3509,7 @@ func (method *BasicReject) Read(reader io.Reader, protoVersion string) (err erro
 	return
 }
 
+// Write method from io reader
 func (method *BasicReject) Write(writer io.Writer, protoVersion string) (err error) {
 
 	if err = WriteLonglong(writer, method.DeliveryTag); err != nil {
@@ -3098,26 +3529,34 @@ func (method *BasicReject) Write(writer io.Writer, protoVersion string) (err err
 	return
 }
 
+// BasicRecoverAsync This method asks the server to redeliver all unacknowledged messages on a
+// specified channel. Zero or more messages may be redelivered.  This method
+// is deprecated in favour of the synchronous Recover/Recover-Ok.
 type BasicRecoverAsync struct {
 	Requeue bool
 }
 
+// Name returns method name as string, usefully for logging
 func (method *BasicRecoverAsync) Name() string {
 	return "BasicRecoverAsync"
 }
 
+// FrameType returns method frame type
 func (method *BasicRecoverAsync) FrameType() byte {
 	return 1
 }
 
+// ClassIdentifier returns method classID
 func (method *BasicRecoverAsync) ClassIdentifier() uint16 {
 	return 60
 }
 
+// MethodIdentifier returns method methodID
 func (method *BasicRecoverAsync) MethodIdentifier() uint16 {
 	return 100
 }
 
+// Read method from io reader
 func (method *BasicRecoverAsync) Read(reader io.Reader, protoVersion string) (err error) {
 
 	bits, err := ReadOctet(reader)
@@ -3127,6 +3566,7 @@ func (method *BasicRecoverAsync) Read(reader io.Reader, protoVersion string) (er
 	return
 }
 
+// Write method from io reader
 func (method *BasicRecoverAsync) Write(writer io.Writer, protoVersion string) (err error) {
 
 	var bits byte
@@ -3142,26 +3582,34 @@ func (method *BasicRecoverAsync) Write(writer io.Writer, protoVersion string) (e
 	return
 }
 
+// BasicRecover This method asks the server to redeliver all unacknowledged messages on a
+// specified channel. Zero or more messages may be redelivered.  This method
+// replaces the asynchronous Recover.
 type BasicRecover struct {
 	Requeue bool
 }
 
+// Name returns method name as string, usefully for logging
 func (method *BasicRecover) Name() string {
 	return "BasicRecover"
 }
 
+// FrameType returns method frame type
 func (method *BasicRecover) FrameType() byte {
 	return 1
 }
 
+// ClassIdentifier returns method classID
 func (method *BasicRecover) ClassIdentifier() uint16 {
 	return 60
 }
 
+// MethodIdentifier returns method methodID
 func (method *BasicRecover) MethodIdentifier() uint16 {
 	return 110
 }
 
+// Read method from io reader
 func (method *BasicRecover) Read(reader io.Reader, protoVersion string) (err error) {
 
 	bits, err := ReadOctet(reader)
@@ -3171,6 +3619,7 @@ func (method *BasicRecover) Read(reader io.Reader, protoVersion string) (err err
 	return
 }
 
+// Write method from io reader
 func (method *BasicRecover) Write(writer io.Writer, protoVersion string) (err error) {
 
 	var bits byte
@@ -3186,57 +3635,76 @@ func (method *BasicRecover) Write(writer io.Writer, protoVersion string) (err er
 	return
 }
 
+// BasicRecoverOk This method acknowledges a Basic.Recover method.
 type BasicRecoverOk struct {
 }
 
+// Name returns method name as string, usefully for logging
 func (method *BasicRecoverOk) Name() string {
 	return "BasicRecoverOk"
 }
 
+// FrameType returns method frame type
 func (method *BasicRecoverOk) FrameType() byte {
 	return 1
 }
 
+// ClassIdentifier returns method classID
 func (method *BasicRecoverOk) ClassIdentifier() uint16 {
 	return 60
 }
 
+// MethodIdentifier returns method methodID
 func (method *BasicRecoverOk) MethodIdentifier() uint16 {
 	return 111
 }
 
+// Read method from io reader
 func (method *BasicRecoverOk) Read(reader io.Reader, protoVersion string) (err error) {
 
 	return
 }
 
+// Write method from io reader
 func (method *BasicRecoverOk) Write(writer io.Writer, protoVersion string) (err error) {
 
 	return
 }
 
+// BasicNack This method allows a client to reject one or more incoming messages. It can be
+// used to interrupt and cancel large incoming messages, or return untreatable
+// messages to their original queue.
+//
+// This method is also used by the server to inform publishers on channels in
+// confirm mode of unhandled messages.  If a publisher receives this method, it
+// probably needs to republish the offending messages.
 type BasicNack struct {
 	DeliveryTag uint64
 	Multiple    bool
 	Requeue     bool
 }
 
+// Name returns method name as string, usefully for logging
 func (method *BasicNack) Name() string {
 	return "BasicNack"
 }
 
+// FrameType returns method frame type
 func (method *BasicNack) FrameType() byte {
 	return 1
 }
 
+// ClassIdentifier returns method classID
 func (method *BasicNack) ClassIdentifier() uint16 {
 	return 60
 }
 
+// MethodIdentifier returns method methodID
 func (method *BasicNack) MethodIdentifier() uint16 {
 	return 120
 }
 
+// Read method from io reader
 func (method *BasicNack) Read(reader io.Reader, protoVersion string) (err error) {
 
 	method.DeliveryTag, err = ReadLonglong(reader)
@@ -3253,6 +3721,7 @@ func (method *BasicNack) Read(reader io.Reader, protoVersion string) (err error)
 	return
 }
 
+// Write method from io reader
 func (method *BasicNack) Write(writer io.Writer, protoVersion string) (err error) {
 
 	if err = WriteLonglong(writer, method.DeliveryTag); err != nil {
@@ -3278,175 +3747,225 @@ func (method *BasicNack) Write(writer io.Writer, protoVersion string) (err error
 
 // Tx methods
 
+// TxSelect This method sets the channel to use standard transactions. The client must use this
+// method at least once on a channel before using the Commit or Rollback methods.
 type TxSelect struct {
 }
 
+// Name returns method name as string, usefully for logging
 func (method *TxSelect) Name() string {
 	return "TxSelect"
 }
 
+// FrameType returns method frame type
 func (method *TxSelect) FrameType() byte {
 	return 1
 }
 
+// ClassIdentifier returns method classID
 func (method *TxSelect) ClassIdentifier() uint16 {
 	return 90
 }
 
+// MethodIdentifier returns method methodID
 func (method *TxSelect) MethodIdentifier() uint16 {
 	return 10
 }
 
+// Read method from io reader
 func (method *TxSelect) Read(reader io.Reader, protoVersion string) (err error) {
 
 	return
 }
 
+// Write method from io reader
 func (method *TxSelect) Write(writer io.Writer, protoVersion string) (err error) {
 
 	return
 }
 
+// TxSelectOk This method confirms to the client that the channel was successfully set to use
+// standard transactions.
 type TxSelectOk struct {
 }
 
+// Name returns method name as string, usefully for logging
 func (method *TxSelectOk) Name() string {
 	return "TxSelectOk"
 }
 
+// FrameType returns method frame type
 func (method *TxSelectOk) FrameType() byte {
 	return 1
 }
 
+// ClassIdentifier returns method classID
 func (method *TxSelectOk) ClassIdentifier() uint16 {
 	return 90
 }
 
+// MethodIdentifier returns method methodID
 func (method *TxSelectOk) MethodIdentifier() uint16 {
 	return 11
 }
 
+// Read method from io reader
 func (method *TxSelectOk) Read(reader io.Reader, protoVersion string) (err error) {
 
 	return
 }
 
+// Write method from io reader
 func (method *TxSelectOk) Write(writer io.Writer, protoVersion string) (err error) {
 
 	return
 }
 
+// TxCommit This method commits all message publications and acknowledgments performed in
+// the current transaction.  A new transaction starts immediately after a commit.
 type TxCommit struct {
 }
 
+// Name returns method name as string, usefully for logging
 func (method *TxCommit) Name() string {
 	return "TxCommit"
 }
 
+// FrameType returns method frame type
 func (method *TxCommit) FrameType() byte {
 	return 1
 }
 
+// ClassIdentifier returns method classID
 func (method *TxCommit) ClassIdentifier() uint16 {
 	return 90
 }
 
+// MethodIdentifier returns method methodID
 func (method *TxCommit) MethodIdentifier() uint16 {
 	return 20
 }
 
+// Read method from io reader
 func (method *TxCommit) Read(reader io.Reader, protoVersion string) (err error) {
 
 	return
 }
 
+// Write method from io reader
 func (method *TxCommit) Write(writer io.Writer, protoVersion string) (err error) {
 
 	return
 }
 
+// TxCommitOk This method confirms to the client that the commit succeeded. Note that if a commit
+// fails, the server raises a channel exception.
 type TxCommitOk struct {
 }
 
+// Name returns method name as string, usefully for logging
 func (method *TxCommitOk) Name() string {
 	return "TxCommitOk"
 }
 
+// FrameType returns method frame type
 func (method *TxCommitOk) FrameType() byte {
 	return 1
 }
 
+// ClassIdentifier returns method classID
 func (method *TxCommitOk) ClassIdentifier() uint16 {
 	return 90
 }
 
+// MethodIdentifier returns method methodID
 func (method *TxCommitOk) MethodIdentifier() uint16 {
 	return 21
 }
 
+// Read method from io reader
 func (method *TxCommitOk) Read(reader io.Reader, protoVersion string) (err error) {
 
 	return
 }
 
+// Write method from io reader
 func (method *TxCommitOk) Write(writer io.Writer, protoVersion string) (err error) {
 
 	return
 }
 
+// TxRollback This method abandons all message publications and acknowledgments performed in
+// the current transaction. A new transaction starts immediately after a rollback.
+// Note that unacked messages will not be automatically redelivered by rollback;
+// if that is required an explicit recover call should be issued.
 type TxRollback struct {
 }
 
+// Name returns method name as string, usefully for logging
 func (method *TxRollback) Name() string {
 	return "TxRollback"
 }
 
+// FrameType returns method frame type
 func (method *TxRollback) FrameType() byte {
 	return 1
 }
 
+// ClassIdentifier returns method classID
 func (method *TxRollback) ClassIdentifier() uint16 {
 	return 90
 }
 
+// MethodIdentifier returns method methodID
 func (method *TxRollback) MethodIdentifier() uint16 {
 	return 30
 }
 
+// Read method from io reader
 func (method *TxRollback) Read(reader io.Reader, protoVersion string) (err error) {
 
 	return
 }
 
+// Write method from io reader
 func (method *TxRollback) Write(writer io.Writer, protoVersion string) (err error) {
 
 	return
 }
 
+// TxRollbackOk This method confirms to the client that the rollback succeeded. Note that if an
+// rollback fails, the server raises a channel exception.
 type TxRollbackOk struct {
 }
 
+// Name returns method name as string, usefully for logging
 func (method *TxRollbackOk) Name() string {
 	return "TxRollbackOk"
 }
 
+// FrameType returns method frame type
 func (method *TxRollbackOk) FrameType() byte {
 	return 1
 }
 
+// ClassIdentifier returns method classID
 func (method *TxRollbackOk) ClassIdentifier() uint16 {
 	return 90
 }
 
+// MethodIdentifier returns method methodID
 func (method *TxRollbackOk) MethodIdentifier() uint16 {
 	return 31
 }
 
+// Read method from io reader
 func (method *TxRollbackOk) Read(reader io.Reader, protoVersion string) (err error) {
 
 	return
 }
 
+// Write method from io reader
 func (method *TxRollbackOk) Write(writer io.Writer, protoVersion string) (err error) {
 
 	return
@@ -3454,26 +3973,34 @@ func (method *TxRollbackOk) Write(writer io.Writer, protoVersion string) (err er
 
 // Confirm methods
 
+// ConfirmSelect This method sets the channel to use publisher acknowledgements.
+// The client can only use this method on a non-transactional
+// channel.
 type ConfirmSelect struct {
 	Nowait bool
 }
 
+// Name returns method name as string, usefully for logging
 func (method *ConfirmSelect) Name() string {
 	return "ConfirmSelect"
 }
 
+// FrameType returns method frame type
 func (method *ConfirmSelect) FrameType() byte {
 	return 1
 }
 
+// ClassIdentifier returns method classID
 func (method *ConfirmSelect) ClassIdentifier() uint16 {
 	return 85
 }
 
+// MethodIdentifier returns method methodID
 func (method *ConfirmSelect) MethodIdentifier() uint16 {
 	return 10
 }
 
+// Read method from io reader
 func (method *ConfirmSelect) Read(reader io.Reader, protoVersion string) (err error) {
 
 	bits, err := ReadOctet(reader)
@@ -3483,6 +4010,7 @@ func (method *ConfirmSelect) Read(reader io.Reader, protoVersion string) (err er
 	return
 }
 
+// Write method from io reader
 func (method *ConfirmSelect) Write(writer io.Writer, protoVersion string) (err error) {
 
 	var bits byte
@@ -3498,35 +4026,44 @@ func (method *ConfirmSelect) Write(writer io.Writer, protoVersion string) (err e
 	return
 }
 
+// ConfirmSelectOk This method confirms to the client that the channel was successfully
+// set to use publisher acknowledgements.
 type ConfirmSelectOk struct {
 }
 
+// Name returns method name as string, usefully for logging
 func (method *ConfirmSelectOk) Name() string {
 	return "ConfirmSelectOk"
 }
 
+// FrameType returns method frame type
 func (method *ConfirmSelectOk) FrameType() byte {
 	return 1
 }
 
+// ClassIdentifier returns method classID
 func (method *ConfirmSelectOk) ClassIdentifier() uint16 {
 	return 85
 }
 
+// MethodIdentifier returns method methodID
 func (method *ConfirmSelectOk) MethodIdentifier() uint16 {
 	return 11
 }
 
+// Read method from io reader
 func (method *ConfirmSelectOk) Read(reader io.Reader, protoVersion string) (err error) {
 
 	return
 }
 
+// Write method from io reader
 func (method *ConfirmSelectOk) Write(writer io.Writer, protoVersion string) (err error) {
 
 	return
 }
 
+// ReadMethod reads method from frame's payload
 func ReadMethod(reader io.Reader, protoVersion string) (Method, error) {
 	classId, err := ReadShort(reader)
 	if err != nil {
@@ -3941,9 +4478,10 @@ func ReadMethod(reader io.Reader, protoVersion string) (Method, error) {
 		}
 	}
 
-	return nil, errors.New(fmt.Sprintf("Unknown classId and methodId: [%d. %d]", classId, methodId))
+	return nil, fmt.Errorf("Unknown classId and methodId: [%d. %d]", classId, methodId)
 }
 
+// WriteMethod writes method into frame's payload
 func WriteMethod(writer io.Writer, method Method, protoVersion string) (err error) {
 	if err = WriteShort(writer, method.ClassIdentifier()); err != nil {
 		return err

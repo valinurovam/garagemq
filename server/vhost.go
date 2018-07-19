@@ -69,7 +69,7 @@ func NewVhost(name string, system bool, msgStorage *msgstorage.MsgStorage, srv *
 func (vhost *VirtualHost) handleConfirms() {
 	confirmsChan := vhost.msgStorage.ReceiveConfirms()
 	for confirm := range confirmsChan {
-		if !confirm.ConfirmMeta.IsConfirmable() {
+		if !confirm.ConfirmMeta.CanConfirm() {
 			continue
 		}
 		channel := vhost.srv.getConfirmChannel(&confirm.ConfirmMeta)

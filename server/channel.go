@@ -136,16 +136,16 @@ func (channel *Channel) sendError(err *amqp.Error) {
 		channel.SendMethod(&amqp.ChannelClose{
 			ReplyCode: err.ReplyCode,
 			ReplyText: err.ReplyText,
-			ClassId:   err.ClassId,
-			MethodId:  err.MethodId,
+			ClassId:   err.ClassID,
+			MethodId:  err.MethodID,
 		})
 	case amqp.ErrorOnConnection:
 		channel.conn.status = ConnClosing
 		channel.conn.channels[0].SendMethod(&amqp.ConnectionClose{
 			ReplyCode: err.ReplyCode,
 			ReplyText: err.ReplyText,
-			ClassId:   err.ClassId,
-			MethodId:  err.MethodId,
+			ClassId:   err.ClassID,
+			MethodId:  err.MethodID,
 		})
 	}
 }
@@ -227,7 +227,7 @@ func (channel *Channel) handleContentBody(bodyFrame *amqp.Frame) *amqp.Error {
 		qu := channel.conn.getVirtualHost().GetQueue(queueName)
 		qu.Push(message, false)
 
-		if message.ConfirmMeta.IsConfirmable() && !message.IsPersistent() {
+		if message.ConfirmMeta.CanConfirm() && !message.IsPersistent() {
 			// send confirm immediate for non persistent messages
 			channel.SendMethod(&amqp.BasicAck{
 				DeliveryTag: message.ConfirmMeta.DeliveryTag,

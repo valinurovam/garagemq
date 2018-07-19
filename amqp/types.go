@@ -5,6 +5,7 @@ import (
 	"sync/atomic"
 )
 
+// Table - simple amqp-table implementation
 type Table map[string]interface{}
 
 // Decimal represents amqp-decimal data
@@ -30,6 +31,7 @@ type ContentHeader struct {
 	PropertyList  *BasicPropertyList
 }
 
+// ConfirmMeta store information for check confirms and send confirm-acks
 type ConfirmMeta struct {
 	ChanID           uint16
 	ConnID           uint64
@@ -38,10 +40,12 @@ type ConfirmMeta struct {
 	ActualConfirms   int
 }
 
-func (meta *ConfirmMeta) IsConfirmable() bool {
+// CanConfirm returns is message can be confirmed
+func (meta *ConfirmMeta) CanConfirm() bool {
 	return meta.ActualConfirms == meta.ExpectedConfirms
 }
 
+// Message represents amqp-message and meta-data
 type Message struct {
 	ID            uint64
 	Header        *ContentHeader
@@ -55,11 +59,12 @@ type Message struct {
 	ConfirmMeta   ConfirmMeta
 }
 
-var msgId uint64
+var msgID uint64
 
+// NewMessage returns new message instance
 func NewMessage(method *BasicPublish) *Message {
 	return &Message{
-		ID:            atomic.AddUint64(&msgId, 1),
+		ID:            atomic.AddUint64(&msgID, 1),
 		Exchange:      method.Exchange,
 		RoutingKey:    method.RoutingKey,
 		Mandatory:     method.Mandatory,
@@ -69,16 +74,19 @@ func NewMessage(method *BasicPublish) *Message {
 	}
 }
 
+// IsPersistent check if message should be persisted
 func (message *Message) IsPersistent() bool {
 	deliveryMode := message.Header.PropertyList.DeliveryMode
 	return deliveryMode != nil && *deliveryMode == 2
 }
 
+// Append appends new body-frame into message and increase bodySize
 func (message *Message) Append(body *Frame) {
 	message.Body = append(message.Body, body)
 	message.BodySize += uint64(len(body.Payload))
 }
 
+// Marshal converts message into bytes to store into db
 func (message *Message) Marshal(protoVersion string) (data []byte, err error) {
 	buffer := bytes.NewBuffer([]byte{})
 	if err = WriteLonglong(buffer, message.ID); err != nil {
@@ -113,6 +121,7 @@ func (message *Message) Marshal(protoVersion string) (data []byte, err error) {
 	return buffer.Bytes(), nil
 }
 
+// Unmarshal restore message entity from bytes
 func (message *Message) Unmarshal(buffer []byte, protoVersion string) (err error) {
 	reader := bytes.NewReader(buffer)
 	if message.ID, err = ReadLonglong(reader); err != nil {
@@ -146,37 +155,41 @@ func (message *Message) Unmarshal(buffer []byte, protoVersion string) (err error
 	return nil
 }
 
+// Constants to detect connection or channel error thrown
 const (
 	ErrorOnConnection = iota
 	ErrorOnChannel
 )
 
+// Error represents AMQP-error data
 type Error struct {
 	ReplyCode uint16
 	ReplyText string
-	ClassId   uint16
-	MethodId  uint16
+	ClassID   uint16
+	MethodID  uint16
 	ErrorType int
 }
 
-func NewConnectionError(code uint16, text string, classId uint16, methodId uint16) *Error {
+// NewConnectionError returns new connection error. If caused - connection should be closed
+func NewConnectionError(code uint16, text string, classID uint16, methodID uint16) *Error {
 	err := &Error{
 		ReplyCode: code,
 		ReplyText: ConstantsNameMap[code] + " - " + text,
-		ClassId:   classId,
-		MethodId:  methodId,
+		ClassID:   classID,
+		MethodID:  methodID,
 		ErrorType: ErrorOnConnection,
 	}
 
 	return err
 }
 
-func NewChannelError(code uint16, text string, classId uint16, methodId uint16) *Error {
+// NewChannelError returns new channel error& If caused - channel should be closed
+func NewChannelError(code uint16, text string, classID uint16, methodID uint16) *Error {
 	err := &Error{
 		ReplyCode: code,
 		ReplyText: ConstantsNameMap[code] + " - " + text,
-		ClassId:   classId,
-		MethodId:  methodId,
+		ClassID:   classID,
+		MethodID:  methodID,
 		ErrorType: ErrorOnChannel,
 	}
 
