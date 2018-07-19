@@ -27,8 +27,15 @@ func (channel *Channel) connectionRoute(method amqp.Method) *amqp.Error {
 
 func (channel *Channel) connectionStart() {
 	var capabilities = amqp.Table{}
-	capabilities["publisher_confirms"] = false
+	capabilities["publisher_confirms"] = true
+	capabilities["exchange_exchange_bindings"] = false
 	capabilities["basic.nack"] = true
+	capabilities["consumer_cancel_notify"] = true
+	capabilities["connection.blocked"] = false
+	capabilities["consumer_priorities"] = false
+	capabilities["authentication_failure_close"] = true
+	capabilities["per_consumer_qos"] = true
+
 	var serverProps = amqp.Table{}
 	serverProps["product"] = "garagemq"
 	serverProps["version"] = "0.1"

@@ -12,7 +12,6 @@ import (
 	log "github.com/sirupsen/logrus"
 	"github.com/valinurovam/garagemq/amqp"
 	"github.com/valinurovam/garagemq/qos"
-	"github.com/valinurovam/garagemq/vhost"
 )
 
 const (
@@ -42,7 +41,7 @@ type Connection struct {
 	statusLock       sync.RWMutex
 	status           int
 	qos              *qos.AmqpQos
-	virtualHost      *vhost.VirtualHost
+	virtualHost      *VirtualHost
 	vhostName        string
 	closeCh          chan bool
 }
@@ -53,7 +52,7 @@ func NewConnection(server *Server, netConn *net.TCPConn) (connection *Connection
 		server:       server,
 		netConn:      netConn,
 		channels:     make(map[uint16]*Channel),
-		outgoing:     make(chan *amqp.Frame, 1),
+		outgoing:     make(chan *amqp.Frame, 100),
 		maxChannels:  server.config.Connection.ChannelsMax,
 		maxFrameSize: server.config.Connection.FrameMaxSize,
 		qos:          qos.New(0, 0),
@@ -84,6 +83,7 @@ func (conn *Connection) close() {
 	for _, chId := range channelIds {
 		channel := conn.channels[uint16(chId)]
 		channel.close()
+		delete(conn.channels, uint16(chId))
 	}
 	conn.clearQueues()
 	conn.netConn.Close()
@@ -96,7 +96,17 @@ func (conn *Connection) close() {
 	conn.closeCh <- true
 }
 
+func (conn *Connection) getChannel(id uint16) *Channel {
+	return conn.channels[id]
+}
+
 func (conn *Connection) safeClose(wg *sync.WaitGroup) {
+	defer wg.Done()
+
+	ch := conn.getChannel(0)
+	if ch == nil {
+		return
+	}
 	conn.channels[0].SendMethod(&amqp.ConnectionClose{
 		ReplyCode: amqp.ConnectionForced,
 		ReplyText: "Server shutdown",
@@ -110,9 +120,9 @@ func (conn *Connection) safeClose(wg *sync.WaitGroup) {
 	select {
 	case <-timeOut:
 		conn.close()
-		wg.Done()
+		return
 	case <-conn.closeCh:
-		wg.Done()
+		return
 	}
 }
 
@@ -213,23 +223,23 @@ func (conn *Connection) handleIncoming() {
 			break
 		}
 
-		if frame.ChannelId != 0 && conn.getStatus() < ConnOpen {
+		if frame.ChannelID != 0 && conn.getStatus() < ConnOpen {
 			conn.logger.WithError(err).Error("Frame not allowed for unopened connection")
 			conn.close()
 			return
 		}
 
-		channel, ok := conn.channels[frame.ChannelId]
+		channel, ok := conn.channels[frame.ChannelID]
 		if !ok {
-			channel = NewChannel(frame.ChannelId, conn)
-			conn.channels[frame.ChannelId] = channel
-			conn.channels[frame.ChannelId].start()
+			channel = NewChannel(frame.ChannelID, conn)
+			conn.channels[frame.ChannelID] = channel
+			conn.channels[frame.ChannelID].start()
 		}
 
 		channel.incoming <- frame
 	}
 }
 
-func (conn *Connection) getVirtualHost() *vhost.VirtualHost {
+func (conn *Connection) getVirtualHost() *VirtualHost {
 	return conn.virtualHost
 }

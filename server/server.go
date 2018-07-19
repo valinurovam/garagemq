@@ -11,19 +11,23 @@ import (
 	"syscall"
 
 	log "github.com/sirupsen/logrus"
+	"github.com/valinurovam/garagemq/amqp"
 	"github.com/valinurovam/garagemq/auth"
 	"github.com/valinurovam/garagemq/config"
 	"github.com/valinurovam/garagemq/interfaces"
 	"github.com/valinurovam/garagemq/msgstorage"
 	"github.com/valinurovam/garagemq/srvstorage"
 	"github.com/valinurovam/garagemq/storage"
-	"github.com/valinurovam/garagemq/vhost"
 )
 
 const (
 	Started  = iota
 	Stopping
 )
+
+type ConfirmServer interface {
+	GetConfirmChannel(meta amqp.ConfirmMeta) *Channel
+}
 
 type Server struct {
 	host         string
@@ -36,7 +40,7 @@ type Server struct {
 	config       *config.Config
 	users        map[string]string
 	vhostsLock   sync.Mutex
-	vhosts       map[string]*vhost.VirtualHost
+	vhosts       map[string]*VirtualHost
 	status       int
 	storage      *srvstorage.SrvStorage
 }
@@ -49,7 +53,7 @@ func NewServer(host string, port string, protoVersion string, config *config.Con
 		protoVersion: protoVersion,
 		config:       config,
 		users:        make(map[string]string),
-		vhosts:       make(map[string]*vhost.VirtualHost),
+		vhosts:       make(map[string]*VirtualHost),
 		connSeq:      1,
 	}
 	return
@@ -100,7 +104,7 @@ func (srv *Server) Stop() {
 	srv.storage.Close()
 }
 
-func (srv *Server) GetVhost(name string) *vhost.VirtualHost {
+func (srv *Server) GetVhost(name string) *VirtualHost {
 	srv.vhostsLock.Lock()
 	defer srv.vhostsLock.Unlock()
 
@@ -135,9 +139,9 @@ func (srv *Server) listen() {
 			"to":   conn.LocalAddr().String(),
 		}).Info("accepting connection")
 
-		conn.SetReadBuffer(srv.config.Tcp.ReadBufSize)
-		conn.SetWriteBuffer(srv.config.Tcp.WriteBufSize)
-		conn.SetNoDelay(srv.config.Tcp.Nodelay)
+		conn.SetReadBuffer(srv.config.TCP.ReadBufSize)
+		conn.SetWriteBuffer(srv.config.TCP.WriteBufSize)
+		conn.SetNoDelay(srv.config.TCP.Nodelay)
 
 		srv.acceptConnection(conn)
 	}
@@ -200,7 +204,7 @@ func (srv *Server) initDefaultVirtualHosts() {
 
 	srv.vhostsLock.Lock()
 	defer srv.vhostsLock.Unlock()
-	srv.vhosts[srv.config.Vhost.DefaultPath] = vhost.New(srv.config.Vhost.DefaultPath, true, msgStorage, srv.storage, srv.config)
+	srv.vhosts[srv.config.Vhost.DefaultPath] = NewVhost(srv.config.Vhost.DefaultPath, true, msgStorage, srv)
 	srv.storage.AddVhost(srv.config.Vhost.DefaultPath, true)
 }
 
@@ -220,7 +224,7 @@ func (srv *Server) initVirtualHostsFromStorage() {
 			storageName = host
 		}
 		msgStorage := msgstorage.New(srv.getStorageInstance(storageName), srv.protoVersion)
-		srv.vhosts[host] = vhost.New(host, system, msgStorage, srv.storage, srv.config)
+		srv.vhosts[host] = NewVhost(host, system, msgStorage, srv)
 	}
 
 	srv.vhostsLock.Lock()
@@ -250,8 +254,8 @@ func (srv *Server) getStorageInstance(name string) interfaces.DbStorage {
 	switch srv.config.Db.Engine {
 	case "badger":
 		return storage.NewBadger(stPath)
-	case "bunt":
-		return storage.NewBunt(stPath)
+	//case "bunt":
+	//	return storage.NewBunt(stPath)
 	default:
 		srv.stopWithError(nil, fmt.Sprintf("Unknown db engine '%s'", srv.config.Db.Engine))
 	}
@@ -275,4 +279,15 @@ func (srv *Server) hookSignals() {
 			srv.onSignal(sig)
 		}
 	}()
+}
+
+func (srv *Server) getConfirmChannel(meta *amqp.ConfirmMeta) *Channel {
+	srv.connLock.Lock()
+	defer srv.connLock.Unlock()
+	conn := srv.connections[meta.ConnID]
+	if conn == nil {
+		return nil
+	}
+
+	return conn.getChannel(meta.ChanID)
 }

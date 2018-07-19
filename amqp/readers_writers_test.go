@@ -29,8 +29,8 @@ func TestReadFrame_Success(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if frame.ChannelId != channelId {
-		t.Fatalf("Excpected ChannelId %d, actual %d", channelId, frame.ChannelId)
+	if frame.ChannelID != channelId {
+		t.Fatalf("Excpected ChannelID %d, actual %d", channelId, frame.ChannelID)
 	}
 
 	if frame.Type != frameType {
@@ -68,7 +68,7 @@ func TestReadFrame_Failed_WrongFrameEnd(t *testing.T) {
 func TestWriteFrame(t *testing.T) {
 	frame := &Frame{
 		Type:       1,
-		ChannelId:  2,
+		ChannelID:  2,
 		Payload:    []byte("some_test_data"),
 		CloseAfter: false,
 	}

@@ -5,6 +5,7 @@ import (
 
 	"github.com/dgraph-io/badger"
 	"github.com/dgraph-io/badger/options"
+	"github.com/valinurovam/garagemq/interfaces"
 )
 
 type StorageBadger struct {
@@ -14,7 +15,7 @@ type StorageBadger struct {
 func NewBadger(storageDir string) *StorageBadger {
 	storage := &StorageBadger{}
 	opts := badger.DefaultOptions
-	opts.SyncWrites = false
+	opts.SyncWrites = true
 	opts.TableLoadingMode = options.MemoryMap
 	opts.Dir = storageDir
 	opts.ValueDir = storageDir
@@ -25,6 +26,20 @@ func NewBadger(storageDir string) *StorageBadger {
 	}
 
 	return storage
+}
+
+func (storage *StorageBadger) ProcessBatch(batch []*interfaces.Operation) (err error) {
+	return storage.db.Update(func(txn *badger.Txn) error {
+		for _, op := range batch {
+			if op.Op == interfaces.OpSet {
+				txn.Set([]byte(op.Key), op.Value)
+			}
+			if op.Op == interfaces.OpDel {
+				txn.Delete([]byte(op.Key))
+			}
+		}
+		return nil
+	})
 }
 
 func (storage *StorageBadger) Close() error {

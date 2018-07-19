@@ -40,7 +40,7 @@ func TestMessage_Append(t *testing.T) {
 
 	m.Append(&Frame{
 		Type:       0,
-		ChannelId:  0,
+		ChannelID:  0,
 		Payload:    []byte{'t', 'e', 's', 't'},
 		CloseAfter: false,
 	})
@@ -51,7 +51,7 @@ func TestMessage_Append(t *testing.T) {
 
 	m.Append(&Frame{
 		Type:       0,
-		ChannelId:  0,
+		ChannelID:  0,
 		Payload:    []byte{'t', 'e', 's', 't'},
 		CloseAfter: false,
 	})
@@ -69,9 +69,9 @@ func TestMessage_Marshal_Unmarshal(t *testing.T) {
 	ctype := "text/plain"
 
 	mM := &Message{
-		Id: 1,
+		ID: 1,
 		Header: &ContentHeader{
-			ClassId:       ClassBasic,
+			ClassID:       ClassBasic,
 			Weight:        0,
 			BodySize:      4,
 			propertyFlags: 32768,
@@ -100,7 +100,7 @@ func TestMessage_Marshal_Unmarshal(t *testing.T) {
 		Body: []*Frame{
 			{
 				Type:       3,
-				ChannelId:  1,
+				ChannelID:  1,
 				Payload:    []byte{'t', 'e', 's', 't'},
 				CloseAfter: false,
 			},

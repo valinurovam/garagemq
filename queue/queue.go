@@ -87,6 +87,8 @@ func (queue *Queue) Push(message *amqp.Message, silent bool) {
 
 	if queue.durable && message.IsPersistent() {
 		queue.storage.Add(message, queue.name)
+	} else {
+		message.ConfirmMeta.ActualConfirms++
 	}
 
 	queue.SafeQueue.Push(message)
@@ -138,7 +140,7 @@ func (queue *Queue) PopQos(qosList []*qos.AmqpQos) *amqp.Message {
 
 func (queue *Queue) AckMsg(message *amqp.Message) {
 	if queue.durable && message.IsPersistent(){
-		queue.storage.Del(message.Id, queue.name)
+		queue.storage.Del(message, queue.name)
 	}
 }
 

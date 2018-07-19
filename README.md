@@ -1,10 +1,20 @@
-## AMQP-server implemented with #golang
+# GarageMQ
 
-### Implemented versions 
-- AMQP - 0.0.9.1
-- AMQP - RabbitMQ
+AMQP-server implemented with #golang
 
-### Backend for durable entities
+### Goals of this project:
+
+- Have fun and learn a lon
+- Implement RabbitMQ in Go
+- Protocol compatible with RabbitMQ and standard AMQP 0-9-1.
+
+### TODO
+- [ ] Add comments
+- [ ] Fix golint exceptions
+- [ ] Replication
+- [ ] Own backend for durable entities and persistent messages
+
+### Backend for durable entities and persistent messages
 Database backend is changeable through config `db.engine` 
 ```
 db:
@@ -86,8 +96,8 @@ RabbitMQ Qos means for channel(global=true) or each new consumer(global=false).
 
 #### confirm
 
-- [ ] confirm.select
-- [ ] confirm.selectOk
+- [x] confirm.select
+- [x] confirm.selectOk
 
 #### tx
 

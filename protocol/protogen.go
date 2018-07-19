@@ -44,7 +44,7 @@ type Domain struct {
 
 type Class struct {
 	Name    string    `xml:"name,attr"`
-	Id      uint16    `xml:"index,attr"`
+	ID      uint16    `xml:"index,attr"`
 	Methods []*Method `xml:"method"`
 	Fields  []*Field  `xml:"field"`
 	GoName  string
@@ -88,7 +88,7 @@ var ConstantsNameMap = map[uint16]string{
 	t := template.Must(template.New("constTemplate").Parse(constTemplate))
 
 	for _, class := range amqp.Classes {
-		constant := &Constant{Name: strings.Join([]string{"class", class.Name}, "-"), Value: class.Id, IgnoreOnMap: true}
+		constant := &Constant{Name: strings.Join([]string{"class", class.Name}, "-"), Value: class.ID, IgnoreOnMap: true}
 		amqp.Constants = append(amqp.Constants, constant)
 
 		for _, method := range class.Methods {
@@ -126,7 +126,7 @@ type Method interface {
 	Write(writer io.Writer, protoVersion string) (err error)
 }
 {{range .}}
-{{$classId := .Id}}
+{{$classId := .ID}}
 // {{.GoName}} methods
 
 {{ if .Fields }}
@@ -176,7 +176,7 @@ func (method *{{.GoName}}) ClassIdentifier() uint16 {
 }
 
 func (method *{{.GoName}}) MethodIdentifier() uint16 {
-    return {{.Id}}
+    return {{.ID}}
 }
 
 func (method *{{.GoName}}) Read(reader io.Reader, protoVersion string) (err error) {
@@ -236,10 +236,10 @@ func ReadMethod(reader io.Reader, protoVersion string) (Method, error) {
 	}
 	switch classId {
 		{{range .}}
-	case {{.Id}}:
+	case {{.ID}}:
 		switch methodId {
 			{{range .Methods}}
-		case {{.Id}}:
+		case {{.ID}}:
 			var method = &{{.GoName}}{}
 			if err := method.Read(reader, protoVersion); err != nil {
 				return nil, err

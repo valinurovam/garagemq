@@ -26,7 +26,7 @@ func Test_Connection_FailedVhostAccess(t *testing.T) {
 
 func Test_Connection_Failed_WhenWrongAuth(t *testing.T) {
 	cfg := getDefaultTestConfig()
-	cfg.srvConfig.Users = []config.ConfigUser{
+	cfg.srvConfig.Users = []config.User{
 		{
 			Username: "guest",
 			Password: "guest?",

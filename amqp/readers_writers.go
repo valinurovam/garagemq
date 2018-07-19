@@ -19,7 +19,7 @@ func ReadFrame(r io.Reader) (frame *Frame, err error) {
 	if frame.Type, err = ReadOctet(r); err != nil {
 		return nil, err
 	}
-	if frame.ChannelId, err = ReadShort(r); err != nil {
+	if frame.ChannelID, err = ReadShort(r); err != nil {
 		return nil, err
 	}
 	var payloadSize uint32
@@ -48,7 +48,7 @@ func WriteFrame(wr io.Writer, frame *Frame) (err error) {
 	if err = WriteOctet(wr, frame.Type); err != nil {
 		return err
 	}
-	if err = WriteShort(wr, frame.ChannelId); err != nil {
+	if err = WriteShort(wr, frame.ChannelID); err != nil {
 		return err
 	}
 
@@ -729,7 +729,7 @@ func ReadContentHeader(r io.Reader, protoVersion string) (*ContentHeader, error)
 	contentHeader := &ContentHeader{}
 	headerBuf := bytes.NewBuffer(header)
 
-	contentHeader.ClassId, _ = ReadShort(headerBuf)
+	contentHeader.ClassID, _ = ReadShort(headerBuf)
 	contentHeader.Weight, _ = ReadShort(headerBuf)
 	contentHeader.BodySize, _ = ReadLonglong(headerBuf)
 	contentHeader.propertyFlags, _ = ReadShort(headerBuf)
@@ -744,7 +744,7 @@ func ReadContentHeader(r io.Reader, protoVersion string) (*ContentHeader, error)
 
 func WriteContentHeader(writer io.Writer, header *ContentHeader, protoVersion string) (err error) {
 	//var headerBuf = bytes.NewBuffer(make([]byte, 0, 14))
-	WriteShort(writer, header.ClassId)
+	WriteShort(writer, header.ClassID)
 	WriteShort(writer, header.Weight)
 	WriteLonglong(writer, header.BodySize)
 

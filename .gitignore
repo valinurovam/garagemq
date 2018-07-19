@@ -1,0 +1,4 @@
+cmd/server
+db/
+.idea
+.DS_Store

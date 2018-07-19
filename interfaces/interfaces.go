@@ -17,10 +17,20 @@ type Consumer interface {
 	Cancel()
 }
 
+const OpSet = 1
+const OpDel = 2
+
+type Operation struct {
+	Key   string
+	Value []byte
+	Op    byte
+}
+
 type DbStorage interface {
 	Set(key string, value []byte) (err error)
 	Del(key string) (err error)
 	Get(key string) (value []byte, err error)
 	Iterate(fn func(key []byte, value []byte))
+	ProcessBatch(batch []*Operation) (err error)
 	Close() error
 }

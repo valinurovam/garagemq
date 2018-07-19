@@ -9,14 +9,17 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
+// SaslPlain method
 const SaslPlain = "PLAIN"
 
+// SaslData represents standard SASL properties
 type SaslData struct {
 	Identity string
 	Username string
 	Password string
 }
 
+// ParsePlain check and parse SASL-raw data and return SaslData structure
 func ParsePlain(response []byte) (SaslData, error) {
 	parts := bytes.Split(response, []byte{0})
 	if len(parts) != 3 {
@@ -31,6 +34,7 @@ func ParsePlain(response []byte) (SaslData, error) {
 	return saslData, nil
 }
 
+// HashPassword hash raw password and return hash for check
 func HashPassword(password string, isMd5 bool) (string, error) {
 	if isMd5 {
 		h := md5.New()
@@ -41,6 +45,7 @@ func HashPassword(password string, isMd5 bool) (string, error) {
 	return string(hash), err
 }
 
+// CheckPasswordHash check given password and hash
 func CheckPasswordHash(password, hash string, isMd5 bool) bool {
 	if isMd5 {
 		h := md5.New()

@@ -1,4 +1,4 @@
-package vhost
+package server
 
 import (
 	"errors"
@@ -24,20 +24,22 @@ type VirtualHost struct {
 	quLock     sync.Mutex
 	queues     map[string]*queue.Queue
 	msgStorage *msgstorage.MsgStorage
+	srv        *Server
 	srvStorage *srvstorage.SrvStorage
 	srvConfig  *config.Config
 	logger     *log.Entry
 }
 
-func New(name string, system bool, msgStorage *msgstorage.MsgStorage, srvStorage *srvstorage.SrvStorage, srvConfig *config.Config) *VirtualHost {
+func NewVhost(name string, system bool, msgStorage *msgstorage.MsgStorage, srv *Server) *VirtualHost {
 	vhost := &VirtualHost{
 		name:       name,
 		system:     system,
 		exchanges:  make(map[string]*exchange.Exchange),
 		queues:     make(map[string]*queue.Queue),
 		msgStorage: msgStorage,
-		srvStorage: srvStorage,
-		srvConfig:  srvConfig,
+		srvStorage: srv.storage,
+		srvConfig:  srv.config,
+		srv:        srv,
 	}
 
 	vhost.logger = log.WithFields(log.Fields{
@@ -59,7 +61,23 @@ func New(name string, system bool, msgStorage *msgstorage.MsgStorage, srvStorage
 		}).Info("Messages loaded into queue")
 	}
 
+	go vhost.handleConfirms()
+
 	return vhost
+}
+
+func (vhost *VirtualHost) handleConfirms() {
+	confirmsChan := vhost.msgStorage.ReceiveConfirms()
+	for confirm := range confirmsChan {
+		if !confirm.ConfirmMeta.IsConfirmable() {
+			continue
+		}
+		channel := vhost.srv.getConfirmChannel(&confirm.ConfirmMeta)
+		if channel == nil {
+			continue
+		}
+		channel.AddConfirm(&confirm.ConfirmMeta)
+	}
 }
 
 func (vhost *VirtualHost) initSystemExchanges() {

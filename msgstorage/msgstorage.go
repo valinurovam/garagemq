@@ -4,41 +4,146 @@ import (
 	"bytes"
 	"strconv"
 	"strings"
+	"sync"
+	"time"
 
 	"github.com/valinurovam/garagemq/amqp"
 	"github.com/valinurovam/garagemq/interfaces"
 )
 
 type MsgStorage struct {
-	db           interfaces.DbStorage
-	protoVersion string
+	db            interfaces.DbStorage
+	persistLock   sync.Mutex
+	add           map[string]*amqp.Message
+	update        map[string]*amqp.Message
+	del           map[string]*amqp.Message
+	protoVersion  string
+	closeCh       chan bool
+	confirmSyncCh chan *amqp.Message
+	confirmMode   bool
 }
 
 func New(db interfaces.DbStorage, protoVersion string) *MsgStorage {
-	return &MsgStorage{
-		db:           db,
-		protoVersion: protoVersion,
+	msgStorage := &MsgStorage{
+		db:            db,
+		protoVersion:  protoVersion,
+		closeCh:       make(chan bool),
+		confirmSyncCh: make(chan *amqp.Message, 4096),
 	}
+	msgStorage.cleanPersistQueue()
+	go msgStorage.periodicPersist()
+	return msgStorage
+}
+
+func (storage *MsgStorage) cleanPersistQueue() {
+	storage.add = make(map[string]*amqp.Message)
+	storage.update = make(map[string]*amqp.Message)
+	storage.del = make(map[string]*amqp.Message)
+}
+
+func (storage *MsgStorage) periodicPersist() {
+	tick := time.Tick(20 * time.Millisecond)
+	for range tick {
+		select {
+		case <-storage.closeCh:
+			return
+		default:
+			storage.persist()
+		}
+	}
+}
+
+func (storage *MsgStorage) persist() {
+	storage.persistLock.Lock()
+	add := storage.add
+	del := storage.del
+	update := storage.update
+	storage.cleanPersistQueue()
+	storage.persistLock.Unlock()
+
+	rmDel := make([]string, 0)
+	for delKey := range del {
+		if _, ok := add[delKey]; ok {
+			delete(add, delKey)
+			rmDel = append(rmDel, delKey)
+		}
+
+		delete(update, delKey)
+	}
+
+	for _, delKey := range rmDel {
+		delete(del, delKey)
+	}
+
+	batch := make([]*interfaces.Operation, 0, len(add)+len(update)+len(del))
+	for key, message := range add {
+		data, _ := message.Marshal(storage.protoVersion)
+		batch = append(
+			batch,
+			&interfaces.Operation{
+				Key:   key,
+				Value: data,
+				Op:    interfaces.OpSet,
+			},
+		)
+	}
+
+	for key, message := range update {
+		data, _ := message.Marshal(storage.protoVersion)
+		batch = append(
+			batch,
+			&interfaces.Operation{
+				Key:   key,
+				Value: data,
+				Op:    interfaces.OpSet,
+			},
+		)
+	}
+
+	for key, _ := range del {
+		batch = append(
+			batch,
+			&interfaces.Operation{
+				Key: key,
+				Op:  interfaces.OpDel,
+			},
+		)
+	}
+
+	storage.db.ProcessBatch(batch)
+
+	for _, message := range add {
+		if storage.confirmMode && message.ConfirmMeta.DeliveryTag > 0 {
+			message.ConfirmMeta.ActualConfirms++
+			storage.confirmSyncCh <- message
+		}
+	}
+}
+
+func (storage *MsgStorage) ReceiveConfirms() chan *amqp.Message {
+	storage.confirmMode = true
+	return storage.confirmSyncCh
 }
 
 func (storage *MsgStorage) Add(message *amqp.Message, queue string) error {
-	if data, err := message.Marshal(storage.protoVersion); err == nil {
-		return storage.db.Set(makeKey(message.Id, queue), data)
-	} else {
-		return err
-	}
+	storage.persistLock.Lock()
+	defer storage.persistLock.Unlock()
+	storage.add[makeKey(message.ID, queue)] = message
+	return nil
 }
 
 func (storage *MsgStorage) Update(message *amqp.Message, queue string) error {
-	if data, err := message.Marshal(storage.protoVersion); err == nil {
-		return storage.db.Set(makeKey(message.Id, queue), data)
-	} else {
-		return err
-	}
+	storage.persistLock.Lock()
+	defer storage.persistLock.Unlock()
+	storage.update[makeKey(message.ID, queue)] = message
+	return nil
 }
 
-func (storage *MsgStorage) Del(id uint64, queue string) error {
-	return storage.db.Del(makeKey(id, queue))
+func (storage *MsgStorage) Del(message *amqp.Message, queue string) error {
+	storage.persistLock.Lock()
+	defer storage.persistLock.Unlock()
+	storage.del[makeKey(message.ID, queue)] = message
+	return nil
 }
 
 func (storage *MsgStorage) Iterate(fn func(queue string, message *amqp.Message)) {
@@ -65,6 +170,9 @@ func (storage *MsgStorage) PurgeQueue(queue string) {
 }
 
 func (storage *MsgStorage) Close() error {
+	storage.closeCh <- true
+	storage.persistLock.Lock()
+	defer storage.persistLock.Unlock()
 	return storage.db.Close()
 }
 

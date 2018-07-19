@@ -7,28 +7,43 @@ import (
 
 type Table map[string]interface{}
 
+// Decimal represents amqp-decimal data
 type Decimal struct {
 	Scale uint8
 	Value int32
 }
 
+// Frame is raw frame
 type Frame struct {
 	Type       byte
-	ChannelId  uint16
+	ChannelID  uint16
 	Payload    []byte
 	CloseAfter bool
 }
 
+// ContentHeader represents amqp-message content-header
 type ContentHeader struct {
-	ClassId       uint16
+	ClassID       uint16
 	Weight        uint16
 	BodySize      uint64
 	propertyFlags uint16
 	PropertyList  *BasicPropertyList
 }
 
+type ConfirmMeta struct {
+	ChanID           uint16
+	ConnID           uint64
+	DeliveryTag      uint64
+	ExpectedConfirms int
+	ActualConfirms   int
+}
+
+func (meta *ConfirmMeta) IsConfirmable() bool {
+	return meta.ActualConfirms == meta.ExpectedConfirms
+}
+
 type Message struct {
-	Id            uint64
+	ID            uint64
 	Header        *ContentHeader
 	Exchange      string
 	RoutingKey    string
@@ -37,13 +52,14 @@ type Message struct {
 	BodySize      uint64
 	Body          []*Frame
 	DeliveryCount uint32
+	ConfirmMeta   ConfirmMeta
 }
 
 var msgId uint64
 
 func NewMessage(method *BasicPublish) *Message {
 	return &Message{
-		Id:            atomic.AddUint64(&msgId, 1),
+		ID:            atomic.AddUint64(&msgId, 1),
 		Exchange:      method.Exchange,
 		RoutingKey:    method.RoutingKey,
 		Mandatory:     method.Mandatory,
@@ -65,7 +81,7 @@ func (message *Message) Append(body *Frame) {
 
 func (message *Message) Marshal(protoVersion string) (data []byte, err error) {
 	buffer := bytes.NewBuffer([]byte{})
-	if err = WriteLonglong(buffer, message.Id); err != nil {
+	if err = WriteLonglong(buffer, message.ID); err != nil {
 		return nil, err
 	}
 
@@ -99,7 +115,7 @@ func (message *Message) Marshal(protoVersion string) (data []byte, err error) {
 
 func (message *Message) Unmarshal(buffer []byte, protoVersion string) (err error) {
 	reader := bytes.NewReader(buffer)
-	if message.Id, err = ReadLonglong(reader); err != nil {
+	if message.ID, err = ReadLonglong(reader); err != nil {
 		return err
 	}
 

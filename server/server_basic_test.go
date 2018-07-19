@@ -192,7 +192,8 @@ func Test_BasicPublish_Persistent_Success(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	time.Sleep(5 * time.Millisecond)
+	// wait call persistStorage()
+	time.Sleep(50 * time.Millisecond)
 
 	found := false
 	storage := sc.server.GetVhost("/").GetQueue(qu.Name).MsgStorage()

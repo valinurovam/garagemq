@@ -6,6 +6,7 @@ import (
 	"sort"
 	"sync"
 	"sync/atomic"
+	"time"
 
 	"github.com/sirupsen/logrus"
 	log "github.com/sirupsen/logrus"
@@ -27,23 +28,28 @@ const (
 // Within a single socket connection, there can be multiple
 // independent threads of control, called "channels"
 type Channel struct {
-	active         bool
-	id             uint16
-	conn           *Connection
-	server         *Server
-	incoming       chan *amqp.Frame
-	outgoing       chan *amqp.Frame
-	logger         *log.Entry
-	status         int
-	protoVersion   string
-	currentMessage *amqp.Message
-	cmrLock        sync.Mutex
-	consumers      map[string]*consumer.Consumer
-	qos            *qos.AmqpQos
-	consumerQos    *qos.AmqpQos
-	deliveryTag    uint64
-	ackLock        sync.Mutex
-	ackStore       map[uint64]*UnackedMessage
+	active             bool
+	confirmMode        bool
+	id                 uint16
+	conn               *Connection
+	server             *Server
+	incoming           chan *amqp.Frame
+	outgoing           chan *amqp.Frame
+	logger             *log.Entry
+	statusLock         sync.RWMutex
+	status             int
+	protoVersion       string
+	currentMessage     *amqp.Message
+	cmrLock            sync.Mutex
+	consumers          map[string]*consumer.Consumer
+	qos                *qos.AmqpQos
+	consumerQos        *qos.AmqpQos
+	deliveryTag        uint64
+	confirmDeliveryTag uint64
+	confirmLock        sync.Mutex
+	confirmQueue       []*amqp.ConfirmMeta
+	ackLock            sync.Mutex
+	ackStore           map[uint64]*UnackedMessage
 }
 
 // UnackedMessage represents the unacknowledged message
@@ -68,6 +74,7 @@ func NewChannel(id uint16, conn *Connection) (*Channel) {
 		qos:          qos.New(0, 0),
 		consumerQos:  qos.New(0, 0),
 		ackStore:     make(map[uint64]*UnackedMessage),
+		confirmQueue: make([]*amqp.ConfirmMeta, 0),
 	}
 
 	channel.logger = log.WithFields(log.Fields{
@@ -89,6 +96,10 @@ func (channel *Channel) start() {
 func (channel *Channel) handleIncoming() {
 	for {
 		frame := <-channel.incoming
+		if frame == nil {
+			// channel closed
+			return
+		}
 
 		switch frame.Type {
 		case amqp.FrameMethod:
@@ -151,6 +162,8 @@ func (channel *Channel) handleMethod(method amqp.Method) *amqp.Error {
 		return channel.exchangeRoute(method)
 	case amqp.ClassQueue:
 		return channel.queueRoute(method)
+	case amqp.ClassConfirm:
+		return channel.confirmRoute(method)
 	}
 
 	return nil
@@ -209,9 +222,18 @@ func (channel *Channel) handleContentBody(bodyFrame *amqp.Frame) *amqp.Error {
 		return nil
 	}
 
+	message.ConfirmMeta.ExpectedConfirms = len(matchedQueues)
 	for queueName := range matchedQueues {
 		qu := channel.conn.getVirtualHost().GetQueue(queueName)
-		qu.Push(channel.currentMessage, false)
+		qu.Push(message, false)
+
+		if message.ConfirmMeta.IsConfirmable() && !message.IsPersistent() {
+			// send confirm immediate for non persistent messages
+			channel.SendMethod(&amqp.BasicAck{
+				DeliveryTag: message.ConfirmMeta.DeliveryTag,
+				Multiple:    false,
+			})
+		}
 	}
 	return nil
 }
@@ -228,7 +250,11 @@ func (channel *Channel) SendMethod(method amqp.Method) {
 		channel.logger.Debug("Outgoing -> " + method.Name())
 	}
 
-	channel.outgoing <- &amqp.Frame{Type: byte(amqp.FrameMethod), ChannelId: channel.id, Payload: rawMethod.Bytes(), CloseAfter: closeAfter}
+	channel.sendOutgoing(&amqp.Frame{Type: byte(amqp.FrameMethod), ChannelID: channel.id, Payload: rawMethod.Bytes(), CloseAfter: closeAfter})
+}
+
+func (channel *Channel) sendOutgoing(frame *amqp.Frame) {
+	channel.outgoing <- frame
 }
 
 func (channel *Channel) SendContent(method amqp.Method, message *amqp.Message) {
@@ -236,13 +262,47 @@ func (channel *Channel) SendContent(method amqp.Method, message *amqp.Message) {
 
 	rawHeader := bytes.NewBuffer([]byte{})
 	amqp.WriteContentHeader(rawHeader, message.Header, channel.server.protoVersion)
-	channel.outgoing <- &amqp.Frame{Type: byte(amqp.FrameHeader), ChannelId: channel.id, Payload: rawHeader.Bytes(), CloseAfter: false}
+	channel.sendOutgoing(&amqp.Frame{Type: byte(amqp.FrameHeader), ChannelID: channel.id, Payload: rawHeader.Bytes(), CloseAfter: false})
 
 	for _, payload := range message.Body {
-		payload.ChannelId = channel.id
-		channel.outgoing <- payload
+		payload.ChannelID = channel.id
+		channel.sendOutgoing(payload)
 	}
 }
+
+func (channel *Channel) AddConfirm(meta *amqp.ConfirmMeta) {
+	if !channel.confirmMode {
+		return
+	}
+	channel.confirmLock.Lock()
+	defer channel.confirmLock.Unlock()
+
+	if channel.status == channelClosed {
+		return
+	}
+	channel.confirmQueue = append(channel.confirmQueue, meta)
+}
+
+func (channel *Channel) sendConfirms() {
+	tick := time.Tick(20 * time.Millisecond)
+	for range tick {
+		if channel.status == channelClosed {
+			return
+		}
+		channel.confirmLock.Lock()
+		currentConfirms := channel.confirmQueue
+		channel.confirmQueue = make([]*amqp.ConfirmMeta, 0)
+		channel.confirmLock.Unlock()
+
+		for _, confirm := range currentConfirms {
+			channel.SendMethod(&amqp.BasicAck{
+				DeliveryTag: confirm.DeliveryTag,
+				Multiple:    false,
+			})
+		}
+	}
+}
+
 func (channel *Channel) addConsumer(method *amqp.BasicConsume) (cmr *consumer.Consumer, err *amqp.Error) {
 	channel.cmrLock.Lock()
 	defer channel.cmrLock.Unlock()
@@ -283,6 +343,8 @@ func (channel *Channel) removeConsumer(cTag string) {
 }
 
 func (channel *Channel) close() {
+	channel.statusLock.Lock()
+	defer channel.statusLock.Unlock()
 	channel.cmrLock.Lock()
 	defer channel.cmrLock.Unlock()
 	for _, cmr := range channel.consumers {
@@ -293,6 +355,7 @@ func (channel *Channel) close() {
 		}).Info("Consumer stopped")
 	}
 	channel.handleReject(0, true, true, &amqp.BasicNack{})
+	channel.status = channelClosed
 }
 
 func (channel *Channel) updateQos(prefetchCount uint16, prefetchSize uint32, global bool) {
@@ -313,6 +376,10 @@ func (channel *Channel) updateQos(prefetchCount uint16, prefetchSize uint32, glo
 
 func (channel *Channel) NextDeliveryTag() uint64 {
 	return atomic.AddUint64(&channel.deliveryTag, 1)
+}
+
+func (channel *Channel) nextConfirmDeliveryTag() uint64 {
+	return atomic.AddUint64(&channel.confirmDeliveryTag, 1)
 }
 
 func (channel *Channel) AddUnackedMessage(dTag uint64, cTag string, queue string, message *amqp.Message) {

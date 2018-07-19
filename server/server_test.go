@@ -43,7 +43,7 @@ func (sc *ServerClient) clean() {
 func getDefaultTestConfig() TestConfig {
 	return TestConfig{
 		srvConfig: config.Config{
-			Users: []config.ConfigUser{
+			Users: []config.User{
 				{
 					Username: "test",
 					Password: "084e0343a0486ff05530df6c705c8bb4", // guest md5 hash
@@ -53,7 +53,7 @@ func getDefaultTestConfig() TestConfig {
 					Password: "084e0343a0486ff05530df6c705c8bb4", // guest md5 hash
 				},
 			},
-			Tcp: config.TcpConfig{
+			TCP: config.TCPConfig{
 				Nodelay:      false,
 				ReadBufSize:  0,
 				WriteBufSize: 0,
