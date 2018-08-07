@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/valinurovam/garagemq/binding"
 	"github.com/valinurovam/garagemq/exchange"
 	"github.com/valinurovam/garagemq/interfaces"
 	"github.com/valinurovam/garagemq/queue"
@@ -14,8 +15,10 @@ import (
 
 const queuePrefix = "vhost.queue"
 const exchangePrefix = "vhost.exchange"
+const bindingPrefix = "vhost.binding"
 const vhostPrefix = "server.vhost"
 
+// SrvStorage implements storage for store all durable server entities
 type SrvStorage struct {
 	db           interfaces.DbStorage
 	protoVersion string
@@ -49,9 +52,9 @@ func (storage *SrvStorage) AddVhost(vhost string, system bool) error {
 	key := fmt.Sprintf("%s.%s", vhostPrefix, vhost)
 	if system {
 		return storage.db.Set(key, []byte{1})
-	} else {
-		return storage.db.Set(key, []byte{})
 	}
+
+	return storage.db.Set(key, []byte{})
 }
 
 func (storage *SrvStorage) GetVhosts() map[string]bool {
@@ -68,6 +71,16 @@ func (storage *SrvStorage) GetVhosts() map[string]bool {
 	)
 
 	return vhosts
+}
+
+func (storage *SrvStorage) AddBinding(vhost string, bind *binding.Binding) error {
+	key := fmt.Sprintf("%s.%s.%s", bindingPrefix, vhost, bind.GetName())
+	return storage.db.Set(key, bind.Marshal())
+}
+
+func (storage *SrvStorage) DelBinding(vhost string, bind *binding.Binding) error {
+	key := fmt.Sprintf("%s.%s.%s", bindingPrefix, vhost, bind.GetName())
+	return storage.db.Del(key)
 }
 
 func (storage *SrvStorage) AddExchange(vhost string, ex *exchange.Exchange) error {
@@ -91,7 +104,7 @@ func (storage *SrvStorage) DelQueue(vhost string, queue *queue.Queue) error {
 }
 
 func (storage *SrvStorage) GetVhostQueues(vhost string) []string {
-	queueNames := []string{}
+	var queueNames []string
 	storage.db.Iterate(
 		func(key []byte, value []byte) {
 			if !bytes.HasPrefix(key, []byte(queuePrefix)) || getVhostFromKey(string(key)) != vhost {
@@ -106,7 +119,7 @@ func (storage *SrvStorage) GetVhostQueues(vhost string) []string {
 }
 
 func (storage *SrvStorage) GetVhostExchanges(vhost string) []*exchange.Exchange {
-	exchanges := []*exchange.Exchange{}
+	var exchanges []*exchange.Exchange
 	storage.db.Iterate(
 		func(key []byte, value []byte) {
 			if !bytes.HasPrefix(key, []byte(exchangePrefix)) || getVhostFromKey(string(key)) != vhost {
@@ -119,6 +132,22 @@ func (storage *SrvStorage) GetVhostExchanges(vhost string) []*exchange.Exchange 
 	)
 
 	return exchanges
+}
+
+func (storage *SrvStorage) GetVhostBindings(vhost string) []*binding.Binding {
+	var bindings []*binding.Binding
+	storage.db.Iterate(
+		func(key []byte, value []byte) {
+			if !bytes.HasPrefix(key, []byte(bindingPrefix)) || getVhostFromKey(string(key)) != vhost {
+				return
+			}
+			bind := &binding.Binding{}
+			bind.Unmarshal(value)
+			bindings = append(bindings, bind)
+		},
+	)
+
+	return bindings
 }
 
 func getVhostFromKey(key string) string {

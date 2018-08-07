@@ -3,6 +3,7 @@ package amqp
 import (
 	"bytes"
 	"sync/atomic"
+	"time"
 )
 
 // Table - simple amqp-table implementation
@@ -20,6 +21,7 @@ type Frame struct {
 	ChannelID  uint16
 	Payload    []byte
 	CloseAfter bool
+	Sync       bool
 }
 
 // ContentHeader represents amqp-message content-header
@@ -59,7 +61,8 @@ type Message struct {
 	ConfirmMeta   ConfirmMeta
 }
 
-var msgID uint64
+// when server restart we can't start again count messages from 0
+var msgID = uint64(time.Now().Unix())
 
 // NewMessage returns new message instance
 func NewMessage(method *BasicPublish) *Message {

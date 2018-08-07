@@ -14,6 +14,7 @@ type Method interface {
 	MethodIdentifier() uint16
 	Read(reader io.Reader, protoVersion string) (err error)
 	Write(writer io.Writer, protoVersion string) (err error)
+	Sync() bool
 }
 
 // Connection methods
@@ -47,6 +48,10 @@ func (method *ConnectionStart) ClassIdentifier() uint16 {
 // MethodIdentifier returns method methodID
 func (method *ConnectionStart) MethodIdentifier() uint16 {
 	return 10
+}
+
+func (method *ConnectionStart) Sync() bool {
+	return true
 }
 
 // Read method from io reader
@@ -134,6 +139,10 @@ func (method *ConnectionStartOk) MethodIdentifier() uint16 {
 	return 11
 }
 
+func (method *ConnectionStartOk) Sync() bool {
+	return true
+}
+
 // Read method from io reader
 func (method *ConnectionStartOk) Read(reader io.Reader, protoVersion string) (err error) {
 
@@ -209,6 +218,10 @@ func (method *ConnectionSecure) MethodIdentifier() uint16 {
 	return 20
 }
 
+func (method *ConnectionSecure) Sync() bool {
+	return true
+}
+
 // Read method from io reader
 func (method *ConnectionSecure) Read(reader io.Reader, protoVersion string) (err error) {
 
@@ -254,6 +267,10 @@ func (method *ConnectionSecureOk) ClassIdentifier() uint16 {
 // MethodIdentifier returns method methodID
 func (method *ConnectionSecureOk) MethodIdentifier() uint16 {
 	return 21
+}
+
+func (method *ConnectionSecureOk) Sync() bool {
+	return true
 }
 
 // Read method from io reader
@@ -303,6 +320,10 @@ func (method *ConnectionTune) ClassIdentifier() uint16 {
 // MethodIdentifier returns method methodID
 func (method *ConnectionTune) MethodIdentifier() uint16 {
 	return 30
+}
+
+func (method *ConnectionTune) Sync() bool {
+	return true
 }
 
 // Read method from io reader
@@ -370,6 +391,10 @@ func (method *ConnectionTuneOk) ClassIdentifier() uint16 {
 // MethodIdentifier returns method methodID
 func (method *ConnectionTuneOk) MethodIdentifier() uint16 {
 	return 31
+}
+
+func (method *ConnectionTuneOk) Sync() bool {
+	return true
 }
 
 // Read method from io reader
@@ -441,6 +466,10 @@ func (method *ConnectionOpen) MethodIdentifier() uint16 {
 	return 40
 }
 
+func (method *ConnectionOpen) Sync() bool {
+	return true
+}
+
 // Read method from io reader
 func (method *ConnectionOpen) Read(reader io.Reader, protoVersion string) (err error) {
 
@@ -510,6 +539,10 @@ func (method *ConnectionOpenOk) MethodIdentifier() uint16 {
 	return 41
 }
 
+func (method *ConnectionOpenOk) Sync() bool {
+	return true
+}
+
 // Read method from io reader
 func (method *ConnectionOpenOk) Read(reader io.Reader, protoVersion string) (err error) {
 
@@ -560,6 +593,10 @@ func (method *ConnectionClose) ClassIdentifier() uint16 {
 // MethodIdentifier returns method methodID
 func (method *ConnectionClose) MethodIdentifier() uint16 {
 	return 50
+}
+
+func (method *ConnectionClose) Sync() bool {
+	return true
 }
 
 // Read method from io reader
@@ -635,6 +672,10 @@ func (method *ConnectionCloseOk) MethodIdentifier() uint16 {
 	return 51
 }
 
+func (method *ConnectionCloseOk) Sync() bool {
+	return true
+}
+
 // Read method from io reader
 func (method *ConnectionCloseOk) Read(reader io.Reader, protoVersion string) (err error) {
 
@@ -671,6 +712,10 @@ func (method *ConnectionBlocked) ClassIdentifier() uint16 {
 // MethodIdentifier returns method methodID
 func (method *ConnectionBlocked) MethodIdentifier() uint16 {
 	return 60
+}
+
+func (method *ConnectionBlocked) Sync() bool {
+	return false
 }
 
 // Read method from io reader
@@ -719,6 +764,10 @@ func (method *ConnectionUnblocked) MethodIdentifier() uint16 {
 	return 61
 }
 
+func (method *ConnectionUnblocked) Sync() bool {
+	return false
+}
+
 // Read method from io reader
 func (method *ConnectionUnblocked) Read(reader io.Reader, protoVersion string) (err error) {
 
@@ -756,6 +805,10 @@ func (method *ChannelOpen) ClassIdentifier() uint16 {
 // MethodIdentifier returns method methodID
 func (method *ChannelOpen) MethodIdentifier() uint16 {
 	return 10
+}
+
+func (method *ChannelOpen) Sync() bool {
+	return true
 }
 
 // Read method from io reader
@@ -802,6 +855,10 @@ func (method *ChannelOpenOk) ClassIdentifier() uint16 {
 // MethodIdentifier returns method methodID
 func (method *ChannelOpenOk) MethodIdentifier() uint16 {
 	return 11
+}
+
+func (method *ChannelOpenOk) Sync() bool {
+	return true
 }
 
 // Read method from io reader
@@ -854,6 +911,10 @@ func (method *ChannelFlow) MethodIdentifier() uint16 {
 	return 20
 }
 
+func (method *ChannelFlow) Sync() bool {
+	return true
+}
+
 // Read method from io reader
 func (method *ChannelFlow) Read(reader io.Reader, protoVersion string) (err error) {
 
@@ -903,6 +964,10 @@ func (method *ChannelFlowOk) ClassIdentifier() uint16 {
 // MethodIdentifier returns method methodID
 func (method *ChannelFlowOk) MethodIdentifier() uint16 {
 	return 21
+}
+
+func (method *ChannelFlowOk) Sync() bool {
+	return false
 }
 
 // Read method from io reader
@@ -960,6 +1025,10 @@ func (method *ChannelClose) ClassIdentifier() uint16 {
 // MethodIdentifier returns method methodID
 func (method *ChannelClose) MethodIdentifier() uint16 {
 	return 40
+}
+
+func (method *ChannelClose) Sync() bool {
+	return true
 }
 
 // Read method from io reader
@@ -1035,6 +1104,10 @@ func (method *ChannelCloseOk) MethodIdentifier() uint16 {
 	return 41
 }
 
+func (method *ChannelCloseOk) Sync() bool {
+	return true
+}
+
 // Read method from io reader
 func (method *ChannelCloseOk) Read(reader io.Reader, protoVersion string) (err error) {
 
@@ -1081,6 +1154,10 @@ func (method *ExchangeDeclare) ClassIdentifier() uint16 {
 // MethodIdentifier returns method methodID
 func (method *ExchangeDeclare) MethodIdentifier() uint16 {
 	return 10
+}
+
+func (method *ExchangeDeclare) Sync() bool {
+	return true
 }
 
 // Read method from io reader
@@ -1194,6 +1271,10 @@ func (method *ExchangeDeclareOk) MethodIdentifier() uint16 {
 	return 11
 }
 
+func (method *ExchangeDeclareOk) Sync() bool {
+	return true
+}
+
 // Read method from io reader
 func (method *ExchangeDeclareOk) Read(reader io.Reader, protoVersion string) (err error) {
 
@@ -1233,6 +1314,10 @@ func (method *ExchangeDelete) ClassIdentifier() uint16 {
 // MethodIdentifier returns method methodID
 func (method *ExchangeDelete) MethodIdentifier() uint16 {
 	return 20
+}
+
+func (method *ExchangeDelete) Sync() bool {
+	return true
 }
 
 // Read method from io reader
@@ -1309,6 +1394,10 @@ func (method *ExchangeDeleteOk) MethodIdentifier() uint16 {
 	return 21
 }
 
+func (method *ExchangeDeleteOk) Sync() bool {
+	return true
+}
+
 // Read method from io reader
 func (method *ExchangeDeleteOk) Read(reader io.Reader, protoVersion string) (err error) {
 
@@ -1349,6 +1438,10 @@ func (method *ExchangeBind) ClassIdentifier() uint16 {
 // MethodIdentifier returns method methodID
 func (method *ExchangeBind) MethodIdentifier() uint16 {
 	return 30
+}
+
+func (method *ExchangeBind) Sync() bool {
+	return true
 }
 
 // Read method from io reader
@@ -1446,6 +1539,10 @@ func (method *ExchangeBindOk) MethodIdentifier() uint16 {
 	return 31
 }
 
+func (method *ExchangeBindOk) Sync() bool {
+	return true
+}
+
 // Read method from io reader
 func (method *ExchangeBindOk) Read(reader io.Reader, protoVersion string) (err error) {
 
@@ -1486,6 +1583,10 @@ func (method *ExchangeUnbind) ClassIdentifier() uint16 {
 // MethodIdentifier returns method methodID
 func (method *ExchangeUnbind) MethodIdentifier() uint16 {
 	return 40
+}
+
+func (method *ExchangeUnbind) Sync() bool {
+	return true
 }
 
 // Read method from io reader
@@ -1583,6 +1684,10 @@ func (method *ExchangeUnbindOk) MethodIdentifier() uint16 {
 	return 51
 }
 
+func (method *ExchangeUnbindOk) Sync() bool {
+	return true
+}
+
 // Read method from io reader
 func (method *ExchangeUnbindOk) Read(reader io.Reader, protoVersion string) (err error) {
 
@@ -1629,6 +1734,10 @@ func (method *QueueDeclare) ClassIdentifier() uint16 {
 // MethodIdentifier returns method methodID
 func (method *QueueDeclare) MethodIdentifier() uint16 {
 	return 10
+}
+
+func (method *QueueDeclare) Sync() bool {
+	return true
 }
 
 // Read method from io reader
@@ -1736,6 +1845,10 @@ func (method *QueueDeclareOk) MethodIdentifier() uint16 {
 	return 11
 }
 
+func (method *QueueDeclareOk) Sync() bool {
+	return true
+}
+
 // Read method from io reader
 func (method *QueueDeclareOk) Read(reader io.Reader, protoVersion string) (err error) {
 
@@ -1806,6 +1919,10 @@ func (method *QueueBind) ClassIdentifier() uint16 {
 // MethodIdentifier returns method methodID
 func (method *QueueBind) MethodIdentifier() uint16 {
 	return 20
+}
+
+func (method *QueueBind) Sync() bool {
+	return true
 }
 
 // Read method from io reader
@@ -1903,6 +2020,10 @@ func (method *QueueBindOk) MethodIdentifier() uint16 {
 	return 21
 }
 
+func (method *QueueBindOk) Sync() bool {
+	return true
+}
+
 // Read method from io reader
 func (method *QueueBindOk) Read(reader io.Reader, protoVersion string) (err error) {
 
@@ -1942,6 +2063,10 @@ func (method *QueueUnbind) ClassIdentifier() uint16 {
 // MethodIdentifier returns method methodID
 func (method *QueueUnbind) MethodIdentifier() uint16 {
 	return 50
+}
+
+func (method *QueueUnbind) Sync() bool {
+	return true
 }
 
 // Read method from io reader
@@ -2025,6 +2150,10 @@ func (method *QueueUnbindOk) MethodIdentifier() uint16 {
 	return 51
 }
 
+func (method *QueueUnbindOk) Sync() bool {
+	return true
+}
+
 // Read method from io reader
 func (method *QueueUnbindOk) Read(reader io.Reader, protoVersion string) (err error) {
 
@@ -2063,6 +2192,10 @@ func (method *QueuePurge) ClassIdentifier() uint16 {
 // MethodIdentifier returns method methodID
 func (method *QueuePurge) MethodIdentifier() uint16 {
 	return 30
+}
+
+func (method *QueuePurge) Sync() bool {
+	return true
 }
 
 // Read method from io reader
@@ -2134,6 +2267,10 @@ func (method *QueuePurgeOk) MethodIdentifier() uint16 {
 	return 31
 }
 
+func (method *QueuePurgeOk) Sync() bool {
+	return true
+}
+
 // Read method from io reader
 func (method *QueuePurgeOk) Read(reader io.Reader, protoVersion string) (err error) {
 
@@ -2184,6 +2321,10 @@ func (method *QueueDelete) ClassIdentifier() uint16 {
 // MethodIdentifier returns method methodID
 func (method *QueueDelete) MethodIdentifier() uint16 {
 	return 40
+}
+
+func (method *QueueDelete) Sync() bool {
+	return true
 }
 
 // Read method from io reader
@@ -2265,6 +2406,10 @@ func (method *QueueDeleteOk) ClassIdentifier() uint16 {
 // MethodIdentifier returns method methodID
 func (method *QueueDeleteOk) MethodIdentifier() uint16 {
 	return 41
+}
+
+func (method *QueueDeleteOk) Sync() bool {
+	return true
 }
 
 // Read method from io reader
@@ -2557,6 +2702,10 @@ func (method *BasicQos) MethodIdentifier() uint16 {
 	return 10
 }
 
+func (method *BasicQos) Sync() bool {
+	return true
+}
+
 // Read method from io reader
 func (method *BasicQos) Read(reader io.Reader, protoVersion string) (err error) {
 
@@ -2627,6 +2776,10 @@ func (method *BasicQosOk) MethodIdentifier() uint16 {
 	return 11
 }
 
+func (method *BasicQosOk) Sync() bool {
+	return true
+}
+
 // Read method from io reader
 func (method *BasicQosOk) Read(reader io.Reader, protoVersion string) (err error) {
 
@@ -2671,6 +2824,10 @@ func (method *BasicConsume) ClassIdentifier() uint16 {
 // MethodIdentifier returns method methodID
 func (method *BasicConsume) MethodIdentifier() uint16 {
 	return 20
+}
+
+func (method *BasicConsume) Sync() bool {
+	return true
 }
 
 // Read method from io reader
@@ -2779,6 +2936,10 @@ func (method *BasicConsumeOk) MethodIdentifier() uint16 {
 	return 21
 }
 
+func (method *BasicConsumeOk) Sync() bool {
+	return true
+}
+
 // Read method from io reader
 func (method *BasicConsumeOk) Read(reader io.Reader, protoVersion string) (err error) {
 
@@ -2838,6 +2999,10 @@ func (method *BasicCancel) ClassIdentifier() uint16 {
 // MethodIdentifier returns method methodID
 func (method *BasicCancel) MethodIdentifier() uint16 {
 	return 30
+}
+
+func (method *BasicCancel) Sync() bool {
+	return true
 }
 
 // Read method from io reader
@@ -2900,6 +3065,10 @@ func (method *BasicCancelOk) MethodIdentifier() uint16 {
 	return 31
 }
 
+func (method *BasicCancelOk) Sync() bool {
+	return true
+}
+
 // Read method from io reader
 func (method *BasicCancelOk) Read(reader io.Reader, protoVersion string) (err error) {
 
@@ -2950,6 +3119,10 @@ func (method *BasicPublish) ClassIdentifier() uint16 {
 // MethodIdentifier returns method methodID
 func (method *BasicPublish) MethodIdentifier() uint16 {
 	return 40
+}
+
+func (method *BasicPublish) Sync() bool {
+	return false
 }
 
 // Read method from io reader
@@ -3042,6 +3215,10 @@ func (method *BasicReturn) MethodIdentifier() uint16 {
 	return 50
 }
 
+func (method *BasicReturn) Sync() bool {
+	return false
+}
+
 // Read method from io reader
 func (method *BasicReturn) Read(reader io.Reader, protoVersion string) (err error) {
 
@@ -3120,6 +3297,10 @@ func (method *BasicDeliver) ClassIdentifier() uint16 {
 // MethodIdentifier returns method methodID
 func (method *BasicDeliver) MethodIdentifier() uint16 {
 	return 60
+}
+
+func (method *BasicDeliver) Sync() bool {
+	return false
 }
 
 // Read method from io reader
@@ -3213,6 +3394,10 @@ func (method *BasicGet) MethodIdentifier() uint16 {
 	return 70
 }
 
+func (method *BasicGet) Sync() bool {
+	return true
+}
+
 // Read method from io reader
 func (method *BasicGet) Read(reader io.Reader, protoVersion string) (err error) {
 
@@ -3286,6 +3471,10 @@ func (method *BasicGetOk) ClassIdentifier() uint16 {
 // MethodIdentifier returns method methodID
 func (method *BasicGetOk) MethodIdentifier() uint16 {
 	return 71
+}
+
+func (method *BasicGetOk) Sync() bool {
+	return true
 }
 
 // Read method from io reader
@@ -3376,6 +3565,10 @@ func (method *BasicGetEmpty) MethodIdentifier() uint16 {
 	return 72
 }
 
+func (method *BasicGetEmpty) Sync() bool {
+	return true
+}
+
 // Read method from io reader
 func (method *BasicGetEmpty) Read(reader io.Reader, protoVersion string) (err error) {
 
@@ -3429,6 +3622,10 @@ func (method *BasicAck) ClassIdentifier() uint16 {
 // MethodIdentifier returns method methodID
 func (method *BasicAck) MethodIdentifier() uint16 {
 	return 80
+}
+
+func (method *BasicAck) Sync() bool {
+	return false
 }
 
 // Read method from io reader
@@ -3494,6 +3691,10 @@ func (method *BasicReject) MethodIdentifier() uint16 {
 	return 90
 }
 
+func (method *BasicReject) Sync() bool {
+	return false
+}
+
 // Read method from io reader
 func (method *BasicReject) Read(reader io.Reader, protoVersion string) (err error) {
 
@@ -3556,6 +3757,10 @@ func (method *BasicRecoverAsync) MethodIdentifier() uint16 {
 	return 100
 }
 
+func (method *BasicRecoverAsync) Sync() bool {
+	return false
+}
+
 // Read method from io reader
 func (method *BasicRecoverAsync) Read(reader io.Reader, protoVersion string) (err error) {
 
@@ -3609,6 +3814,10 @@ func (method *BasicRecover) MethodIdentifier() uint16 {
 	return 110
 }
 
+func (method *BasicRecover) Sync() bool {
+	return false
+}
+
 // Read method from io reader
 func (method *BasicRecover) Read(reader io.Reader, protoVersion string) (err error) {
 
@@ -3659,6 +3868,10 @@ func (method *BasicRecoverOk) MethodIdentifier() uint16 {
 	return 111
 }
 
+func (method *BasicRecoverOk) Sync() bool {
+	return true
+}
+
 // Read method from io reader
 func (method *BasicRecoverOk) Read(reader io.Reader, protoVersion string) (err error) {
 
@@ -3702,6 +3915,10 @@ func (method *BasicNack) ClassIdentifier() uint16 {
 // MethodIdentifier returns method methodID
 func (method *BasicNack) MethodIdentifier() uint16 {
 	return 120
+}
+
+func (method *BasicNack) Sync() bool {
+	return false
 }
 
 // Read method from io reader
@@ -3772,6 +3989,10 @@ func (method *TxSelect) MethodIdentifier() uint16 {
 	return 10
 }
 
+func (method *TxSelect) Sync() bool {
+	return true
+}
+
 // Read method from io reader
 func (method *TxSelect) Read(reader io.Reader, protoVersion string) (err error) {
 
@@ -3807,6 +4028,10 @@ func (method *TxSelectOk) ClassIdentifier() uint16 {
 // MethodIdentifier returns method methodID
 func (method *TxSelectOk) MethodIdentifier() uint16 {
 	return 11
+}
+
+func (method *TxSelectOk) Sync() bool {
+	return true
 }
 
 // Read method from io reader
@@ -3846,6 +4071,10 @@ func (method *TxCommit) MethodIdentifier() uint16 {
 	return 20
 }
 
+func (method *TxCommit) Sync() bool {
+	return true
+}
+
 // Read method from io reader
 func (method *TxCommit) Read(reader io.Reader, protoVersion string) (err error) {
 
@@ -3881,6 +4110,10 @@ func (method *TxCommitOk) ClassIdentifier() uint16 {
 // MethodIdentifier returns method methodID
 func (method *TxCommitOk) MethodIdentifier() uint16 {
 	return 21
+}
+
+func (method *TxCommitOk) Sync() bool {
+	return true
 }
 
 // Read method from io reader
@@ -3922,6 +4155,10 @@ func (method *TxRollback) MethodIdentifier() uint16 {
 	return 30
 }
 
+func (method *TxRollback) Sync() bool {
+	return true
+}
+
 // Read method from io reader
 func (method *TxRollback) Read(reader io.Reader, protoVersion string) (err error) {
 
@@ -3957,6 +4194,10 @@ func (method *TxRollbackOk) ClassIdentifier() uint16 {
 // MethodIdentifier returns method methodID
 func (method *TxRollbackOk) MethodIdentifier() uint16 {
 	return 31
+}
+
+func (method *TxRollbackOk) Sync() bool {
+	return true
 }
 
 // Read method from io reader
@@ -3998,6 +4239,10 @@ func (method *ConfirmSelect) ClassIdentifier() uint16 {
 // MethodIdentifier returns method methodID
 func (method *ConfirmSelect) MethodIdentifier() uint16 {
 	return 10
+}
+
+func (method *ConfirmSelect) Sync() bool {
+	return true
 }
 
 // Read method from io reader
@@ -4049,6 +4294,10 @@ func (method *ConfirmSelectOk) ClassIdentifier() uint16 {
 // MethodIdentifier returns method methodID
 func (method *ConfirmSelectOk) MethodIdentifier() uint16 {
 	return 11
+}
+
+func (method *ConfirmSelectOk) Sync() bool {
+	return true
 }
 
 // Read method from io reader

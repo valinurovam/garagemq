@@ -2,6 +2,7 @@ package binding_test
 
 import (
 	"sort"
+	"strings"
 	"testing"
 
 	"github.com/valinurovam/garagemq/amqp"
@@ -177,4 +178,28 @@ func testEq(a, b []string) bool {
 	}
 
 	return true
+}
+
+func TestBinding_GetName(t *testing.T) {
+	b := binding.New("test_q", "test_ex", "test_key", &amqp.Table{}, true)
+	name := strings.Join(
+		[]string{b.Queue, b.Exchange, b.RoutingKey},
+		"_",
+	)
+
+	if b.GetName() != name {
+		t.Fatalf("Expected %s, actual %s", name, b.GetName())
+	}
+}
+
+func TestBinding_Marshal(t *testing.T) {
+	b := binding.New("test_q", "test_ex", "test_key", &amqp.Table{}, true)
+	data := b.Marshal()
+
+	bUm := &binding.Binding{}
+	bUm.Unmarshal(data)
+
+	if !b.Equal(bUm) {
+		t.Fatal("Unmarshaled binding does not equal marshaled")
+	}
 }

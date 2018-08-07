@@ -62,11 +62,13 @@ type UnackedMessage struct {
 // NewChannel returns new instance of Channel
 func NewChannel(id uint16, conn *Connection) (*Channel) {
 	channel := &Channel{
-		active:       true,
-		id:           id,
-		conn:         conn,
-		server:       conn.server,
-		incoming:     make(chan *amqp.Frame, 100),
+		active: true,
+		id:     id,
+		conn:   conn,
+		server: conn.server,
+		// for incoming channel much capacity is good for performance
+		// but it is difficult to implement processing already queued frames on shutdown or connection close
+		incoming:     make(chan *amqp.Frame, 1),
 		outgoing:     conn.outgoing,
 		status:       channelNew,
 		protoVersion: conn.server.protoVersion,
@@ -96,18 +98,12 @@ func (channel *Channel) start() {
 func (channel *Channel) handleIncoming() {
 	for {
 		frame := <-channel.incoming
-		if frame == nil {
-			// channel closed
-			return
-		}
 
 		switch frame.Type {
 		case amqp.FrameMethod:
 			buffer := bytes.NewReader(frame.Payload)
 			method, err := amqp.ReadMethod(buffer, channel.protoVersion)
-			if method.ClassIdentifier() != amqp.ClassBasic {
-				channel.logger.Debug("Incoming method <- " + method.Name())
-			}
+			channel.logger.Debug("Incoming method <- " + method.Name())
 			if err != nil {
 				channel.logger.WithError(err).Error("Error on handling frame")
 				channel.sendError(amqp.NewConnectionError(amqp.FrameError, err.Error(), 0, 0))
@@ -246,11 +242,9 @@ func (channel *Channel) SendMethod(method amqp.Method) {
 
 	closeAfter := method.ClassIdentifier() == amqp.ClassConnection && method.MethodIdentifier() == amqp.MethodConnectionCloseOk
 
-	if method.ClassIdentifier() != amqp.ClassBasic {
-		channel.logger.Debug("Outgoing -> " + method.Name())
-	}
+	channel.logger.Debug("Outgoing -> " + method.Name())
 
-	channel.sendOutgoing(&amqp.Frame{Type: byte(amqp.FrameMethod), ChannelID: channel.id, Payload: rawMethod.Bytes(), CloseAfter: closeAfter})
+	channel.sendOutgoing(&amqp.Frame{Type: byte(amqp.FrameMethod), ChannelID: channel.id, Payload: rawMethod.Bytes(), CloseAfter: closeAfter, Sync: method.Sync()})
 }
 
 func (channel *Channel) sendOutgoing(frame *amqp.Frame) {
@@ -343,10 +337,7 @@ func (channel *Channel) removeConsumer(cTag string) {
 }
 
 func (channel *Channel) close() {
-	channel.statusLock.Lock()
-	defer channel.statusLock.Unlock()
 	channel.cmrLock.Lock()
-	defer channel.cmrLock.Unlock()
 	for _, cmr := range channel.consumers {
 		cmr.Stop()
 		delete(channel.consumers, cmr.Tag())
@@ -354,7 +345,10 @@ func (channel *Channel) close() {
 			"consumerTag": cmr.Tag(),
 		}).Info("Consumer stopped")
 	}
-	channel.handleReject(0, true, true, &amqp.BasicNack{})
+	channel.cmrLock.Unlock()
+	if channel.id > 0 {
+		channel.handleReject(0, true, true, &amqp.BasicNack{})
+	}
 	channel.status = channelClosed
 }
 
@@ -409,7 +403,7 @@ func (channel *Channel) handleAck(method *amqp.BasicAck) *amqp.Error {
 	}
 
 	if uMsg, msgFound = channel.ackStore[method.DeliveryTag]; !msgFound {
-		return amqp.NewChannelError(406, fmt.Sprintf("Delivery tag [%d] not found", method.DeliveryTag), method.ClassIdentifier(), method.MethodIdentifier())
+		return amqp.NewChannelError(amqp.PreconditionFailed, fmt.Sprintf("Delivery tag [%d] not found", method.DeliveryTag), method.ClassIdentifier(), method.MethodIdentifier())
 	}
 
 	channel.ackMsg(uMsg, method.DeliveryTag)
@@ -454,7 +448,7 @@ func (channel *Channel) handleReject(deliveryTag uint64, multiple bool, requeue 
 	}
 
 	if uMsg, msgFound = channel.ackStore[deliveryTag]; !msgFound {
-		return amqp.NewChannelError(406, fmt.Sprintf("Delivery tag [%d] not found", deliveryTag), method.ClassIdentifier(), method.MethodIdentifier())
+		return amqp.NewChannelError(amqp.PreconditionFailed, fmt.Sprintf("Delivery tag [%d] not found", deliveryTag), method.ClassIdentifier(), method.MethodIdentifier())
 	}
 
 	channel.rejectMsg(uMsg, deliveryTag, requeue)
@@ -475,6 +469,8 @@ func (channel *Channel) rejectMsg(unackedMessage *UnackedMessage, deliveryTag ui
 }
 
 func (channel *Channel) decQosAndConsumerNext(unackedMessage *UnackedMessage) {
+	channel.cmrLock.Lock()
+	defer channel.cmrLock.Unlock()
 	if cmr, ok := channel.consumers[unackedMessage.cTag]; ok {
 		cmr.Consume()
 

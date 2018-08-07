@@ -2,7 +2,6 @@ package server
 
 import (
 	"bytes"
-	"fmt"
 	"strconv"
 	"testing"
 	"time"
@@ -442,7 +441,6 @@ func Test_BasicAck_Success(t *testing.T) {
 	}
 	for _, dlv := range deliveries {
 		ch.Ack(dlv.DeliveryTag, false)
-		fmt.Println(dlv.DeliveryTag)
 	}
 
 	time.Sleep(50 * time.Millisecond)

@@ -52,11 +52,12 @@ type Class struct {
 }
 
 type Method struct {
-	Name   string   `xml:"name,attr"`
-	ID     uint16   `xml:"index,attr"`
-	Fields []*Field `xml:"field"`
-	GoName string
-	Doc    string   `xml:"doc"`
+	Name        string   `xml:"name,attr"`
+	ID          uint16   `xml:"index,attr"`
+	Fields      []*Field `xml:"field"`
+	GoName      string
+	Doc         string   `xml:"doc"`
+	Synchronous byte     `xml:"synchronous,attr"`
 }
 
 type Field struct {
@@ -128,6 +129,7 @@ type Method interface {
 	MethodIdentifier() uint16
 	Read(reader io.Reader, protoVersion string) (err error)
 	Write(writer io.Writer, protoVersion string) (err error)
+	Sync() bool
 }
 {{range .}}
 {{$classId := .ID}}
@@ -187,6 +189,10 @@ func (method *{{.GoName}}) ClassIdentifier() uint16 {
 func (method *{{.GoName}}) MethodIdentifier() uint16 {
     return {{.ID}}
 }
+
+func (method *{{.GoName}}) Sync() bool {
+    return {{if eq .Synchronous 1}}true{{else}}false{{end}}
+} 
 
 // Read method from io reader
 func (method *{{.GoName}}) Read(reader io.Reader, protoVersion string) (err error) {

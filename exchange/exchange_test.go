@@ -348,3 +348,52 @@ func TestGetExchangeTypeId(t *testing.T) {
 		t.Fatal("Expected 'Undefined exchange alias' error")
 	}
 }
+
+func TestExchange_GetName(t *testing.T) {
+	e := &Exchange{
+		Name:       "test",
+		exType:     EX_TYPE_DIRECT,
+		durable:    false,
+		autoDelete: false,
+		internal:   false,
+		system:     false,
+	}
+
+	if e.GetName() != "test" {
+		t.Fatalf("Expected %s, actual %s", "test", e.GetName())
+	}
+}
+
+func TestExchange_Marshal(t *testing.T) {
+	e := &Exchange{
+		Name:       "test",
+		exType:     EX_TYPE_DIRECT,
+		durable:    true,
+		autoDelete: false,
+		internal:   false,
+		system:     false,
+	}
+
+	data := e.Marshal(amqp.Proto091)
+	ex := &Exchange{}
+	ex.Unmarshal(data)
+
+	if err := e.EqualWithErr(ex); err != nil {
+		t.Fatal("Unmarshaled exchange does not equal marshaled", err)
+	}
+}
+
+func TestExchange_IsSystem(t *testing.T) {
+	e := &Exchange{
+		Name:       "test",
+		exType:     EX_TYPE_DIRECT,
+		durable:    false,
+		autoDelete: false,
+		internal:   false,
+		system:     false,
+	}
+
+	if e.IsSystem() {
+		t.Fatal("Expected non system exchange")
+	}
+}

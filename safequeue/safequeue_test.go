@@ -1,14 +1,12 @@
-package safequeue_test
+package safequeue
 
 import (
-	"testing"
-
-	"github.com/valinurovam/garagemq/safequeue"
+"testing"
 )
 
 const SIZE = 4096
 
-var safeQueueTest = safequeue.NewSafeQueue(SIZE)
+var safeQueueTest = NewSafeQueue(SIZE)
 
 func BenchmarkSafeQueue_Push(b *testing.B) {
 	for n := 0; n < b.N; n++ {
@@ -23,7 +21,7 @@ func BenchmarkSafeQueue_Pop(b *testing.B) {
 }
 
 func TestSafeQueue(t *testing.T) {
-	queue := safequeue.NewSafeQueue(SIZE)
+	queue := NewSafeQueue(SIZE)
 	queueLength := SIZE * 8
 	for item := 0; item < queueLength; item++ {
 		queue.Push(item)
@@ -46,7 +44,7 @@ func TestSafeQueue(t *testing.T) {
 }
 
 func TestSafeQueue_PushHead(t *testing.T) {
-	queue := safequeue.NewSafeQueue(SIZE)
+	queue := NewSafeQueue(SIZE)
 	queueLength := SIZE * 8
 	for item := 0; item < queueLength; item++ {
 		queue.Push(item)
@@ -76,7 +74,7 @@ func TestSafeQueue_PushHead(t *testing.T) {
 }
 
 func TestSafeQueue_HeadItem(t *testing.T) {
-	queue := safequeue.NewSafeQueue(SIZE)
+	queue := NewSafeQueue(SIZE)
 	queueLength := SIZE
 	for item := 0; item < queueLength; item++ {
 		queue.Push(item)
@@ -88,7 +86,7 @@ func TestSafeQueue_HeadItem(t *testing.T) {
 }
 
 func TestSafeQueue_DirtyLength(t *testing.T) {
-	queue := safequeue.NewSafeQueue(SIZE)
+	queue := NewSafeQueue(SIZE)
 	queueLength := SIZE
 	for item := 0; item < queueLength; item++ {
 		queue.Push(item)
@@ -100,7 +98,7 @@ func TestSafeQueue_DirtyLength(t *testing.T) {
 }
 
 func TestSafeQueue_Purge(t *testing.T) {
-	queue := safequeue.NewSafeQueue(SIZE)
+	queue := NewSafeQueue(SIZE)
 	queueLength := SIZE
 	for item := 0; item < queueLength; item++ {
 		queue.Push(item)

@@ -28,6 +28,16 @@ const (
 	ConnClosed
 )
 
+// From https://github.com/rabbitmq/rabbitmq-common/blob/master/src/rabbit_writer.erl
+// When the amount of protocol method data buffered exceeds
+// this threshold, a socket flush is performed.
+//
+// This magic number is the tcp-over-ethernet MSS (1460) minus the
+// minimum size of a AMQP 0-9-1 basic.deliver method frame (24) plus basic
+// content header (22). The idea is that we want to flush just before
+// exceeding the MSS.
+const flushThreshold = 1414
+
 type Connection struct {
 	id               uint64
 	server           *Server
@@ -202,6 +212,22 @@ func (conn *Connection) handleOutgoing() {
 			break
 		}
 
+		if frame.Sync {
+			buffer.Flush()
+		} else {
+			conn.mayBeFlushBuffer(buffer)
+		}
+	}
+}
+
+func (conn *Connection) mayBeFlushBuffer(buffer *bufio.Writer) {
+	if buffer.Buffered() >= flushThreshold {
+		buffer.Flush()
+	}
+
+	if len(conn.outgoing) == 0 {
+		// outgoing channel is buffered and we can check is here more messages for store into buffer
+		// if nothing to store into buffer - we flush
 		buffer.Flush()
 	}
 }

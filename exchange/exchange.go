@@ -90,17 +90,21 @@ func (ex *Exchange) RemoveBinding(rmBind *binding.Binding) {
 	}
 }
 
-func (ex *Exchange) RemoveQueueBindings(queueName string) {
+func (ex *Exchange) RemoveQueueBindings(queueName string) []*binding.Binding {
 	var newBindings []*binding.Binding
+	var removedBindings []*binding.Binding
 	ex.bindLock.Lock()
 	defer ex.bindLock.Unlock()
 	for _, bind := range ex.bindings {
 		if bind.GetQueue() != queueName {
 			newBindings = append(newBindings, bind)
+		} else {
+			removedBindings = append(removedBindings, bind)
 		}
 	}
 
 	ex.bindings = newBindings
+	return removedBindings
 }
 
 func (ex *Exchange) GetMatchedQueues(message *amqp.Message) (matchedQueues map[string]bool) {

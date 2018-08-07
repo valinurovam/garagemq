@@ -29,11 +29,11 @@ func main() {
 	//}
 	runtime.GOMAXPROCS(8)
 
-	config := config.Config{}
+	cfg := config.Config{}
 	file, _ := ioutil.ReadFile("etc/config.yaml")
-	yaml.Unmarshal(file, &config)
+	yaml.Unmarshal(file, &cfg)
 
-	srv := server.NewServer("localhost", "5673", amqp.ProtoRabbit, &config)
+	srv := server.NewServer("localhost", "5672", amqp.ProtoRabbit, &cfg)
 	srv.Start()
 	defer srv.Stop()
 }

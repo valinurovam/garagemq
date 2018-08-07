@@ -1,6 +1,7 @@
 package binding
 
 import (
+	"bytes"
 	"regexp"
 	"strings"
 
@@ -102,4 +103,37 @@ func (bA *Binding) Equal(bB *Binding) bool {
 	return bA.Exchange == bB.GetExchange() &&
 		bA.Queue == bB.GetQueue() &&
 		bA.RoutingKey == bB.GetRoutingKey()
+}
+
+func (b *Binding) GetName() string {
+	return strings.Join(
+		[]string{b.Queue, b.Exchange, b.RoutingKey},
+		"_",
+	)
+}
+
+func (b *Binding) Marshal() []byte {
+	buf := bytes.NewBuffer(make([]byte, 0))
+	amqp.WriteShortstr(buf, b.Queue)
+	amqp.WriteShortstr(buf, b.Exchange)
+	amqp.WriteShortstr(buf, b.RoutingKey)
+	var topic byte = 0
+	if b.topic {
+		topic = 1
+	}
+	amqp.WriteOctet(buf, topic)
+	return buf.Bytes()
+}
+
+func (b *Binding) Unmarshal(data []byte) {
+	buf := bytes.NewReader(data)
+	b.Queue, _ = amqp.ReadShortstr(buf)
+	b.Exchange, _ = amqp.ReadShortstr(buf)
+	b.RoutingKey, _ = amqp.ReadShortstr(buf)
+	topic, _ := amqp.ReadOctet(buf)
+	b.topic = topic == 1
+
+	if b.topic {
+		b.regexp, _ = buildRegexp(b.RoutingKey)
+	}
 }

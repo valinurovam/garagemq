@@ -49,6 +49,7 @@ func NewVhost(name string, system bool, msgStorage *msgstorage.MsgStorage, srv *
 	vhost.initSystemExchanges()
 	vhost.loadExchanges()
 	vhost.loadQueues()
+	vhost.loadBindings()
 
 	vhost.logger.Info("Load messages into queues")
 
@@ -172,6 +173,16 @@ func (vhost *VirtualHost) AppendQueue(qu *queue.Queue) {
 	}
 }
 
+func (vhost *VirtualHost) PersistBinding(binding *binding.Binding) {
+	vhost.srvStorage.AddBinding(vhost.name, binding)
+}
+
+func (vhost *VirtualHost) RemoveBindings(bindings []*binding.Binding) {
+	for _, bind := range bindings {
+		vhost.srvStorage.DelBinding(vhost.name, bind)
+	}
+}
+
 func (vhost *VirtualHost) loadQueues() {
 	vhost.logger.Info("Initialize queues...")
 	queueNames := vhost.srvStorage.GetVhostQueues(vhost.name)
@@ -207,6 +218,20 @@ func (vhost *VirtualHost) loadExchanges() {
 	}
 }
 
+func (vhost *VirtualHost) loadBindings() {
+	vhost.logger.Info("Initialize bindings...")
+	bindings := vhost.srvStorage.GetVhostBindings(vhost.name)
+	if len(bindings) == 0 {
+		return
+	}
+	for _, bind := range bindings {
+		ex := vhost.getExchange(bind.Exchange)
+		if ex != nil {
+			ex.AppendBinding(bind)
+		}
+	}
+}
+
 func (vhost *VirtualHost) DeleteQueue(queueName string, ifUnused bool, ifEmpty bool) (uint64, error) {
 	vhost.quLock.Lock()
 	defer vhost.quLock.Unlock()
@@ -221,7 +246,8 @@ func (vhost *VirtualHost) DeleteQueue(queueName string, ifUnused bool, ifEmpty b
 		return 0, err
 	}
 	for _, ex := range vhost.exchanges {
-		ex.RemoveQueueBindings(queueName)
+		removedBindings := ex.RemoveQueueBindings(queueName)
+		vhost.RemoveBindings(removedBindings)
 	}
 	vhost.srvStorage.DelQueue(vhost.name, qu)
 	delete(vhost.queues, queueName)
@@ -245,8 +271,4 @@ func (vhost *VirtualHost) Stop() error {
 	vhost.msgStorage.Close()
 	vhost.logger.Info("Storage closed")
 	return nil
-}
-
-func (vhost *VirtualHost) Name() string {
-	return vhost.name
 }
