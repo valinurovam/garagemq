@@ -29,7 +29,11 @@ func NewBinding(queue string, exchange string, routingKey string, arguments *amq
 	}
 
 	if topic {
-		binding.regexp, _ = buildRegexp(routingKey)
+		var err error
+		if binding.regexp, err = buildRegexp(routingKey); err != nil {
+			// TODO handle that error
+			panic(err)
+		}
 	}
 
 	return binding
@@ -129,29 +133,50 @@ func (b *Binding) GetName() string {
 }
 
 // Marshal returns raw representation of binding to store into storage
-func (b *Binding) Marshal() []byte {
+func (b *Binding) Marshal() (data []byte, err error) {
 	buf := bytes.NewBuffer(make([]byte, 0))
-	amqp.WriteShortstr(buf, b.Queue)
-	amqp.WriteShortstr(buf, b.Exchange)
-	amqp.WriteShortstr(buf, b.RoutingKey)
+	if err = amqp.WriteShortstr(buf, b.Queue); err != nil {
+		return nil, err
+	}
+	if err = amqp.WriteShortstr(buf, b.Exchange); err != nil {
+		return nil,err
+	}
+	if err = amqp.WriteShortstr(buf, b.RoutingKey); err != nil {
+		return nil, err
+	}
 	var topic byte
 	if b.topic {
 		topic = 1
 	}
-	amqp.WriteOctet(buf, topic)
-	return buf.Bytes()
+	if err = amqp.WriteOctet(buf, topic); err != nil {
+		return nil, err
+	}
+	return buf.Bytes(), nil
 }
 
 // Unmarshal returns binding from storage raw bytes data
-func (b *Binding) Unmarshal(data []byte) {
+func (b *Binding) Unmarshal(data []byte) (err error) {
 	buf := bytes.NewReader(data)
-	b.Queue, _ = amqp.ReadShortstr(buf)
-	b.Exchange, _ = amqp.ReadShortstr(buf)
-	b.RoutingKey, _ = amqp.ReadShortstr(buf)
-	topic, _ := amqp.ReadOctet(buf)
+	if b.Queue, err = amqp.ReadShortstr(buf); err != nil {
+		return err
+	}
+	if b.Exchange, err = amqp.ReadShortstr(buf); err != nil {
+		return err
+	}
+	if b.RoutingKey, err = amqp.ReadShortstr(buf); err != nil {
+		return err
+	}
+	var topic byte
+	if topic, err = amqp.ReadOctet(buf); err != nil {
+		return err
+	}
 	b.topic = topic == 1
 
 	if b.topic {
-		b.regexp, _ = buildRegexp(b.RoutingKey)
+		if b.regexp, err = buildRegexp(b.RoutingKey); err != nil {
+			return err
+		}
 	}
+
+	return
 }

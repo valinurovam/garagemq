@@ -6,8 +6,8 @@ import "sync"
 type AmqpQos struct {
 	sync.Mutex
 	prefetchCount uint16
-	prefetchSize  uint32
 	currentCount  uint16
+	prefetchSize  uint32
 	currentSize   uint32
 }
 
@@ -37,7 +37,7 @@ func (qos *AmqpQos) Update(prefetchCount uint16, prefetchSize uint32) {
 	qos.prefetchSize = prefetchSize
 }
 
-// isActive check is qos rules are active
+// IsActive check is qos rules are active
 // both prefetchSize and prefetchCount must be 0
 func (qos *AmqpQos) IsActive() bool {
 	return qos.prefetchCount != 0 || qos.prefetchSize != 0

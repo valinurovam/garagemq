@@ -374,7 +374,10 @@ func TestExchange_Marshal(t *testing.T) {
 		system:     false,
 	}
 
-	data := e.Marshal(amqp.Proto091)
+	data, err := e.Marshal(amqp.Proto091)
+	if err != nil {
+		t.Fatal(err)
+	}
 	ex := &Exchange{}
 	ex.Unmarshal(data)
 

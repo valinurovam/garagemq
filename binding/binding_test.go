@@ -194,7 +194,10 @@ func TestBinding_GetName(t *testing.T) {
 
 func TestBinding_Marshal(t *testing.T) {
 	b := binding.NewBinding("test_q", "test_ex", "test_key", &amqp.Table{}, true)
-	data := b.Marshal()
+	data, err := b.Marshal()
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	bUm := &binding.Binding{}
 	bUm.Unmarshal(data)

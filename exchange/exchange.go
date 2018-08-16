@@ -11,7 +11,7 @@ import (
 
 // available exchange types
 const (
-	ExTypeDirect    = iota + 1
+	ExTypeDirect  = iota + 1
 	ExTypeFanout
 	ExTypeTopic
 	ExTypeHeaders
@@ -39,9 +39,20 @@ type Exchange struct {
 	autoDelete bool
 	internal   bool
 	system     bool
-	arguments  *amqp.Table
 	bindLock   sync.Mutex
 	bindings   []*binding.Binding
+}
+
+// NewExchange returns new instance of Exchange
+func NewExchange(name string, exType byte, durable bool, autoDelete bool, internal bool, system bool) *Exchange {
+	return &Exchange{
+		Name:       name,
+		exType:     exType,
+		durable:    durable,
+		autoDelete: autoDelete,
+		internal:   internal,
+		system:     system,
+	}
 }
 
 // GetExchangeTypeAlias returns exchange type alias by id
@@ -58,18 +69,6 @@ func GetExchangeTypeID(alias string) (id byte, err error) {
 		return id, nil
 	}
 	return 0, fmt.Errorf("undefined exchange alias '%s'", alias)
-}
-
-// NewExchange returns new instance of Exchange
-func NewExchange(name string, exType byte, durable bool, autoDelete bool, internal bool, system bool) *Exchange {
-	return &Exchange{
-		Name:       name,
-		exType:     exType,
-		durable:    durable,
-		autoDelete: autoDelete,
-		internal:   internal,
-		system:     system,
-	}
 }
 
 // AppendBinding check and append binding
@@ -146,8 +145,14 @@ func (ex *Exchange) GetMatchedQueues(message *amqp.Message) (matchedQueues map[s
 func (ex *Exchange) EqualWithErr(exB *Exchange) error {
 	errTemplate := "inequivalent arg '%s' for exchange '%s': received '%s' but current is '%s'"
 	if ex.exType != exB.ExType() {
-		aliasA, _ := GetExchangeTypeAlias(ex.exType)
-		aliasB, _ := GetExchangeTypeAlias(exB.ExType())
+		aliasA, err := GetExchangeTypeAlias(ex.exType)
+		if err != nil {
+			return err
+		}
+		aliasB, err := GetExchangeTypeAlias(exB.ExType())
+		if err != nil {
+			return err
+		}
 		return fmt.Errorf(
 			errTemplate,
 			"type",
@@ -197,19 +202,28 @@ func (ex *Exchange) IsInternal() bool {
 }
 
 // Marshal returns raw representation of exchange to store into storage
-func (ex *Exchange) Marshal(protoVersion string) []byte {
+func (ex *Exchange) Marshal(protoVersion string) (data []byte, err error) {
 	buf := bytes.NewBuffer(make([]byte, 0))
-	amqp.WriteShortstr(buf, ex.Name)
-	amqp.WriteOctet(buf, ex.exType)
-	return buf.Bytes()
+	if err = amqp.WriteShortstr(buf, ex.Name); err != nil {
+		return nil, err
+	}
+	if err = amqp.WriteOctet(buf, ex.exType); err != nil {
+		return nil, err
+	}
+	return buf.Bytes(), nil
 }
 
 // Unmarshal returns exchange from storage raw bytes data
-func (ex *Exchange) Unmarshal(data []byte) {
+func (ex *Exchange) Unmarshal(data []byte) (err error) {
 	buf := bytes.NewReader(data)
-	ex.Name, _ = amqp.ReadShortstr(buf)
-	ex.exType, _ = amqp.ReadOctet(buf)
+	if ex.Name, err = amqp.ReadShortstr(buf); err != nil {
+		return err
+	}
+	if ex.exType, err = amqp.ReadOctet(buf); err != nil {
+		return err
+	}
 	ex.durable = true
+	return
 }
 
 // GetName returns exchange name

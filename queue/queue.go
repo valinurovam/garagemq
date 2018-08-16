@@ -94,6 +94,7 @@ func (queue *Queue) Push(message *amqp.Message, silent bool) {
 	}
 
 	if queue.durable && message.IsPersistent() {
+		// TODO handle error
 		queue.storage.Add(message, queue.name)
 	} else {
 		message.ConfirmMeta.ActualConfirms++
@@ -151,6 +152,7 @@ func (queue *Queue) PopQos(qosList []*qos.AmqpQos) *amqp.Message {
 // AckMsg accept ack event for message
 func (queue *Queue) AckMsg(message *amqp.Message) {
 	if queue.durable && message.IsPersistent() {
+		// TODO handle error
 		queue.storage.Del(message, queue.name)
 	}
 }
@@ -160,6 +162,7 @@ func (queue *Queue) Requeue(message *amqp.Message) {
 	message.DeliveryCount++
 	queue.SafeQueue.PushHead(message)
 	if queue.durable && message.IsPersistent() {
+		// TODO handle error
 		queue.storage.Update(message, queue.name)
 	}
 	queue.callConsumers()
@@ -317,7 +320,7 @@ func (queue *Queue) ConnID() uint64 {
 	return queue.connID
 }
 
-// isActive returns is queue's main loop is active
+// IsActive returns is queue's main loop is active
 func (queue *Queue) IsActive() bool {
 	return queue.active
 }

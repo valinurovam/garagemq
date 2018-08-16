@@ -50,6 +50,7 @@ func (method *ConnectionStart) MethodIdentifier() uint16 {
 	return 10
 }
 
+// Sync is method should me sent synchronous
 func (method *ConnectionStart) Sync() bool {
 	return true
 }
@@ -139,6 +140,7 @@ func (method *ConnectionStartOk) MethodIdentifier() uint16 {
 	return 11
 }
 
+// Sync is method should me sent synchronous
 func (method *ConnectionStartOk) Sync() bool {
 	return true
 }
@@ -218,6 +220,7 @@ func (method *ConnectionSecure) MethodIdentifier() uint16 {
 	return 20
 }
 
+// Sync is method should me sent synchronous
 func (method *ConnectionSecure) Sync() bool {
 	return true
 }
@@ -269,6 +272,7 @@ func (method *ConnectionSecureOk) MethodIdentifier() uint16 {
 	return 21
 }
 
+// Sync is method should me sent synchronous
 func (method *ConnectionSecureOk) Sync() bool {
 	return true
 }
@@ -322,6 +326,7 @@ func (method *ConnectionTune) MethodIdentifier() uint16 {
 	return 30
 }
 
+// Sync is method should me sent synchronous
 func (method *ConnectionTune) Sync() bool {
 	return true
 }
@@ -393,6 +398,7 @@ func (method *ConnectionTuneOk) MethodIdentifier() uint16 {
 	return 31
 }
 
+// Sync is method should me sent synchronous
 func (method *ConnectionTuneOk) Sync() bool {
 	return true
 }
@@ -466,6 +472,7 @@ func (method *ConnectionOpen) MethodIdentifier() uint16 {
 	return 40
 }
 
+// Sync is method should me sent synchronous
 func (method *ConnectionOpen) Sync() bool {
 	return true
 }
@@ -484,6 +491,9 @@ func (method *ConnectionOpen) Read(reader io.Reader, protoVersion string) (err e
 	}
 
 	bits, err := ReadOctet(reader)
+	if err != nil {
+		return err
+	}
 
 	method.Reserved2 = bits&(1<<0) != 0
 
@@ -539,6 +549,7 @@ func (method *ConnectionOpenOk) MethodIdentifier() uint16 {
 	return 41
 }
 
+// Sync is method should me sent synchronous
 func (method *ConnectionOpenOk) Sync() bool {
 	return true
 }
@@ -595,6 +606,7 @@ func (method *ConnectionClose) MethodIdentifier() uint16 {
 	return 50
 }
 
+// Sync is method should me sent synchronous
 func (method *ConnectionClose) Sync() bool {
 	return true
 }
@@ -672,6 +684,7 @@ func (method *ConnectionCloseOk) MethodIdentifier() uint16 {
 	return 51
 }
 
+// Sync is method should me sent synchronous
 func (method *ConnectionCloseOk) Sync() bool {
 	return true
 }
@@ -714,6 +727,7 @@ func (method *ConnectionBlocked) MethodIdentifier() uint16 {
 	return 60
 }
 
+// Sync is method should me sent synchronous
 func (method *ConnectionBlocked) Sync() bool {
 	return false
 }
@@ -764,6 +778,7 @@ func (method *ConnectionUnblocked) MethodIdentifier() uint16 {
 	return 61
 }
 
+// Sync is method should me sent synchronous
 func (method *ConnectionUnblocked) Sync() bool {
 	return false
 }
@@ -807,6 +822,7 @@ func (method *ChannelOpen) MethodIdentifier() uint16 {
 	return 10
 }
 
+// Sync is method should me sent synchronous
 func (method *ChannelOpen) Sync() bool {
 	return true
 }
@@ -857,6 +873,7 @@ func (method *ChannelOpenOk) MethodIdentifier() uint16 {
 	return 11
 }
 
+// Sync is method should me sent synchronous
 func (method *ChannelOpenOk) Sync() bool {
 	return true
 }
@@ -911,6 +928,7 @@ func (method *ChannelFlow) MethodIdentifier() uint16 {
 	return 20
 }
 
+// Sync is method should me sent synchronous
 func (method *ChannelFlow) Sync() bool {
 	return true
 }
@@ -919,6 +937,9 @@ func (method *ChannelFlow) Sync() bool {
 func (method *ChannelFlow) Read(reader io.Reader, protoVersion string) (err error) {
 
 	bits, err := ReadOctet(reader)
+	if err != nil {
+		return err
+	}
 
 	method.Active = bits&(1<<0) != 0
 
@@ -966,6 +987,7 @@ func (method *ChannelFlowOk) MethodIdentifier() uint16 {
 	return 21
 }
 
+// Sync is method should me sent synchronous
 func (method *ChannelFlowOk) Sync() bool {
 	return false
 }
@@ -974,6 +996,9 @@ func (method *ChannelFlowOk) Sync() bool {
 func (method *ChannelFlowOk) Read(reader io.Reader, protoVersion string) (err error) {
 
 	bits, err := ReadOctet(reader)
+	if err != nil {
+		return err
+	}
 
 	method.Active = bits&(1<<0) != 0
 
@@ -1027,6 +1052,7 @@ func (method *ChannelClose) MethodIdentifier() uint16 {
 	return 40
 }
 
+// Sync is method should me sent synchronous
 func (method *ChannelClose) Sync() bool {
 	return true
 }
@@ -1104,6 +1130,7 @@ func (method *ChannelCloseOk) MethodIdentifier() uint16 {
 	return 41
 }
 
+// Sync is method should me sent synchronous
 func (method *ChannelCloseOk) Sync() bool {
 	return true
 }
@@ -1156,6 +1183,7 @@ func (method *ExchangeDeclare) MethodIdentifier() uint16 {
 	return 10
 }
 
+// Sync is method should me sent synchronous
 func (method *ExchangeDeclare) Sync() bool {
 	return true
 }
@@ -1179,6 +1207,9 @@ func (method *ExchangeDeclare) Read(reader io.Reader, protoVersion string) (err 
 	}
 
 	bits, err := ReadOctet(reader)
+	if err != nil {
+		return err
+	}
 
 	method.Passive = bits&(1<<0) != 0
 
@@ -1271,6 +1302,7 @@ func (method *ExchangeDeclareOk) MethodIdentifier() uint16 {
 	return 11
 }
 
+// Sync is method should me sent synchronous
 func (method *ExchangeDeclareOk) Sync() bool {
 	return true
 }
@@ -1316,6 +1348,7 @@ func (method *ExchangeDelete) MethodIdentifier() uint16 {
 	return 20
 }
 
+// Sync is method should me sent synchronous
 func (method *ExchangeDelete) Sync() bool {
 	return true
 }
@@ -1334,6 +1367,9 @@ func (method *ExchangeDelete) Read(reader io.Reader, protoVersion string) (err e
 	}
 
 	bits, err := ReadOctet(reader)
+	if err != nil {
+		return err
+	}
 
 	method.IfUnused = bits&(1<<0) != 0
 
@@ -1394,6 +1430,7 @@ func (method *ExchangeDeleteOk) MethodIdentifier() uint16 {
 	return 21
 }
 
+// Sync is method should me sent synchronous
 func (method *ExchangeDeleteOk) Sync() bool {
 	return true
 }
@@ -1440,6 +1477,7 @@ func (method *ExchangeBind) MethodIdentifier() uint16 {
 	return 30
 }
 
+// Sync is method should me sent synchronous
 func (method *ExchangeBind) Sync() bool {
 	return true
 }
@@ -1468,6 +1506,9 @@ func (method *ExchangeBind) Read(reader io.Reader, protoVersion string) (err err
 	}
 
 	bits, err := ReadOctet(reader)
+	if err != nil {
+		return err
+	}
 
 	method.NoWait = bits&(1<<0) != 0
 
@@ -1539,6 +1580,7 @@ func (method *ExchangeBindOk) MethodIdentifier() uint16 {
 	return 31
 }
 
+// Sync is method should me sent synchronous
 func (method *ExchangeBindOk) Sync() bool {
 	return true
 }
@@ -1585,6 +1627,7 @@ func (method *ExchangeUnbind) MethodIdentifier() uint16 {
 	return 40
 }
 
+// Sync is method should me sent synchronous
 func (method *ExchangeUnbind) Sync() bool {
 	return true
 }
@@ -1613,6 +1656,9 @@ func (method *ExchangeUnbind) Read(reader io.Reader, protoVersion string) (err e
 	}
 
 	bits, err := ReadOctet(reader)
+	if err != nil {
+		return err
+	}
 
 	method.NoWait = bits&(1<<0) != 0
 
@@ -1684,6 +1730,7 @@ func (method *ExchangeUnbindOk) MethodIdentifier() uint16 {
 	return 51
 }
 
+// Sync is method should me sent synchronous
 func (method *ExchangeUnbindOk) Sync() bool {
 	return true
 }
@@ -1736,6 +1783,7 @@ func (method *QueueDeclare) MethodIdentifier() uint16 {
 	return 10
 }
 
+// Sync is method should me sent synchronous
 func (method *QueueDeclare) Sync() bool {
 	return true
 }
@@ -1754,6 +1802,9 @@ func (method *QueueDeclare) Read(reader io.Reader, protoVersion string) (err err
 	}
 
 	bits, err := ReadOctet(reader)
+	if err != nil {
+		return err
+	}
 
 	method.Passive = bits&(1<<0) != 0
 
@@ -1845,6 +1896,7 @@ func (method *QueueDeclareOk) MethodIdentifier() uint16 {
 	return 11
 }
 
+// Sync is method should me sent synchronous
 func (method *QueueDeclareOk) Sync() bool {
 	return true
 }
@@ -1921,6 +1973,7 @@ func (method *QueueBind) MethodIdentifier() uint16 {
 	return 20
 }
 
+// Sync is method should me sent synchronous
 func (method *QueueBind) Sync() bool {
 	return true
 }
@@ -1949,6 +2002,9 @@ func (method *QueueBind) Read(reader io.Reader, protoVersion string) (err error)
 	}
 
 	bits, err := ReadOctet(reader)
+	if err != nil {
+		return err
+	}
 
 	method.NoWait = bits&(1<<0) != 0
 
@@ -2020,6 +2076,7 @@ func (method *QueueBindOk) MethodIdentifier() uint16 {
 	return 21
 }
 
+// Sync is method should me sent synchronous
 func (method *QueueBindOk) Sync() bool {
 	return true
 }
@@ -2065,6 +2122,7 @@ func (method *QueueUnbind) MethodIdentifier() uint16 {
 	return 50
 }
 
+// Sync is method should me sent synchronous
 func (method *QueueUnbind) Sync() bool {
 	return true
 }
@@ -2150,6 +2208,7 @@ func (method *QueueUnbindOk) MethodIdentifier() uint16 {
 	return 51
 }
 
+// Sync is method should me sent synchronous
 func (method *QueueUnbindOk) Sync() bool {
 	return true
 }
@@ -2194,6 +2253,7 @@ func (method *QueuePurge) MethodIdentifier() uint16 {
 	return 30
 }
 
+// Sync is method should me sent synchronous
 func (method *QueuePurge) Sync() bool {
 	return true
 }
@@ -2212,6 +2272,9 @@ func (method *QueuePurge) Read(reader io.Reader, protoVersion string) (err error
 	}
 
 	bits, err := ReadOctet(reader)
+	if err != nil {
+		return err
+	}
 
 	method.NoWait = bits&(1<<0) != 0
 
@@ -2267,6 +2330,7 @@ func (method *QueuePurgeOk) MethodIdentifier() uint16 {
 	return 31
 }
 
+// Sync is method should me sent synchronous
 func (method *QueuePurgeOk) Sync() bool {
 	return true
 }
@@ -2323,6 +2387,7 @@ func (method *QueueDelete) MethodIdentifier() uint16 {
 	return 40
 }
 
+// Sync is method should me sent synchronous
 func (method *QueueDelete) Sync() bool {
 	return true
 }
@@ -2341,6 +2406,9 @@ func (method *QueueDelete) Read(reader io.Reader, protoVersion string) (err erro
 	}
 
 	bits, err := ReadOctet(reader)
+	if err != nil {
+		return err
+	}
 
 	method.IfUnused = bits&(1<<0) != 0
 
@@ -2408,6 +2476,7 @@ func (method *QueueDeleteOk) MethodIdentifier() uint16 {
 	return 41
 }
 
+// Sync is method should me sent synchronous
 func (method *QueueDeleteOk) Sync() bool {
 	return true
 }
@@ -2702,6 +2771,7 @@ func (method *BasicQos) MethodIdentifier() uint16 {
 	return 10
 }
 
+// Sync is method should me sent synchronous
 func (method *BasicQos) Sync() bool {
 	return true
 }
@@ -2720,6 +2790,9 @@ func (method *BasicQos) Read(reader io.Reader, protoVersion string) (err error) 
 	}
 
 	bits, err := ReadOctet(reader)
+	if err != nil {
+		return err
+	}
 
 	method.Global = bits&(1<<0) != 0
 
@@ -2776,6 +2849,7 @@ func (method *BasicQosOk) MethodIdentifier() uint16 {
 	return 11
 }
 
+// Sync is method should me sent synchronous
 func (method *BasicQosOk) Sync() bool {
 	return true
 }
@@ -2826,6 +2900,7 @@ func (method *BasicConsume) MethodIdentifier() uint16 {
 	return 20
 }
 
+// Sync is method should me sent synchronous
 func (method *BasicConsume) Sync() bool {
 	return true
 }
@@ -2849,6 +2924,9 @@ func (method *BasicConsume) Read(reader io.Reader, protoVersion string) (err err
 	}
 
 	bits, err := ReadOctet(reader)
+	if err != nil {
+		return err
+	}
 
 	method.NoLocal = bits&(1<<0) != 0
 
@@ -2936,6 +3014,7 @@ func (method *BasicConsumeOk) MethodIdentifier() uint16 {
 	return 21
 }
 
+// Sync is method should me sent synchronous
 func (method *BasicConsumeOk) Sync() bool {
 	return true
 }
@@ -3001,6 +3080,7 @@ func (method *BasicCancel) MethodIdentifier() uint16 {
 	return 30
 }
 
+// Sync is method should me sent synchronous
 func (method *BasicCancel) Sync() bool {
 	return true
 }
@@ -3014,6 +3094,9 @@ func (method *BasicCancel) Read(reader io.Reader, protoVersion string) (err erro
 	}
 
 	bits, err := ReadOctet(reader)
+	if err != nil {
+		return err
+	}
 
 	method.NoWait = bits&(1<<0) != 0
 
@@ -3065,6 +3148,7 @@ func (method *BasicCancelOk) MethodIdentifier() uint16 {
 	return 31
 }
 
+// Sync is method should me sent synchronous
 func (method *BasicCancelOk) Sync() bool {
 	return true
 }
@@ -3121,6 +3205,7 @@ func (method *BasicPublish) MethodIdentifier() uint16 {
 	return 40
 }
 
+// Sync is method should me sent synchronous
 func (method *BasicPublish) Sync() bool {
 	return false
 }
@@ -3144,6 +3229,9 @@ func (method *BasicPublish) Read(reader io.Reader, protoVersion string) (err err
 	}
 
 	bits, err := ReadOctet(reader)
+	if err != nil {
+		return err
+	}
 
 	method.Mandatory = bits&(1<<0) != 0
 
@@ -3215,6 +3303,7 @@ func (method *BasicReturn) MethodIdentifier() uint16 {
 	return 50
 }
 
+// Sync is method should me sent synchronous
 func (method *BasicReturn) Sync() bool {
 	return false
 }
@@ -3299,6 +3388,7 @@ func (method *BasicDeliver) MethodIdentifier() uint16 {
 	return 60
 }
 
+// Sync is method should me sent synchronous
 func (method *BasicDeliver) Sync() bool {
 	return false
 }
@@ -3317,6 +3407,9 @@ func (method *BasicDeliver) Read(reader io.Reader, protoVersion string) (err err
 	}
 
 	bits, err := ReadOctet(reader)
+	if err != nil {
+		return err
+	}
 
 	method.Redelivered = bits&(1<<0) != 0
 
@@ -3394,6 +3487,7 @@ func (method *BasicGet) MethodIdentifier() uint16 {
 	return 70
 }
 
+// Sync is method should me sent synchronous
 func (method *BasicGet) Sync() bool {
 	return true
 }
@@ -3412,6 +3506,9 @@ func (method *BasicGet) Read(reader io.Reader, protoVersion string) (err error) 
 	}
 
 	bits, err := ReadOctet(reader)
+	if err != nil {
+		return err
+	}
 
 	method.NoAck = bits&(1<<0) != 0
 
@@ -3473,6 +3570,7 @@ func (method *BasicGetOk) MethodIdentifier() uint16 {
 	return 71
 }
 
+// Sync is method should me sent synchronous
 func (method *BasicGetOk) Sync() bool {
 	return true
 }
@@ -3486,6 +3584,9 @@ func (method *BasicGetOk) Read(reader io.Reader, protoVersion string) (err error
 	}
 
 	bits, err := ReadOctet(reader)
+	if err != nil {
+		return err
+	}
 
 	method.Redelivered = bits&(1<<0) != 0
 
@@ -3565,6 +3666,7 @@ func (method *BasicGetEmpty) MethodIdentifier() uint16 {
 	return 72
 }
 
+// Sync is method should me sent synchronous
 func (method *BasicGetEmpty) Sync() bool {
 	return true
 }
@@ -3624,6 +3726,7 @@ func (method *BasicAck) MethodIdentifier() uint16 {
 	return 80
 }
 
+// Sync is method should me sent synchronous
 func (method *BasicAck) Sync() bool {
 	return false
 }
@@ -3637,6 +3740,9 @@ func (method *BasicAck) Read(reader io.Reader, protoVersion string) (err error) 
 	}
 
 	bits, err := ReadOctet(reader)
+	if err != nil {
+		return err
+	}
 
 	method.Multiple = bits&(1<<0) != 0
 
@@ -3691,6 +3797,7 @@ func (method *BasicReject) MethodIdentifier() uint16 {
 	return 90
 }
 
+// Sync is method should me sent synchronous
 func (method *BasicReject) Sync() bool {
 	return false
 }
@@ -3704,6 +3811,9 @@ func (method *BasicReject) Read(reader io.Reader, protoVersion string) (err erro
 	}
 
 	bits, err := ReadOctet(reader)
+	if err != nil {
+		return err
+	}
 
 	method.Requeue = bits&(1<<0) != 0
 
@@ -3757,6 +3867,7 @@ func (method *BasicRecoverAsync) MethodIdentifier() uint16 {
 	return 100
 }
 
+// Sync is method should me sent synchronous
 func (method *BasicRecoverAsync) Sync() bool {
 	return false
 }
@@ -3765,6 +3876,9 @@ func (method *BasicRecoverAsync) Sync() bool {
 func (method *BasicRecoverAsync) Read(reader io.Reader, protoVersion string) (err error) {
 
 	bits, err := ReadOctet(reader)
+	if err != nil {
+		return err
+	}
 
 	method.Requeue = bits&(1<<0) != 0
 
@@ -3814,6 +3928,7 @@ func (method *BasicRecover) MethodIdentifier() uint16 {
 	return 110
 }
 
+// Sync is method should me sent synchronous
 func (method *BasicRecover) Sync() bool {
 	return false
 }
@@ -3822,6 +3937,9 @@ func (method *BasicRecover) Sync() bool {
 func (method *BasicRecover) Read(reader io.Reader, protoVersion string) (err error) {
 
 	bits, err := ReadOctet(reader)
+	if err != nil {
+		return err
+	}
 
 	method.Requeue = bits&(1<<0) != 0
 
@@ -3868,6 +3986,7 @@ func (method *BasicRecoverOk) MethodIdentifier() uint16 {
 	return 111
 }
 
+// Sync is method should me sent synchronous
 func (method *BasicRecoverOk) Sync() bool {
 	return true
 }
@@ -3917,6 +4036,7 @@ func (method *BasicNack) MethodIdentifier() uint16 {
 	return 120
 }
 
+// Sync is method should me sent synchronous
 func (method *BasicNack) Sync() bool {
 	return false
 }
@@ -3930,6 +4050,9 @@ func (method *BasicNack) Read(reader io.Reader, protoVersion string) (err error)
 	}
 
 	bits, err := ReadOctet(reader)
+	if err != nil {
+		return err
+	}
 
 	method.Multiple = bits&(1<<0) != 0
 
@@ -3989,6 +4112,7 @@ func (method *TxSelect) MethodIdentifier() uint16 {
 	return 10
 }
 
+// Sync is method should me sent synchronous
 func (method *TxSelect) Sync() bool {
 	return true
 }
@@ -4030,6 +4154,7 @@ func (method *TxSelectOk) MethodIdentifier() uint16 {
 	return 11
 }
 
+// Sync is method should me sent synchronous
 func (method *TxSelectOk) Sync() bool {
 	return true
 }
@@ -4071,6 +4196,7 @@ func (method *TxCommit) MethodIdentifier() uint16 {
 	return 20
 }
 
+// Sync is method should me sent synchronous
 func (method *TxCommit) Sync() bool {
 	return true
 }
@@ -4112,6 +4238,7 @@ func (method *TxCommitOk) MethodIdentifier() uint16 {
 	return 21
 }
 
+// Sync is method should me sent synchronous
 func (method *TxCommitOk) Sync() bool {
 	return true
 }
@@ -4155,6 +4282,7 @@ func (method *TxRollback) MethodIdentifier() uint16 {
 	return 30
 }
 
+// Sync is method should me sent synchronous
 func (method *TxRollback) Sync() bool {
 	return true
 }
@@ -4196,6 +4324,7 @@ func (method *TxRollbackOk) MethodIdentifier() uint16 {
 	return 31
 }
 
+// Sync is method should me sent synchronous
 func (method *TxRollbackOk) Sync() bool {
 	return true
 }
@@ -4241,6 +4370,7 @@ func (method *ConfirmSelect) MethodIdentifier() uint16 {
 	return 10
 }
 
+// Sync is method should me sent synchronous
 func (method *ConfirmSelect) Sync() bool {
 	return true
 }
@@ -4249,6 +4379,9 @@ func (method *ConfirmSelect) Sync() bool {
 func (method *ConfirmSelect) Read(reader io.Reader, protoVersion string) (err error) {
 
 	bits, err := ReadOctet(reader)
+	if err != nil {
+		return err
+	}
 
 	method.Nowait = bits&(1<<0) != 0
 
@@ -4296,6 +4429,7 @@ func (method *ConfirmSelectOk) MethodIdentifier() uint16 {
 	return 11
 }
 
+// Sync is method should me sent synchronous
 func (method *ConfirmSelectOk) Sync() bool {
 	return true
 }

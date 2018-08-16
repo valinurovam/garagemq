@@ -9,14 +9,14 @@ import (
 
 func TestReadFrame_Success(t *testing.T) {
 	var frameType byte = 1
-	var channelId uint16 = 1
+	var channelID uint16 = 1
 	payload := []byte("some_test_data")
 
 	wr := bytes.NewBuffer(make([]byte, 0))
 	// type
 	binary.Write(wr, binary.BigEndian, frameType)
-	// channelId
-	binary.Write(wr, binary.BigEndian, channelId)
+	// channelID
+	binary.Write(wr, binary.BigEndian, channelID)
 	// size
 	binary.Write(wr, binary.BigEndian, uint32(len(payload)))
 	// payload
@@ -29,8 +29,8 @@ func TestReadFrame_Success(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if frame.ChannelID != channelId {
-		t.Fatalf("Excpected ChannelID %d, actual %d", channelId, frame.ChannelID)
+	if frame.ChannelID != channelID {
+		t.Fatalf("Excpected ChannelID %d, actual %d", channelID, frame.ChannelID)
 	}
 
 	if frame.Type != frameType {
@@ -44,14 +44,14 @@ func TestReadFrame_Success(t *testing.T) {
 
 func TestReadFrame_Failed_WrongFrameEnd(t *testing.T) {
 	var frameType byte = 1
-	var channelId uint16 = 1
+	var channelID uint16 = 1
 	payload := []byte("some_test_data")
 
 	wr := bytes.NewBuffer(make([]byte, 0))
 	// type
 	binary.Write(wr, binary.BigEndian, frameType)
-	// channelId
-	binary.Write(wr, binary.BigEndian, channelId)
+	// channelID
+	binary.Write(wr, binary.BigEndian, channelID)
 	// size
 	binary.Write(wr, binary.BigEndian, uint32(len(payload)))
 	// payload

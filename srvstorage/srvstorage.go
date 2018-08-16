@@ -81,7 +81,11 @@ func (storage *SrvStorage) GetVhosts() map[string]bool {
 // AddBinding add binding into storage
 func (storage *SrvStorage) AddBinding(vhost string, bind *binding.Binding) error {
 	key := fmt.Sprintf("%s.%s.%s", bindingPrefix, vhost, bind.GetName())
-	return storage.db.Set(key, bind.Marshal())
+	data, err := bind.Marshal()
+	if err != nil {
+		return err
+	}
+	return storage.db.Set(key, data)
 }
 
 // DelBinding remove binding from storage
@@ -93,7 +97,11 @@ func (storage *SrvStorage) DelBinding(vhost string, bind *binding.Binding) error
 // AddExchange add exchange into storage
 func (storage *SrvStorage) AddExchange(vhost string, ex *exchange.Exchange) error {
 	key := fmt.Sprintf("%s.%s.%s", exchangePrefix, vhost, ex.GetName())
-	return storage.db.Set(key, ex.Marshal(storage.protoVersion))
+	data, err := ex.Marshal(storage.protoVersion)
+	if err != nil {
+		return err
+	}
+	return storage.db.Set(key, data)
 }
 
 // DelExchange remove exchange from storage

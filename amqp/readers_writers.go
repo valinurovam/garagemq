@@ -9,11 +9,13 @@ import (
 	"time"
 )
 
+// supported protocol identifiers
 const (
 	Proto091    = "amqp-0-9-1"
 	ProtoRabbit = "amqp-rabbit"
 )
 
+// ReadFrame read and parse raw frame from conn reader
 func ReadFrame(r io.Reader) (frame *Frame, err error) {
 	frame = &Frame{}
 	if frame.Type, err = ReadOctet(r); err != nil {
@@ -35,15 +37,15 @@ func ReadFrame(r io.Reader) (frame *Frame, err error) {
 
 	// check frame end
 	if payload[payloadSize] != FrameEnd {
-		return nil, errors.New(
-			fmt.Sprintf(
+		return nil, fmt.Errorf(
 				"The frame-end octet MUST always be the hexadecimal value 'xCE', %x given",
-				payload[payloadSize]))
+				payload[payloadSize])
 	}
 
 	return frame, nil
 }
 
+// WriteFrame pack amqp Frame as bytes and write to conn writer
 func WriteFrame(wr io.Writer, frame *Frame) (err error) {
 	if err = WriteOctet(wr, frame.Type); err != nil {
 		return err
@@ -66,42 +68,52 @@ func WriteFrame(wr io.Writer, frame *Frame) (err error) {
 	//return binary.Write(wr, binary.BigEndian, frameBuffer.Bytes())
 }
 
+// ReadOctet reads octet (byte)
 func ReadOctet(r io.Reader) (data byte, err error) {
 	err = binary.Read(r, binary.BigEndian, &data)
 	return
 }
 
+// WriteOctet writes octet (byte)
 func WriteOctet(wr io.Writer, data byte) error {
 	return binary.Write(wr, binary.BigEndian, data)
 }
 
+// ReadShort reads 2 bytes
 func ReadShort(r io.Reader) (data uint16, err error) {
 	err = binary.Read(r, binary.BigEndian, &data)
 	return
 }
 
+// WriteShort writes 2 bytes
 func WriteShort(wr io.Writer, data uint16) error {
 	return binary.Write(wr, binary.BigEndian, &data)
 }
 
+// ReadLong reads 4 bytes
 func ReadLong(r io.Reader) (data uint32, err error) {
 	err = binary.Read(r, binary.BigEndian, &data)
 	return
 }
 
+// WriteLong writes 4 bytes
 func WriteLong(wr io.Writer, data uint32) error {
 	return binary.Write(wr, binary.BigEndian, &data)
 }
 
+// ReadLonglong reads 8 bytes
 func ReadLonglong(r io.Reader) (data uint64, err error) {
 	err = binary.Read(r, binary.BigEndian, &data)
 	return
 }
 
+// WriteLonglong writes 8 bytes
 func WriteLonglong(wr io.Writer, data uint64) error {
 	return binary.Write(wr, binary.BigEndian, &data)
 }
 
+// ReadTimestamp reads timestamp
+// amqp presents timestamp as 8byte int
 func ReadTimestamp(r io.Reader) (data time.Time, err error) {
 	var seconds uint64
 	if seconds, err = ReadLonglong(r); err != nil {
@@ -110,10 +122,12 @@ func ReadTimestamp(r io.Reader) (data time.Time, err error) {
 	return time.Unix(int64(seconds), 0), nil
 }
 
+// WriteTimestamp writes timestamp
 func WriteTimestamp(wr io.Writer, data time.Time) error {
 	return binary.Write(wr, binary.BigEndian, uint64(data.Unix()))
 }
 
+// ReadShortstr reads string
 func ReadShortstr(r io.Reader) (data string, err error) {
 	var length byte
 
@@ -132,6 +146,7 @@ func ReadShortstr(r io.Reader) (data string, err error) {
 	return
 }
 
+// WriteShortstr writes string
 func WriteShortstr(wr io.Writer, data string) error {
 	err := binary.Write(wr, binary.BigEndian, byte(len(data)))
 	if err != nil {
@@ -140,6 +155,8 @@ func WriteShortstr(wr io.Writer, data string) error {
 	return binary.Write(wr, binary.BigEndian, []byte(data))
 }
 
+// ReadLongstr reads long string
+// Long string is just array of bytes
 func ReadLongstr(r io.Reader) (data []byte, err error) {
 	var length uint32
 
@@ -157,6 +174,7 @@ func ReadLongstr(r io.Reader) (data []byte, err error) {
 	return
 }
 
+// WriteLongstr writes long string
 func WriteLongstr(wr io.Writer, data []byte) error {
 	err := binary.Write(wr, binary.BigEndian, uint32(len(data)))
 	if err != nil {
@@ -165,6 +183,9 @@ func WriteLongstr(wr io.Writer, data []byte) error {
 	return binary.Write(wr, binary.BigEndian, data)
 }
 
+// ReadTable reads amqp table
+// Standard amqp table and rabbitmq table are little different
+// So we have second argument protoVersion to handle that issue
 func ReadTable(r io.Reader, protoVersion string) (data *Table, err error) {
 	tmpData := Table{}
 	tableData, err := ReadLongstr(r)
@@ -198,7 +219,7 @@ func readV(r io.Reader, protoVersion string) (data interface{}, err error) {
 		return readValueRabbit(r)
 	}
 
-	return nil, errors.New(fmt.Sprintf("Unknown proto version [%s]", protoVersion))
+	return nil, fmt.Errorf("Unknown proto version [%s]", protoVersion)
 }
 
 /*
@@ -231,78 +252,79 @@ func readValue091(r io.Reader) (data interface{}, err error) {
 
 	switch vType {
 	case 't':
-		rData, err := ReadOctet(r)
+		var rData byte
+		rData, err = ReadOctet(r)
 		if err != nil {
 			return nil, err
 		}
 		data = rData != 0
 	case 'b':
 		var rData int8
-		if err := binary.Read(r, binary.BigEndian, &rData); err != nil {
+		if err = binary.Read(r, binary.BigEndian, &rData); err != nil {
 			return nil, err
 		}
 		return rData, nil
 	case 'B':
 		var rData uint8
-		if err := binary.Read(r, binary.BigEndian, &rData); err != nil {
+		if err = binary.Read(r, binary.BigEndian, &rData); err != nil {
 			return nil, err
 		}
 		return rData, nil
 	case 'U':
 		var rData int16
-		if err := binary.Read(r, binary.BigEndian, &rData); err != nil {
+		if err = binary.Read(r, binary.BigEndian, &rData); err != nil {
 			return nil, err
 		}
 		return rData, nil
 	case 'u':
 		var rData uint16
-		if err := binary.Read(r, binary.BigEndian, &rData); err != nil {
+		if err = binary.Read(r, binary.BigEndian, &rData); err != nil {
 			return nil, err
 		}
 		return rData, nil
 	case 'I':
 		var rData int32
-		if err := binary.Read(r, binary.BigEndian, &rData); err != nil {
+		if err = binary.Read(r, binary.BigEndian, &rData); err != nil {
 			return nil, err
 		}
 		return rData, nil
 	case 'i':
 		var rData uint32
-		if err := binary.Read(r, binary.BigEndian, &rData); err != nil {
+		if err = binary.Read(r, binary.BigEndian, &rData); err != nil {
 			return nil, err
 		}
 		return rData, nil
 	case 'L':
 		var rData int64
-		if err := binary.Read(r, binary.BigEndian, &rData); err != nil {
+		if err = binary.Read(r, binary.BigEndian, &rData); err != nil {
 			return nil, err
 		}
 		return rData, nil
 	case 'l':
 		var rData uint64
-		if err := binary.Read(r, binary.BigEndian, &rData); err != nil {
+		if err = binary.Read(r, binary.BigEndian, &rData); err != nil {
 			return nil, err
 		}
 		return rData, nil
 	case 'f':
 		var rData float32
-		if err := binary.Read(r, binary.BigEndian, &rData); err != nil {
+		if err = binary.Read(r, binary.BigEndian, &rData); err != nil {
 			return nil, err
 		}
 		return rData, nil
 	case 'd':
 		var rData float64
-		if err := binary.Read(r, binary.BigEndian, &rData); err != nil {
+		if err = binary.Read(r, binary.BigEndian, &rData); err != nil {
 			return nil, err
 		}
 		return rData, nil
 	case 'D':
 		var rData = Decimal{0, 0}
 
-		if err := binary.Read(r, binary.BigEndian, &rData.Scale); err != nil {
+		if err = binary.Read(r, binary.BigEndian, &rData.Scale); err != nil {
 			return nil, err
 		}
-		if err := binary.Read(r, binary.BigEndian, &rData.Value); err != nil {
+		if err = binary.Read(r, binary.BigEndian, &rData.Value); err != nil {
 			return nil, err
 		}
 		return rData, nil
@@ -343,7 +365,7 @@ func readValue091(r io.Reader) (data interface{}, err error) {
 		return nil, nil
 	}
 
-	return nil, errors.New(fmt.Sprintf("Unsupported type by %s protocol", Proto091))
+	return nil, fmt.Errorf("Unsupported type by %s protocol", Proto091)
 }
 
 /*
@@ -371,54 +393,55 @@ func readValueRabbit(r io.Reader) (data interface{}, err error) {
 
 	switch vType {
 	case 't':
-		rData, err := ReadOctet(r)
+		var rData byte
+		rData, err = ReadOctet(r)
 		if err != nil {
 			return nil, err
 		}
 		return rData != 0, nil
 	case 'b':
 		var rData int8
-		if err := binary.Read(r, binary.BigEndian, &rData); err != nil {
+		if err = binary.Read(r, binary.BigEndian, &rData); err != nil {
 			return nil, err
 		}
 		return rData, nil
 	case 's':
 		var rData int16
-		if err := binary.Read(r, binary.BigEndian, &rData); err != nil {
+		if err = binary.Read(r, binary.BigEndian, &rData); err != nil {
 			return nil, err
 		}
 		return rData, nil
 	case 'I':
 		var rData int32
-		if err := binary.Read(r, binary.BigEndian, &rData); err != nil {
+		if err = binary.Read(r, binary.BigEndian, &rData); err != nil {
 			return nil, err
 		}
 		return rData, nil
 	case 'l':
 		var rData int64
-		if err := binary.Read(r, binary.BigEndian, &rData); err != nil {
+		if err = binary.Read(r, binary.BigEndian, &rData); err != nil {
 			return nil, err
 		}
 		return rData, nil
 	case 'f':
 		var rData float32
-		if err := binary.Read(r, binary.BigEndian, &rData); err != nil {
+		if err = binary.Read(r, binary.BigEndian, &rData); err != nil {
 			return nil, err
 		}
 		return rData, nil
 	case 'd':
 		var rData float64
-		if err := binary.Read(r, binary.BigEndian, &rData); err != nil {
+		if err = binary.Read(r, binary.BigEndian, &rData); err != nil {
 			return nil, err
 		}
 		return rData, nil
 	case 'D':
 		var rData = Decimal{0, 0}
 
-		if err := binary.Read(r, binary.BigEndian, &rData.Scale); err != nil {
+		if err = binary.Read(r, binary.BigEndian, &rData.Scale); err != nil {
 			return nil, err
 		}
-		if err := binary.Read(r, binary.BigEndian, &rData.Value); err != nil {
+		if err = binary.Read(r, binary.BigEndian, &rData.Value); err != nil {
 			return nil, err
 		}
 		return rData, nil
@@ -452,9 +475,12 @@ func readValueRabbit(r io.Reader) (data interface{}, err error) {
 		return nil, nil
 	}
 
-	return nil, errors.New(fmt.Sprintf("Unsupported type %c (%d) by %s protocol", vType, vType, ProtoRabbit))
+	return nil, fmt.Errorf("Unsupported type %c (%d) by %s protocol", vType, vType, ProtoRabbit)
 }
 
+// WriteTable writes amqp table
+// Standard amqp table and rabbitmq table are little different
+// So we have second argument protoVersion to handle that issue
 func WriteTable(writer io.Writer, table *Table, protoVersion string) (err error) {
 	var buf = bytes.NewBuffer(make([]byte, 0))
 	for key, v := range *table {
@@ -476,7 +502,7 @@ func writeV(writer io.Writer, v interface{}, protoVersion string) (err error) {
 		return writeValueRabbit(writer, v)
 	}
 
-	return errors.New(fmt.Sprintf("Unknown proto version [%s]", protoVersion))
+	return fmt.Errorf("Unknown proto version [%s]", protoVersion)
 }
 
 /*
@@ -513,43 +539,43 @@ func writeValue091(writer io.Writer, v interface{}) (err error) {
 		}
 	case int8:
 		if err = WriteOctet(writer, byte('b')); err == nil {
-			err = binary.Write(writer, binary.BigEndian, int8(value))
+			err = binary.Write(writer, binary.BigEndian, value)
 		}
 	case uint8:
 		if err = WriteOctet(writer, byte('B')); err == nil {
-			err = binary.Write(writer, binary.BigEndian, uint8(value))
+			err = binary.Write(writer, binary.BigEndian, value)
 		}
 	case int16:
 		if err = WriteOctet(writer, byte('U')); err == nil {
-			err = binary.Write(writer, binary.BigEndian, int16(value))
+			err = binary.Write(writer, binary.BigEndian, value)
 		}
 	case uint16:
 		if err = binary.Write(writer, binary.BigEndian, byte('u')); err == nil {
-			err = binary.Write(writer, binary.BigEndian, uint16(value))
+			err = binary.Write(writer, binary.BigEndian, value)
 		}
 	case int32:
 		if err = binary.Write(writer, binary.BigEndian, byte('I')); err == nil {
-			err = binary.Write(writer, binary.BigEndian, int32(value))
+			err = binary.Write(writer, binary.BigEndian, value)
 		}
 	case uint32:
 		if err = binary.Write(writer, binary.BigEndian, byte('i')); err == nil {
-			err = binary.Write(writer, binary.BigEndian, uint32(value))
+			err = binary.Write(writer, binary.BigEndian, value)
 		}
 	case int64:
 		if err = binary.Write(writer, binary.BigEndian, byte('L')); err == nil {
-			err = binary.Write(writer, binary.BigEndian, int64(value))
+			err = binary.Write(writer, binary.BigEndian, value)
 		}
 	case uint64:
 		if err = binary.Write(writer, binary.BigEndian, byte('l')); err == nil {
-			err = binary.Write(writer, binary.BigEndian, uint64(value))
+			err = binary.Write(writer, binary.BigEndian, value)
 		}
 	case float32:
 		if err = binary.Write(writer, binary.BigEndian, byte('f')); err == nil {
-			err = binary.Write(writer, binary.BigEndian, float32(value))
+			err = binary.Write(writer, binary.BigEndian, value)
 		}
 	case float64:
 		if err = binary.Write(writer, binary.BigEndian, byte('d')); err == nil {
-			err = binary.Write(writer, binary.BigEndian, float64(value))
+			err = binary.Write(writer, binary.BigEndian, value)
 		}
 	case Decimal:
 		if err = binary.Write(writer, binary.BigEndian, byte('D')); err == nil {
@@ -581,7 +607,7 @@ func writeValue091(writer io.Writer, v interface{}) (err error) {
 	case nil:
 		err = binary.Write(writer, binary.BigEndian, byte('V'))
 	default:
-		err = errors.New(fmt.Sprintf("Unsupported type by %s protocol", Proto091))
+		err = fmt.Errorf("Unsupported type by %s protocol", Proto091)
 	}
 
 	return
@@ -616,7 +642,7 @@ func writeValueRabbit(writer io.Writer, v interface{}) (err error) {
 		}
 	case int8:
 		if err = WriteOctet(writer, byte('b')); err == nil {
-			err = binary.Write(writer, binary.BigEndian, int8(value))
+			err = binary.Write(writer, binary.BigEndian, value)
 		}
 	case uint8:
 		if err = WriteOctet(writer, byte('b')); err == nil {
@@ -624,7 +650,7 @@ func writeValueRabbit(writer io.Writer, v interface{}) (err error) {
 		}
 	case int16:
 		if err = WriteOctet(writer, byte('s')); err == nil {
-			err = binary.Write(writer, binary.BigEndian, int16(value))
+			err = binary.Write(writer, binary.BigEndian, value)
 		}
 	case uint16:
 		if err = binary.Write(writer, binary.BigEndian, byte('s')); err == nil {
@@ -632,7 +658,7 @@ func writeValueRabbit(writer io.Writer, v interface{}) (err error) {
 		}
 	case int32:
 		if err = binary.Write(writer, binary.BigEndian, byte('I')); err == nil {
-			err = binary.Write(writer, binary.BigEndian, int32(value))
+			err = binary.Write(writer, binary.BigEndian, value)
 		}
 	case uint32:
 		if err = binary.Write(writer, binary.BigEndian, byte('I')); err == nil {
@@ -640,7 +666,7 @@ func writeValueRabbit(writer io.Writer, v interface{}) (err error) {
 		}
 	case int64:
 		if err = binary.Write(writer, binary.BigEndian, byte('l')); err == nil {
-			err = binary.Write(writer, binary.BigEndian, int64(value))
+			err = binary.Write(writer, binary.BigEndian, value)
 		}
 	case uint64:
 		if err = binary.Write(writer, binary.BigEndian, byte('l')); err == nil {
@@ -648,11 +674,11 @@ func writeValueRabbit(writer io.Writer, v interface{}) (err error) {
 		}
 	case float32:
 		if err = binary.Write(writer, binary.BigEndian, byte('f')); err == nil {
-			err = binary.Write(writer, binary.BigEndian, float32(value))
+			err = binary.Write(writer, binary.BigEndian, value)
 		}
 	case float64:
 		if err = binary.Write(writer, binary.BigEndian, byte('d')); err == nil {
-			err = binary.Write(writer, binary.BigEndian, float64(value))
+			err = binary.Write(writer, binary.BigEndian, value)
 		}
 	case Decimal:
 		if err = binary.Write(writer, binary.BigEndian, byte('D')); err == nil {
@@ -683,7 +709,7 @@ func writeValueRabbit(writer io.Writer, v interface{}) (err error) {
 	case nil:
 		err = binary.Write(writer, binary.BigEndian, byte('V'))
 	default:
-		err = errors.New(fmt.Sprintf("Unsupported type by %s protocol", Proto091))
+		err = fmt.Errorf("Unsupported type by %s protocol", Proto091)
 	}
 
 	return
@@ -700,7 +726,7 @@ func writeArray(writer io.Writer, array []interface{}, protoVersion string) erro
 }
 
 func readArray(r io.Reader, protoVersion string) (data []interface{}, err error) {
-	data = make([]interface{}, 0, 0)
+	data = make([]interface{}, 0)
 	var arrayData []byte
 	if arrayData, err = ReadLongstr(r); err != nil {
 		return nil, err
@@ -719,34 +745,50 @@ func readArray(r io.Reader, protoVersion string) (data []interface{}, err error)
 	return data, nil
 }
 
+// ReadContentHeader reads amqp content header
 func ReadContentHeader(r io.Reader, protoVersion string) (*ContentHeader, error) {
+	var err error
 	// 14 bytes for class-id | weight | body size | property flags
 	var header = make([]byte, 14)
-	if err := binary.Read(r, binary.BigEndian, header); err != nil {
+	if err = binary.Read(r, binary.BigEndian, header); err != nil {
 		return nil, err
 	}
 
 	contentHeader := &ContentHeader{}
 	headerBuf := bytes.NewBuffer(header)
 
-	contentHeader.ClassID, _ = ReadShort(headerBuf)
-	contentHeader.Weight, _ = ReadShort(headerBuf)
-	contentHeader.BodySize, _ = ReadLonglong(headerBuf)
-	contentHeader.propertyFlags, _ = ReadShort(headerBuf)
+	if contentHeader.ClassID, err = ReadShort(headerBuf); err != nil {
+		return nil, err
+	}
+	if contentHeader.Weight, err = ReadShort(headerBuf); err != nil {
+		return nil, err
+	}
+	if contentHeader.BodySize, err = ReadLonglong(headerBuf); err != nil {
+		return nil, err
+	}
+	if contentHeader.propertyFlags, err = ReadShort(headerBuf); err != nil {
+		return nil, err
+	}
 
 	contentHeader.PropertyList = &BasicPropertyList{}
-	if err := contentHeader.PropertyList.Read(r, contentHeader.propertyFlags, protoVersion); err != nil {
+	if err = contentHeader.PropertyList.Read(r, contentHeader.propertyFlags, protoVersion); err != nil {
 		return nil, err
 	}
 
 	return contentHeader, nil
 }
 
+// WriteContentHeader writes amqp content header
 func WriteContentHeader(writer io.Writer, header *ContentHeader, protoVersion string) (err error) {
-	//var headerBuf = bytes.NewBuffer(make([]byte, 0, 14))
-	WriteShort(writer, header.ClassID)
-	WriteShort(writer, header.Weight)
-	WriteLonglong(writer, header.BodySize)
+	if err = WriteShort(writer, header.ClassID); err != nil {
+		return err
+	}
+	if err = WriteShort(writer, header.Weight); err != nil {
+		return err
+	}
+	if err = WriteLonglong(writer, header.BodySize); err != nil {
+		return err
+	}
 
 	var propertyBuf = bytes.NewBuffer(make([]byte, 0))
 	properyFlags, err := header.PropertyList.Write(propertyBuf, protoVersion);
@@ -755,9 +797,12 @@ func WriteContentHeader(writer io.Writer, header *ContentHeader, protoVersion st
 	}
 
 	header.propertyFlags = properyFlags
-	WriteShort(writer, header.propertyFlags)
-	writer.Write(propertyBuf.Bytes())
-	//writer.Write(headerBuf.Bytes())
+	if err = WriteShort(writer, header.propertyFlags); err != nil {
+		return err
+	}
+	if _, err = writer.Write(propertyBuf.Bytes()); err != nil {
+		return err
+	}
 
 	return
 }

@@ -115,7 +115,9 @@ func (message *Message) Marshal(protoVersion string) (data []byte, err error) {
 			return nil, err
 		}
 	}
-	WriteLongstr(buffer, body.Bytes())
+	if err = WriteLongstr(buffer, body.Bytes()); err != nil {
+		return nil, err
+	}
 
 	if err = WriteLong(buffer, message.DeliveryCount); err != nil {
 		return nil, err
@@ -145,10 +147,16 @@ func (message *Message) Unmarshal(buffer []byte, protoVersion string) (err error
 	}
 
 	rawBody, err := ReadLongstr(reader)
+	if err != nil {
+		return err
+	}
 	bodyBuffer := bytes.NewReader(rawBody)
 
 	for bodyBuffer.Len() != 0 {
-		body, _ := ReadFrame(bodyBuffer)
+		body, errFrame := ReadFrame(bodyBuffer)
+		if errFrame != nil {
+			return errFrame
+		}
 		message.Body = append(message.Body, body)
 	}
 

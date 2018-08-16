@@ -47,8 +47,8 @@ func (storage *MsgStorage) cleanPersistQueue() {
 }
 
 func (storage *MsgStorage) periodicPersist() {
-	tick := time.Tick(20 * time.Millisecond)
-	for range tick {
+	tick := time.NewTicker(20 * time.Millisecond)
+	for range tick.C {
 		select {
 		case <-storage.closeCh:
 			return
