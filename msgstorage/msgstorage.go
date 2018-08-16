@@ -11,6 +11,10 @@ import (
 	"github.com/valinurovam/garagemq/interfaces"
 )
 
+// MsgStorage represents storage for store all durable messages
+// All operations (add, update and delete) store into little queues and
+// periodically persist every 20ms
+// If storage in confirm-mode - in every persisted message storage send confirm to vhost
 type MsgStorage struct {
 	db            interfaces.DbStorage
 	persistLock   sync.Mutex
@@ -23,7 +27,8 @@ type MsgStorage struct {
 	confirmMode   bool
 }
 
-func New(db interfaces.DbStorage, protoVersion string) *MsgStorage {
+// NewMsgStorage returns new instance of message storage
+func NewMsgStorage(db interfaces.DbStorage, protoVersion string) *MsgStorage {
 	msgStorage := &MsgStorage{
 		db:            db,
 		protoVersion:  protoVersion,
@@ -100,7 +105,7 @@ func (storage *MsgStorage) persist() {
 		)
 	}
 
-	for key, _ := range del {
+	for key := range del {
 		batch = append(
 			batch,
 			&interfaces.Operation{
@@ -120,11 +125,13 @@ func (storage *MsgStorage) persist() {
 	}
 }
 
+// ReceiveConfirms set message storage in confirm mode and return channel for receive confirms
 func (storage *MsgStorage) ReceiveConfirms() chan *amqp.Message {
 	storage.confirmMode = true
 	return storage.confirmSyncCh
 }
 
+// Add append message into add-queue
 func (storage *MsgStorage) Add(message *amqp.Message, queue string) error {
 	storage.persistLock.Lock()
 	defer storage.persistLock.Unlock()
@@ -132,6 +139,7 @@ func (storage *MsgStorage) Add(message *amqp.Message, queue string) error {
 	return nil
 }
 
+// Update append message into update-queue
 func (storage *MsgStorage) Update(message *amqp.Message, queue string) error {
 	storage.persistLock.Lock()
 	defer storage.persistLock.Unlock()
@@ -139,6 +147,7 @@ func (storage *MsgStorage) Update(message *amqp.Message, queue string) error {
 	return nil
 }
 
+// Del append message into del-queue
 func (storage *MsgStorage) Del(message *amqp.Message, queue string) error {
 	storage.persistLock.Lock()
 	defer storage.persistLock.Unlock()
@@ -146,6 +155,7 @@ func (storage *MsgStorage) Del(message *amqp.Message, queue string) error {
 	return nil
 }
 
+// Iterate with func fn over messages
 func (storage *MsgStorage) Iterate(fn func(queue string, message *amqp.Message)) {
 	storage.db.Iterate(
 		func(key []byte, value []byte) {
@@ -157,6 +167,7 @@ func (storage *MsgStorage) Iterate(fn func(queue string, message *amqp.Message))
 	)
 }
 
+// PurgeQueue delete messages
 func (storage *MsgStorage) PurgeQueue(queue string) {
 	prefix := []byte("msg." + queue)
 	storage.db.Iterate(
@@ -169,6 +180,7 @@ func (storage *MsgStorage) PurgeQueue(queue string) {
 	)
 }
 
+// Close properly "stop" message storage
 func (storage *MsgStorage) Close() error {
 	storage.closeCh <- true
 	storage.persistLock.Lock()

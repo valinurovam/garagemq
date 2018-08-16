@@ -14,8 +14,10 @@ import (
 	"github.com/valinurovam/garagemq/srvstorage"
 )
 
-const EX_DEFAULT_NAME = ""
+const exDefaultName = ""
 
+// VirtualHost represents AMQP virtual host
+// Each virtual host is "parent" for its queues and exchanges
 type VirtualHost struct {
 	name       string
 	system     bool
@@ -30,6 +32,13 @@ type VirtualHost struct {
 	logger     *log.Entry
 }
 
+// NewVhost returns instance of VirtualHost
+// When instantiating virtual host we
+// 1) init system exchanges
+// 2) load durable exchanges, queues and bindings from server storage
+// 3) load persisted messages from message store into all initiated queues
+// 4) run confirm loop
+// Only after that vhost is in state running
 func NewVhost(name string, system bool, msgStorage *msgstorage.MsgStorage, srv *Server) *VirtualHost {
 	vhost := &VirtualHost{
 		name:       name,
@@ -77,33 +86,35 @@ func (vhost *VirtualHost) handleConfirms() {
 		if channel == nil {
 			continue
 		}
-		channel.AddConfirm(&confirm.ConfirmMeta)
+		channel.addConfirm(&confirm.ConfirmMeta)
 	}
 }
 
 func (vhost *VirtualHost) initSystemExchanges() {
 	vhost.logger.Info("Initialize host default exchanges...")
 	for _, exType := range []byte{
-		exchange.EX_TYPE_DIRECT,
-		exchange.EX_TYPE_FANOUT,
-		exchange.EX_TYPE_HEADERS,
-		exchange.EX_TYPE_TOPIC,
+		exchange.ExTypeDirect,
+		exchange.ExTypeFanout,
+		exchange.ExTypeHeaders,
+		exchange.ExTypeTopic,
 	} {
 		exTypeAlias, _ := exchange.GetExchangeTypeAlias(exType)
 		exName := "amq." + exTypeAlias
-		vhost.AppendExchange(exchange.New(exName, exType, true, false, false, true))
+		vhost.AppendExchange(exchange.NewExchange(exName, exType, true, false, false, true))
 	}
 
-	systemExchange := exchange.New(EX_DEFAULT_NAME, exchange.EX_TYPE_DIRECT, true, false, false, true)
+	systemExchange := exchange.NewExchange(exDefaultName, exchange.ExTypeDirect, true, false, false, true)
 	vhost.AppendExchange(systemExchange)
 }
 
+// GetQueue returns queue by name or nil if not exists
 func (vhost *VirtualHost) GetQueue(name string) *queue.Queue {
 	vhost.quLock.Lock()
 	defer vhost.quLock.Unlock()
 	return vhost.getQueue(name)
 }
 
+// GetQueues return all vhost's queues
 func (vhost *VirtualHost) GetQueues() map[string]*queue.Queue {
 	vhost.quLock.Lock()
 	defer vhost.quLock.Unlock()
@@ -114,6 +125,7 @@ func (vhost *VirtualHost) getQueue(name string) *queue.Queue {
 	return vhost.queues[name]
 }
 
+// GetExchange returns exchange by name or nil if not exists
 func (vhost *VirtualHost) GetExchange(name string) *exchange.Exchange {
 	vhost.exLock.Lock()
 	defer vhost.exLock.Unlock()
@@ -124,10 +136,12 @@ func (vhost *VirtualHost) getExchange(name string) *exchange.Exchange {
 	return vhost.exchanges[name]
 }
 
+// GetDefaultExchange returns default exchange
 func (vhost *VirtualHost) GetDefaultExchange() *exchange.Exchange {
-	return vhost.exchanges[EX_DEFAULT_NAME]
+	return vhost.exchanges[exDefaultName]
 }
 
+// AppendExchange append new exchange and persist if it is durable
 func (vhost *VirtualHost) AppendExchange(ex *exchange.Exchange) {
 	vhost.exLock.Lock()
 	defer vhost.exLock.Unlock()
@@ -143,10 +157,12 @@ func (vhost *VirtualHost) AppendExchange(ex *exchange.Exchange) {
 	}
 }
 
-func (vhost *VirtualHost) NewQueue(name string, connId uint64, exclusive bool, autoDelete bool, durable bool, shardSize int) *queue.Queue {
+// NewQueue returns new instance of queue by params
+// we can't use just queue.NewQueue, cause we need to set msgStorage to queue
+func (vhost *VirtualHost) NewQueue(name string, connID uint64, exclusive bool, autoDelete bool, durable bool, shardSize int) *queue.Queue {
 	return queue.NewQueue(
 		name,
-		connId,
+		connID,
 		exclusive,
 		autoDelete,
 		durable,
@@ -155,6 +171,8 @@ func (vhost *VirtualHost) NewQueue(name string, connId uint64, exclusive bool, a
 	)
 }
 
+// AppendQueue append new queue and persist if it is durable and
+// bindings into default exchange
 func (vhost *VirtualHost) AppendQueue(qu *queue.Queue) {
 	vhost.quLock.Lock()
 	defer vhost.quLock.Unlock()
@@ -165,7 +183,7 @@ func (vhost *VirtualHost) AppendQueue(qu *queue.Queue) {
 	vhost.queues[qu.GetName()] = qu
 
 	ex := vhost.GetDefaultExchange()
-	bind := binding.New(qu.GetName(), EX_DEFAULT_NAME, qu.GetName(), &amqp.Table{}, false)
+	bind := binding.NewBinding(qu.GetName(), exDefaultName, qu.GetName(), &amqp.Table{}, false)
 	ex.AppendBinding(bind)
 
 	if qu.IsDurable() {
@@ -173,10 +191,12 @@ func (vhost *VirtualHost) AppendQueue(qu *queue.Queue) {
 	}
 }
 
+// PersistBinding store binding into server storage
 func (vhost *VirtualHost) PersistBinding(binding *binding.Binding) {
 	vhost.srvStorage.AddBinding(vhost.name, binding)
 }
 
+// RemoveBindings remove given bindings from server storage
 func (vhost *VirtualHost) RemoveBindings(bindings []*binding.Binding) {
 	for _, bind := range bindings {
 		vhost.srvStorage.DelBinding(vhost.name, bind)
@@ -232,6 +252,8 @@ func (vhost *VirtualHost) loadBindings() {
 	}
 }
 
+// DeleteQueue delete queue from virtual host and all bindings to that queue
+// Also queue will be removed from server storage
 func (vhost *VirtualHost) DeleteQueue(queueName string, ifUnused bool, ifEmpty bool) (uint64, error) {
 	vhost.quLock.Lock()
 	defer vhost.quLock.Unlock()
@@ -255,6 +277,8 @@ func (vhost *VirtualHost) DeleteQueue(queueName string, ifUnused bool, ifEmpty b
 	return length, nil
 }
 
+// Stop properly stop virtual host
+// TODO: properly stop confirm loop
 func (vhost *VirtualHost) Stop() error {
 	vhost.quLock.Lock()
 	vhost.exLock.Lock()

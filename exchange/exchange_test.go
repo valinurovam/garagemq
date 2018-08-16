@@ -10,7 +10,7 @@ import (
 func getTestEx() *Exchange {
 	return &Exchange{
 		Name:       "test",
-		exType:     EX_TYPE_DIRECT,
+		exType:     ExTypeDirect,
 		durable:    false,
 		autoDelete: false,
 		internal:   false,
@@ -21,7 +21,7 @@ func getTestEx() *Exchange {
 func TestNew(t *testing.T) {
 	e := getTestEx()
 
-	et := New(e.Name, e.exType, e.durable, e.autoDelete, e.internal, e.system)
+	et := NewExchange(e.Name, e.exType, e.durable, e.autoDelete, e.internal, e.system)
 	if err := e.EqualWithErr(et); err != nil {
 		t.Fatal(err)
 	}
@@ -29,7 +29,7 @@ func TestNew(t *testing.T) {
 
 func TestExchange_AppendBinding(t *testing.T) {
 	e := getTestEx()
-	b := binding.New("test", "test", "test", &amqp.Table{}, false)
+	b := binding.NewBinding("test", "test", "test", &amqp.Table{}, false)
 	e.AppendBinding(b)
 	e.AppendBinding(b)
 	l := len(e.GetBindings())
@@ -51,7 +51,7 @@ func TestExchange_AppendBinding(t *testing.T) {
 
 func TestExchange_RemoveBinding(t *testing.T) {
 	e := getTestEx()
-	b := binding.New("test", "test", "test", &amqp.Table{}, false)
+	b := binding.NewBinding("test", "test", "test", &amqp.Table{}, false)
 	e.AppendBinding(b)
 	e.RemoveBinding(b)
 
@@ -69,7 +69,7 @@ func TestExchange_RemoveBinding(t *testing.T) {
 
 func TestExchange_GetBindings(t *testing.T) {
 	e := getTestEx()
-	b := binding.New("test", "test", "test", &amqp.Table{}, false)
+	b := binding.NewBinding("test", "test", "test", &amqp.Table{}, false)
 	e.AppendBinding(b)
 	l := len(e.GetBindings())
 	if l != 1 {
@@ -80,9 +80,9 @@ func TestExchange_GetBindings(t *testing.T) {
 func TestExchange_RemoveQueueBindings(t *testing.T) {
 	e := getTestEx()
 
-	e.AppendBinding(binding.New("test", "test", "test1", &amqp.Table{}, false))
-	e.AppendBinding(binding.New("test2", "test", "test2", &amqp.Table{}, false))
-	e.AppendBinding(binding.New("test", "test", "test3", &amqp.Table{}, false))
+	e.AppendBinding(binding.NewBinding("test", "test", "test1", &amqp.Table{}, false))
+	e.AppendBinding(binding.NewBinding("test2", "test", "test2", &amqp.Table{}, false))
+	e.AppendBinding(binding.NewBinding("test", "test", "test3", &amqp.Table{}, false))
 	e.RemoveQueueBindings("test")
 
 	if len(e.GetBindings()) != 1 {
@@ -104,13 +104,13 @@ func TestExchange_RemoveQueueBindings(t *testing.T) {
 func TestExchange_GetMatchedQueues_Direct(t *testing.T) {
 	e := &Exchange{
 		Name:       "test",
-		exType:     EX_TYPE_DIRECT,
+		exType:     ExTypeDirect,
 		durable:    false,
 		autoDelete: false,
 		internal:   false,
 		system:     false,
 	}
-	e.AppendBinding(binding.New("test_q", "test", "test_rk", &amqp.Table{}, false))
+	e.AppendBinding(binding.NewBinding("test_q", "test", "test_rk", &amqp.Table{}, false))
 
 	matched := e.GetMatchedQueues(&amqp.Message{
 		Exchange:   "test",
@@ -125,14 +125,14 @@ func TestExchange_GetMatchedQueues_Direct(t *testing.T) {
 func TestExchange_GetMatchedQueues_Fanout(t *testing.T) {
 	e := &Exchange{
 		Name:       "test",
-		exType:     EX_TYPE_FANOUT,
+		exType:     ExTypeFanout,
 		durable:    false,
 		autoDelete: false,
 		internal:   false,
 		system:     false,
 	}
-	e.AppendBinding(binding.New("test_q1", "test", "test_rk", &amqp.Table{}, false))
-	e.AppendBinding(binding.New("test_q2", "test", "test_rk", &amqp.Table{}, false))
+	e.AppendBinding(binding.NewBinding("test_q1", "test", "test_rk", &amqp.Table{}, false))
+	e.AppendBinding(binding.NewBinding("test_q2", "test", "test_rk", &amqp.Table{}, false))
 
 	matched := e.GetMatchedQueues(&amqp.Message{
 		Exchange: "test",
@@ -149,15 +149,15 @@ func TestExchange_GetMatchedQueues_Topic(t *testing.T) {
 
 	e := &Exchange{
 		Name:       "test",
-		exType:     EX_TYPE_TOPIC,
+		exType:     ExTypeTopic,
 		durable:    false,
 		autoDelete: false,
 		internal:   false,
 		system:     false,
 	}
-	e.AppendBinding(binding.New("test_q1", "test", "test_rk.#", &amqp.Table{}, true))
-	e.AppendBinding(binding.New("test_q2", "test", "test_rk", &amqp.Table{}, true))
-	e.AppendBinding(binding.New("test_q3", "test", "test", &amqp.Table{}, true))
+	e.AppendBinding(binding.NewBinding("test_q1", "test", "test_rk.#", &amqp.Table{}, true))
+	e.AppendBinding(binding.NewBinding("test_q2", "test", "test_rk", &amqp.Table{}, true))
+	e.AppendBinding(binding.NewBinding("test_q3", "test", "test", &amqp.Table{}, true))
 
 	matched := e.GetMatchedQueues(&amqp.Message{
 		Exchange:   "test",
@@ -198,7 +198,7 @@ func TestExchange_GetMatchedQueues_Topic(t *testing.T) {
 func TestExchange_EqualWithErr_Success(t *testing.T) {
 	e1 := &Exchange{
 		Name:       "test",
-		exType:     EX_TYPE_TOPIC,
+		exType:     ExTypeTopic,
 		durable:    false,
 		autoDelete: false,
 		internal:   false,
@@ -207,7 +207,7 @@ func TestExchange_EqualWithErr_Success(t *testing.T) {
 
 	e2 := &Exchange{
 		Name:       "test",
-		exType:     EX_TYPE_TOPIC,
+		exType:     ExTypeTopic,
 		durable:    false,
 		autoDelete: false,
 		internal:   false,
@@ -222,7 +222,7 @@ func TestExchange_EqualWithErr_Success(t *testing.T) {
 func TestExchange_EqualWithErr_Failed_ExType(t *testing.T) {
 	e1 := &Exchange{
 		Name:       "test",
-		exType:     EX_TYPE_TOPIC,
+		exType:     ExTypeTopic,
 		durable:    false,
 		autoDelete: false,
 		internal:   false,
@@ -231,7 +231,7 @@ func TestExchange_EqualWithErr_Failed_ExType(t *testing.T) {
 
 	e2 := &Exchange{
 		Name:       "test",
-		exType:     EX_TYPE_DIRECT,
+		exType:     ExTypeDirect,
 		durable:    false,
 		autoDelete: false,
 		internal:   false,
@@ -246,7 +246,7 @@ func TestExchange_EqualWithErr_Failed_ExType(t *testing.T) {
 func TestExchange_EqualWithErr_Failed_Durable(t *testing.T) {
 	e1 := &Exchange{
 		Name:       "test",
-		exType:     EX_TYPE_DIRECT,
+		exType:     ExTypeDirect,
 		durable:    false,
 		autoDelete: false,
 		internal:   false,
@@ -255,7 +255,7 @@ func TestExchange_EqualWithErr_Failed_Durable(t *testing.T) {
 
 	e2 := &Exchange{
 		Name:       "test",
-		exType:     EX_TYPE_DIRECT,
+		exType:     ExTypeDirect,
 		durable:    true,
 		autoDelete: false,
 		internal:   false,
@@ -270,7 +270,7 @@ func TestExchange_EqualWithErr_Failed_Durable(t *testing.T) {
 func TestExchange_EqualWithErr_Failed_AutoDelete(t *testing.T) {
 	e1 := &Exchange{
 		Name:       "test",
-		exType:     EX_TYPE_DIRECT,
+		exType:     ExTypeDirect,
 		durable:    false,
 		autoDelete: false,
 		internal:   false,
@@ -279,7 +279,7 @@ func TestExchange_EqualWithErr_Failed_AutoDelete(t *testing.T) {
 
 	e2 := &Exchange{
 		Name:       "test",
-		exType:     EX_TYPE_DIRECT,
+		exType:     ExTypeDirect,
 		durable:    false,
 		autoDelete: true,
 		internal:   false,
@@ -294,7 +294,7 @@ func TestExchange_EqualWithErr_Failed_AutoDelete(t *testing.T) {
 func TestExchange_EqualWithErr_Failed_Internal(t *testing.T) {
 	e1 := &Exchange{
 		Name:       "test",
-		exType:     EX_TYPE_DIRECT,
+		exType:     ExTypeDirect,
 		durable:    false,
 		autoDelete: false,
 		internal:   false,
@@ -303,7 +303,7 @@ func TestExchange_EqualWithErr_Failed_Internal(t *testing.T) {
 
 	e2 := &Exchange{
 		Name:       "test",
-		exType:     EX_TYPE_DIRECT,
+		exType:     ExTypeDirect,
 		durable:    false,
 		autoDelete: false,
 		internal:   true,
@@ -318,7 +318,7 @@ func TestExchange_EqualWithErr_Failed_Internal(t *testing.T) {
 func TestGetExchangeTypeAlias(t *testing.T) {
 	var actual string
 	var err error
-	for id, expected := range exchangeTypeIdAliasMap {
+	for id, expected := range exchangeTypeIDAliasMap {
 		if actual, err = GetExchangeTypeAlias(id); err != nil {
 			t.Fatal(err)
 		}
@@ -335,8 +335,8 @@ func TestGetExchangeTypeAlias(t *testing.T) {
 func TestGetExchangeTypeId(t *testing.T) {
 	var actual byte
 	var err error
-	for alias, expected := range exchangeTypeAliasIdMap {
-		if actual, err = GetExchangeTypeId(alias); err != nil {
+	for alias, expected := range exchangeTypeAliasIDMap {
+		if actual, err = GetExchangeTypeID(alias); err != nil {
 			t.Fatal(err)
 		}
 		if expected != actual {
@@ -344,7 +344,7 @@ func TestGetExchangeTypeId(t *testing.T) {
 		}
 	}
 
-	if _, err = GetExchangeTypeId("test"); err == nil {
+	if _, err = GetExchangeTypeID("test"); err == nil {
 		t.Fatal("Expected 'Undefined exchange alias' error")
 	}
 }
@@ -352,7 +352,7 @@ func TestGetExchangeTypeId(t *testing.T) {
 func TestExchange_GetName(t *testing.T) {
 	e := &Exchange{
 		Name:       "test",
-		exType:     EX_TYPE_DIRECT,
+		exType:     ExTypeDirect,
 		durable:    false,
 		autoDelete: false,
 		internal:   false,
@@ -367,7 +367,7 @@ func TestExchange_GetName(t *testing.T) {
 func TestExchange_Marshal(t *testing.T) {
 	e := &Exchange{
 		Name:       "test",
-		exType:     EX_TYPE_DIRECT,
+		exType:     ExTypeDirect,
 		durable:    true,
 		autoDelete: false,
 		internal:   false,
@@ -386,7 +386,7 @@ func TestExchange_Marshal(t *testing.T) {
 func TestExchange_IsSystem(t *testing.T) {
 	e := &Exchange{
 		Name:       "test",
-		exType:     EX_TYPE_DIRECT,
+		exType:     ExTypeDirect,
 		durable:    false,
 		autoDelete: false,
 		internal:   false,

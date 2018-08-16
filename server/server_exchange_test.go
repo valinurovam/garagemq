@@ -9,7 +9,7 @@ import (
 func Test_DefaultExchanges(t *testing.T) {
 	sc, _ := getNewSC(getDefaultTestConfig())
 	defer sc.clean()
-	vhost := sc.server.GetVhost("/")
+	vhost := sc.server.getVhost("/")
 
 	exchanges := []string{"direct", "fanout", "headers", "topic"}
 	for _, name := range exchanges {
@@ -24,7 +24,7 @@ func Test_DefaultExchanges(t *testing.T) {
 		t.Fatal("Sytem exchange does not exists")
 	}
 
-	if systemExchange.ExType() != exchange.EX_TYPE_DIRECT {
+	if systemExchange.ExType() != exchange.ExTypeDirect {
 		t.Fatalf("Expected: 'direct' system exchange kind")
 	}
 }
@@ -38,7 +38,7 @@ func Test_ExchangeDeclare_Success(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if sc.server.GetVhost("/").GetExchange("test") == nil {
+	if sc.server.getVhost("/").GetExchange("test") == nil {
 		t.Fatal("Exchange does not exists after 'ExchangeDeclare'")
 	}
 }
@@ -52,7 +52,7 @@ func Test_ExchangeDeclareDurable_Success(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if sc.server.GetVhost("/").GetExchange("test") == nil {
+	if sc.server.getVhost("/").GetExchange("test") == nil {
 		t.Fatal("Exchange does not exists after 'ExchangeDeclareDurable'")
 	}
 

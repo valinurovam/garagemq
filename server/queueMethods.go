@@ -121,7 +121,7 @@ func (channel *Channel) queueBind(method *amqp.QueueBind) *amqp.Error {
 		return err
 	}
 
-	bind := binding.New(method.Queue, method.Exchange, method.RoutingKey, method.Arguments, ex.ExType() == exchange.EX_TYPE_TOPIC)
+	bind := binding.NewBinding(method.Queue, method.Exchange, method.RoutingKey, method.Arguments, ex.ExType() == exchange.ExTypeTopic)
 	ex.AppendBinding(bind)
 
 	if ex.IsDurable() && qu.IsDurable() {
@@ -152,7 +152,7 @@ func (channel *Channel) queueUnbind(method *amqp.QueueUnbind) *amqp.Error {
 		return err
 	}
 
-	bind := binding.New(method.Queue, method.Exchange, method.RoutingKey, method.Arguments, ex.ExType() == exchange.EX_TYPE_TOPIC)
+	bind := binding.NewBinding(method.Queue, method.Exchange, method.RoutingKey, method.Arguments, ex.ExType() == exchange.ExTypeTopic)
 	ex.RemoveBinding(bind)
 	channel.conn.getVirtualHost().RemoveBindings([]*binding.Binding{bind})
 	channel.SendMethod(&amqp.QueueUnbindOk{})

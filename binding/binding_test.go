@@ -42,7 +42,7 @@ func bindingsProviderData(topic bool) []*binding.Binding {
 	result := []*binding.Binding{}
 
 	for queue, key := range bindData {
-		result = append(result, binding.New(queue, "", key, &amqp.Table{}, topic))
+		result = append(result, binding.NewBinding(queue, "", key, &amqp.Table{}, topic))
 	}
 
 	return result
@@ -127,29 +127,29 @@ func TestBinding_MatchFanout(t *testing.T) {
 }
 
 func TestBinding_Equal(t *testing.T) {
-	b1 := binding.New("test_q", "test_ex", "test_key", &amqp.Table{}, true)
-	b2 := binding.New("test_q", "test_ex", "test_key", &amqp.Table{}, true)
+	b1 := binding.NewBinding("test_q", "test_ex", "test_key", &amqp.Table{}, true)
+	b2 := binding.NewBinding("test_q", "test_ex", "test_key", &amqp.Table{}, true)
 
 	if !b1.Equal(b2) {
 		t.Fatalf("Excpected equal bindings")
 	}
 
-	b1 = binding.New("test_q1", "test_ex", "test_key", &amqp.Table{}, true)
-	b2 = binding.New("test_q", "test_ex", "test_key", &amqp.Table{}, true)
+	b1 = binding.NewBinding("test_q1", "test_ex", "test_key", &amqp.Table{}, true)
+	b2 = binding.NewBinding("test_q", "test_ex", "test_key", &amqp.Table{}, true)
 
 	if b1.Equal(b2) {
 		t.Fatalf("Excpected not equal bindings")
 	}
 
-	b1 = binding.New("test_q", "test_ex2", "test_key", &amqp.Table{}, true)
-	b2 = binding.New("test_q", "test_ex", "test_key", &amqp.Table{}, true)
+	b1 = binding.NewBinding("test_q", "test_ex2", "test_key", &amqp.Table{}, true)
+	b2 = binding.NewBinding("test_q", "test_ex", "test_key", &amqp.Table{}, true)
 
 	if b1.Equal(b2) {
 		t.Fatalf("Excpected not equal bindings")
 	}
 
-	b1 = binding.New("test_q", "test_ex", "test_key3", &amqp.Table{}, true)
-	b2 = binding.New("test_q", "test_ex", "test_key", &amqp.Table{}, true)
+	b1 = binding.NewBinding("test_q", "test_ex", "test_key3", &amqp.Table{}, true)
+	b2 = binding.NewBinding("test_q", "test_ex", "test_key", &amqp.Table{}, true)
 
 	if b1.Equal(b2) {
 		t.Fatalf("Excpected not equal bindings")
@@ -181,7 +181,7 @@ func testEq(a, b []string) bool {
 }
 
 func TestBinding_GetName(t *testing.T) {
-	b := binding.New("test_q", "test_ex", "test_key", &amqp.Table{}, true)
+	b := binding.NewBinding("test_q", "test_ex", "test_key", &amqp.Table{}, true)
 	name := strings.Join(
 		[]string{b.Queue, b.Exchange, b.RoutingKey},
 		"_",
@@ -193,7 +193,7 @@ func TestBinding_GetName(t *testing.T) {
 }
 
 func TestBinding_Marshal(t *testing.T) {
-	b := binding.New("test_q", "test_ex", "test_key", &amqp.Table{}, true)
+	b := binding.NewBinding("test_q", "test_ex", "test_key", &amqp.Table{}, true)
 	data := b.Marshal()
 
 	bUm := &binding.Binding{}

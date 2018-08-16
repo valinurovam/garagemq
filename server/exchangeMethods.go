@@ -19,7 +19,7 @@ func (channel *Channel) exchangeRoute(method amqp.Method) *amqp.Error {
 }
 
 func (channel *Channel) exchangeDeclare(method *amqp.ExchangeDeclare) *amqp.Error {
-	exTypeId, err := exchange.GetExchangeTypeId(method.Type)
+	exTypeId, err := exchange.GetExchangeTypeID(method.Type)
 	if err != nil {
 		return amqp.NewChannelError(amqp.NotImplemented, err.Error(), method.ClassIdentifier(), method.MethodIdentifier())
 	}
@@ -62,7 +62,7 @@ func (channel *Channel) exchangeDeclare(method *amqp.ExchangeDeclare) *amqp.Erro
 		)
 	}
 
-	newExchange := exchange.New(
+	newExchange := exchange.NewExchange(
 		method.Exchange,
 		exTypeId,
 		method.Durable,

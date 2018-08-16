@@ -9,6 +9,7 @@ AMQP-server implemented with #golang
 - Protocol compatible with RabbitMQ and standard AMQP 0-9-1.
 
 ### TODO
+- [ ] Admin interface
 - [ ] Add comments
 - [ ] Optimize binds
 - [ ] Fix golint exceptions

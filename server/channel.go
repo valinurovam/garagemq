@@ -73,8 +73,8 @@ func NewChannel(id uint16, conn *Connection) (*Channel) {
 		status:       channelNew,
 		protoVersion: conn.server.protoVersion,
 		consumers:    make(map[string]*consumer.Consumer),
-		qos:          qos.New(0, 0),
-		consumerQos:  qos.New(0, 0),
+		qos:          qos.NewAmqpQos(0, 0),
+		consumerQos:  qos.NewAmqpQos(0, 0),
 		ackStore:     make(map[uint64]*UnackedMessage),
 		confirmQueue: make([]*amqp.ConfirmMeta, 0),
 	}
@@ -234,6 +234,8 @@ func (channel *Channel) handleContentBody(bodyFrame *amqp.Frame) *amqp.Error {
 	return nil
 }
 
+// SendMethod send method to client
+// Method will be packed into frame and send to outgoing channel
 func (channel *Channel) SendMethod(method amqp.Method) {
 	rawMethod := bytes.NewBuffer([]byte{})
 	if err := amqp.WriteMethod(rawMethod, method, channel.server.protoVersion); err != nil {
@@ -251,6 +253,7 @@ func (channel *Channel) sendOutgoing(frame *amqp.Frame) {
 	channel.outgoing <- frame
 }
 
+// SendContent send message to consumers or returns to publishers
 func (channel *Channel) SendContent(method amqp.Method, message *amqp.Message) {
 	channel.SendMethod(method)
 
@@ -264,7 +267,7 @@ func (channel *Channel) SendContent(method amqp.Method, message *amqp.Message) {
 	}
 }
 
-func (channel *Channel) AddConfirm(meta *amqp.ConfirmMeta) {
+func (channel *Channel) addConfirm(meta *amqp.ConfirmMeta) {
 	if !channel.confirmMode {
 		return
 	}
@@ -314,7 +317,7 @@ func (channel *Channel) addConsumer(method *amqp.BasicConsume) (cmr *consumer.Co
 		consumerQos = []*qos.AmqpQos{channel.qos, &cmrQos}
 	}
 
-	cmr = consumer.New(method.Queue, method.ConsumerTag, method.NoAck, channel, qu, consumerQos)
+	cmr = consumer.NewConsumer(method.Queue, method.ConsumerTag, method.NoAck, channel, qu, consumerQos)
 	if _, ok := channel.consumers[cmr.Tag()]; ok {
 		return nil, amqp.NewChannelError(amqp.NotAllowed, fmt.Sprintf("Consumer with tag '%s' already exists", cmr.Tag()), method.ClassIdentifier(), method.MethodIdentifier())
 	}
@@ -368,6 +371,7 @@ func (channel *Channel) updateQos(prefetchCount uint16, prefetchSize uint32, glo
 	}
 }
 
+// NextDeliveryTag returns next delivery tag for current channel
 func (channel *Channel) NextDeliveryTag() uint64 {
 	return atomic.AddUint64(&channel.deliveryTag, 1)
 }
@@ -376,6 +380,7 @@ func (channel *Channel) nextConfirmDeliveryTag() uint64 {
 	return atomic.AddUint64(&channel.confirmDeliveryTag, 1)
 }
 
+// AddUnackedMessage add message to unacked queue
 func (channel *Channel) AddUnackedMessage(dTag uint64, cTag string, queue string, message *amqp.Message) {
 	channel.ackLock.Lock()
 	defer channel.ackLock.Unlock()
@@ -525,7 +530,7 @@ func (channel *Channel) checkQueueLockWithError(qu *queue.Queue, method amqp.Met
 	return nil
 }
 
-func (channel *Channel) IsActive() bool {
+func (channel *Channel) isActive() bool {
 	return channel.active
 }
 

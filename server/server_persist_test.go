@@ -37,16 +37,16 @@ func Test_ServerPersist_Exchange_Success(t *testing.T) {
 	if err := ch.ExchangeDeclarePassive("testExDirect", "direct", true, false, false, false, emptyTable); err != nil {
 		t.Fatal("Expected exchange exists after server restart", err)
 	}
-	ex := sc.server.GetVhost("/").GetExchange("testExDirect")
-	if ex.ExType() != exchange.EX_TYPE_DIRECT {
+	ex := sc.server.getVhost("/").GetExchange("testExDirect")
+	if ex.ExType() != exchange.ExTypeDirect {
 		t.Fatal("Expected direct exchange")
 	}
 
 	if err := ch.ExchangeDeclarePassive("testExTopic", "topic", true, false, false, false, emptyTable); err != nil {
 		t.Fatal("Expected exchange exists after server restart", err)
 	}
-	ex = sc.server.GetVhost("/").GetExchange("testExTopic")
-	if ex.ExType() != exchange.EX_TYPE_TOPIC {
+	ex = sc.server.getVhost("/").GetExchange("testExTopic")
+	if ex.ExType() != exchange.ExTypeTopic {
 		t.Fatal("Expected topic exchange")
 	}
 }

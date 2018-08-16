@@ -14,6 +14,7 @@ import (
 	"github.com/valinurovam/garagemq/qos"
 )
 
+// connection status list
 const (
 	ConnStart    = iota
 	ConnStartOK
@@ -38,6 +39,7 @@ const (
 // exceeding the MSS.
 const flushThreshold = 1414
 
+// Connection represents AMQP-connection
 type Connection struct {
 	id               uint64
 	server           *Server
@@ -56,6 +58,7 @@ type Connection struct {
 	closeCh          chan bool
 }
 
+// NewConnection returns new instance of amqp Connection
 func NewConnection(server *Server, netConn *net.TCPConn) (connection *Connection) {
 	connection = &Connection{
 		id:           atomic.AddUint64(&server.connSeq, 1),
@@ -65,7 +68,7 @@ func NewConnection(server *Server, netConn *net.TCPConn) (connection *Connection
 		outgoing:     make(chan *amqp.Frame, 100),
 		maxChannels:  server.config.Connection.ChannelsMax,
 		maxFrameSize: server.config.Connection.FrameMaxSize,
-		qos:          qos.New(0, 0),
+		qos:          qos.NewAmqpQos(0, 0),
 		closeCh:      make(chan bool, 1),
 	}
 
@@ -86,14 +89,14 @@ func (conn *Connection) close() {
 
 	// channel0 should we be closed at the end
 	channelIds := make([]int, 0)
-	for chId := range conn.channels {
-		channelIds = append(channelIds, int(chId))
+	for chID := range conn.channels {
+		channelIds = append(channelIds, int(chID))
 	}
 	sort.Sort(sort.Reverse(sort.IntSlice(channelIds)))
-	for _, chId := range channelIds {
-		channel := conn.channels[uint16(chId)]
+	for _, chID := range channelIds {
+		channel := conn.channels[uint16(chID)]
 		channel.close()
-		delete(conn.channels, uint16(chId))
+		delete(conn.channels, uint16(chID))
 	}
 	conn.clearQueues()
 	conn.netConn.Close()

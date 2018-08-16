@@ -16,7 +16,7 @@ func Test_QueueDeclare_Success(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if sc.server.GetVhost("/").GetQueue("test") == nil {
+	if sc.server.getVhost("/").GetQueue("test") == nil {
 		t.Fatal("Queue does not exists after 'QueueDeclare'")
 	}
 }
@@ -30,7 +30,7 @@ func Test_QueueDeclareDurable_Success(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if sc.server.GetVhost("/").GetQueue("test") == nil {
+	if sc.server.getVhost("/").GetQueue("test") == nil {
 		t.Fatal("Queue does not exists after 'QueueDeclare'")
 	}
 
@@ -59,7 +59,7 @@ func Test_QueueDeclare_HasDefaultRoute(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	bindings := sc.server.GetVhost("/").GetDefaultExchange().GetBindings()
+	bindings := sc.server.getVhost("/").GetDefaultExchange().GetBindings()
 	found := false
 	for _, bind := range bindings {
 		if bind.GetQueue() == "test" && bind.GetRoutingKey() == "test" {
@@ -152,7 +152,7 @@ func Test_QueueDeclareExclusive_Success(t *testing.T) {
 	ch.Close()
 	sc.client.Close()
 
-	if sc.server.GetVhost("/").GetQueue("test") != nil {
+	if sc.server.getVhost("/").GetQueue("test") != nil {
 		t.Fatal("Exclusive queue exists after connection close")
 	}
 }
@@ -196,7 +196,7 @@ func Test_QueueBind_Success(t *testing.T) {
 	}
 
 	found := false
-	for _, bind := range sc.server.GetVhost("/").GetExchange("testEx").GetBindings() {
+	for _, bind := range sc.server.getVhost("/").GetExchange("testEx").GetBindings() {
 		if bind.GetQueue() == "testQu" && bind.GetRoutingKey() == "key" && bind.GetExchange() == "testEx" {
 			found = true
 		}
@@ -220,7 +220,7 @@ func Test_QueueBind_Success_Rebind(t *testing.T) {
 	}
 
 	foundCount := 0
-	for _, bind := range sc.server.GetVhost("/").GetExchange("testEx").GetBindings() {
+	for _, bind := range sc.server.getVhost("/").GetExchange("testEx").GetBindings() {
 		if bind.GetQueue() == "testQu" && bind.GetRoutingKey() == "key" && bind.GetExchange() == "testEx" {
 			foundCount++
 		}
@@ -282,7 +282,7 @@ func Test_QueueUnbind_Success(t *testing.T) {
 	ch.QueueUnbind("testQu", "key", "testEx", emptyTable)
 
 	found := false
-	for _, bind := range sc.server.GetVhost("/").GetExchange("testEx").GetBindings() {
+	for _, bind := range sc.server.getVhost("/").GetExchange("testEx").GetBindings() {
 		if bind.GetQueue() == "testQu" && bind.GetRoutingKey() == "key" && bind.GetExchange() == "testEx" {
 			found = true
 		}
@@ -346,7 +346,7 @@ func Test_QueuePurge_Success(t *testing.T) {
 	}
 
 	time.Sleep(5 * time.Millisecond)
-	length := sc.server.GetVhost("/").GetQueue("test").Length()
+	length := sc.server.getVhost("/").GetQueue("test").Length()
 	if length != uint64(msgCount) {
 		t.Fatalf("Expected: queue.length = %d, %d given", msgCount, length)
 	}
@@ -359,7 +359,7 @@ func Test_QueuePurge_Success(t *testing.T) {
 	if purgedCount != msgCount {
 		t.Fatalf("Expected: purgedCount = %d, %d given", msgCount, length)
 	}
-	length = sc.server.GetVhost("/").GetQueue("test").Length()
+	length = sc.server.getVhost("/").GetQueue("test").Length()
 	if length != 0 {
 		t.Fatalf("Queue is not empty after QueuePurge")
 	}
@@ -413,7 +413,7 @@ func Test_QueueDelete_Success(t *testing.T) {
 		t.Fatalf("Expected: deleteCount = %d, %d given", msgCount, deletedCount)
 	}
 
-	if q := sc.server.GetVhost("/").GetQueue("test"); q != nil {
+	if q := sc.server.getVhost("/").GetQueue("test"); q != nil {
 		t.Fatalf("Queue exists after delete")
 	}
 }
@@ -439,7 +439,7 @@ func Test_QueueDeleteDurable_Success(t *testing.T) {
 		t.Fatalf("Expected: deleteCount = %d, %d given", msgCount, deletedCount)
 	}
 
-	if q := sc.server.GetVhost("/").GetQueue("test"); q != nil {
+	if q := sc.server.getVhost("/").GetQueue("test"); q != nil {
 		t.Fatalf("Queue exists after delete")
 	}
 

@@ -2,6 +2,7 @@ package qos
 
 import "sync"
 
+// AmqpQos represents qos system
 type AmqpQos struct {
 	sync.Mutex
 	prefetchCount uint16
@@ -10,7 +11,8 @@ type AmqpQos struct {
 	currentSize   uint32
 }
 
-func New(prefetchCount uint16, prefetchSize uint32) *AmqpQos {
+// NewAmqpQos returns new instance of AmqpQos
+func NewAmqpQos(prefetchCount uint16, prefetchSize uint32) *AmqpQos {
 	return &AmqpQos{
 		prefetchCount: prefetchCount,
 		prefetchSize:  prefetchSize,
@@ -19,23 +21,31 @@ func New(prefetchCount uint16, prefetchSize uint32) *AmqpQos {
 	}
 }
 
+// PrefetchCount returns prefetchCount
 func (qos *AmqpQos) PrefetchCount() uint16 {
 	return qos.prefetchCount
 }
 
+// PrefetchSize returns prefetchSize
 func (qos *AmqpQos) PrefetchSize() uint32 {
 	return qos.prefetchSize
 }
 
+// Update set new prefetchCount and prefetchSize
 func (qos *AmqpQos) Update(prefetchCount uint16, prefetchSize uint32) {
 	qos.prefetchCount = prefetchCount
 	qos.prefetchSize = prefetchSize
 }
 
+// isActive check is qos rules are active
+// both prefetchSize and prefetchCount must be 0
 func (qos *AmqpQos) IsActive() bool {
 	return qos.prefetchCount != 0 || qos.prefetchSize != 0
 }
 
+// Inc increment current count and size
+// Returns true if increment success
+// Returns false if after increment size or count will be more than prefetchCount or prefetchSize
 func (qos *AmqpQos) Inc(count uint16, size uint32) bool {
 	qos.Lock()
 	defer qos.Unlock()
@@ -52,6 +62,7 @@ func (qos *AmqpQos) Inc(count uint16, size uint32) bool {
 	return false
 }
 
+// Dec decrement current count and size
 func (qos *AmqpQos) Dec(count uint16, size uint32) {
 	qos.Lock()
 	defer qos.Unlock()
@@ -69,6 +80,7 @@ func (qos *AmqpQos) Dec(count uint16, size uint32) {
 	}
 }
 
+// Release reset current count and size
 func (qos *AmqpQos) Release() {
 	qos.Lock()
 	defer qos.Unlock()

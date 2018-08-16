@@ -3,7 +3,7 @@ package qos
 import "testing"
 
 func TestAmqpQos_IsActive(t *testing.T) {
-	q := New(1, 10)
+	q := NewAmqpQos(1, 10)
 
 	if q.PrefetchSize() != 10 {
 		t.Fatalf("PrefetchSize: Expected %d, actual %d", 10, q.PrefetchSize())
@@ -17,7 +17,7 @@ func TestAmqpQos_IsActive(t *testing.T) {
 		t.Fatalf("Expected active qos")
 	}
 
-	q = New(0, 0)
+	q = NewAmqpQos(0, 0)
 
 	if q.IsActive() {
 		t.Fatalf("Expected inactive qos")
@@ -25,7 +25,7 @@ func TestAmqpQos_IsActive(t *testing.T) {
 }
 
 func TestAmqpQos_Dec(t *testing.T) {
-	q := New(5, 10)
+	q := NewAmqpQos(5, 10)
 	q.Dec(1, 1)
 
 	if q.currentCount != 0 {
@@ -49,7 +49,7 @@ func TestAmqpQos_Dec(t *testing.T) {
 }
 
 func TestAmqpQos_Inc(t *testing.T) {
-	q := New(5, 10)
+	q := NewAmqpQos(5, 10)
 	res := q.Inc(1, 1)
 
 	if !res {
@@ -63,14 +63,14 @@ func TestAmqpQos_Inc(t *testing.T) {
 		t.Fatalf("Inc: Expected currentSize %d, actual %d", 1, q.currentCount)
 	}
 
-	q = New(5, 10)
+	q = NewAmqpQos(5, 10)
 	if q.Inc(6, 1) {
 		t.Fatalf("Inc: Expected failed inc")
 	}
 }
 
 func TestAmqpQos_Update(t *testing.T) {
-	q := New(5, 10)
+	q := NewAmqpQos(5, 10)
 	q.Update(10, 20)
 
 	if q.prefetchCount != 10 {
@@ -83,7 +83,7 @@ func TestAmqpQos_Update(t *testing.T) {
 }
 
 func TestAmqpQos_Release(t *testing.T) {
-	q := New(5, 10)
+	q := NewAmqpQos(5, 10)
 	q.Inc(1, 1)
 	q.Release()
 

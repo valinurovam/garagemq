@@ -49,6 +49,8 @@ func NewQueue(name string, connID uint64, exclusive bool, autoDelete bool, durab
 	}
 }
 
+// Start starts base queue loop to send events to consumers
+// Current consumer to handle message from queue selected by round robin
 func (queue *Queue) Start() {
 	queue.active = true
 	go func() {
@@ -70,15 +72,21 @@ func (queue *Queue) Start() {
 	}()
 }
 
+// Stop stops main queue loop
 func (queue *Queue) Stop() error {
 	queue.active = false
 	return nil
 }
 
+// GetName returns queue name
 func (queue *Queue) GetName() string {
 	return queue.name
 }
 
+// Push append message into queue tail and put it into message storage
+// if queue is durable and message's persistent flag is true
+// When push call with silent mode true - only append message into queue
+// Silent mode used in server start
 func (queue *Queue) Push(message *amqp.Message, silent bool) {
 	if silent {
 		queue.SafeQueue.Push(message)
@@ -95,6 +103,7 @@ func (queue *Queue) Push(message *amqp.Message, silent bool) {
 	queue.callConsumers()
 }
 
+// Pop returns message from queue head without QOS check
 func (queue *Queue) Pop() *amqp.Message {
 	queue.actLock.RLock()
 	defer queue.actLock.RUnlock()
@@ -108,6 +117,7 @@ func (queue *Queue) Pop() *amqp.Message {
 	return nil
 }
 
+// PopQos returns message from queue head with QOS check
 func (queue *Queue) PopQos(qosList []*qos.AmqpQos) *amqp.Message {
 	queue.actLock.RLock()
 	defer queue.actLock.RUnlock()
@@ -138,12 +148,14 @@ func (queue *Queue) PopQos(qosList []*qos.AmqpQos) *amqp.Message {
 	return nil
 }
 
+// AckMsg accept ack event for message
 func (queue *Queue) AckMsg(message *amqp.Message) {
-	if queue.durable && message.IsPersistent(){
+	if queue.durable && message.IsPersistent() {
 		queue.storage.Del(message, queue.name)
 	}
 }
 
+// Requeue add message into queue head
 func (queue *Queue) Requeue(message *amqp.Message) {
 	message.DeliveryCount++
 	queue.SafeQueue.PushHead(message)
@@ -153,6 +165,7 @@ func (queue *Queue) Requeue(message *amqp.Message) {
 	queue.callConsumers()
 }
 
+// Purge clean queue and message storage for durable queues
 func (queue *Queue) Purge() (length uint64) {
 	queue.SafeQueue.Lock()
 	defer queue.SafeQueue.Unlock()
@@ -165,6 +178,8 @@ func (queue *Queue) Purge() (length uint64) {
 	return
 }
 
+// Delete cancel consumers and delete its messages from storage
+// TODO: method not completed, should purge messages
 func (queue *Queue) Delete(ifUnused bool, ifEmpty bool) (uint64, error) {
 	queue.actLock.Lock()
 	queue.cmrLock.Lock()
@@ -193,6 +208,7 @@ func (queue *Queue) Delete(ifUnused bool, ifEmpty bool) (uint64, error) {
 	return length, nil
 }
 
+// AddConsumer add consumer to consumer messages with exclusive check
 func (queue *Queue) AddConsumer(consumer interfaces.Consumer, exclusive bool) error {
 	queue.cmrLock.Lock()
 	defer queue.cmrLock.Unlock()
@@ -211,6 +227,8 @@ func (queue *Queue) AddConsumer(consumer interfaces.Consumer, exclusive bool) er
 	return nil
 }
 
+// RemoveConsumer remove consumer
+// If it was last consumer and queue is auto-delte - queue will be removed
 func (queue *Queue) RemoveConsumer(cTag string) {
 	queue.cmrLock.Lock()
 	defer queue.cmrLock.Unlock()
@@ -233,6 +251,7 @@ func (queue *Queue) RemoveConsumer(cTag string) {
 	}
 }
 
+// Send event to call next consumer, that it can receive next message
 func (queue *Queue) callConsumers() {
 	select {
 	case queue.call <- true:
@@ -246,16 +265,19 @@ func (queue *Queue) cancelConsumers() {
 	}
 }
 
+// Length returns queue length
 func (queue *Queue) Length() uint64 {
 	return queue.SafeQueue.Length();
 }
 
+// ConsumersCount returns consumers count
 func (queue *Queue) ConsumersCount() int {
 	queue.cmrLock.RLock()
 	defer queue.cmrLock.RUnlock()
 	return len(queue.consumers)
 }
 
+// EqualWithErr returns is given queue equal to current
 func (queue *Queue) EqualWithErr(qB *Queue) error {
 	errTemplate := "inequivalent arg '%s' for queue '%s': received '%s' but current is '%s'"
 	if queue.durable != qB.IsDurable() {
@@ -270,26 +292,32 @@ func (queue *Queue) EqualWithErr(qB *Queue) error {
 	return nil
 }
 
+// Marshal returns raw representation of queue to store into storage
 func (queue *Queue) Marshal(protoVersion string) []byte {
 	return []byte(queue.name)
 }
 
+// Unmarshal returns queue from storage raw bytes data
 func (queue *Queue) Unmarshal(data []byte, protoVersion string) string {
 	return string(data)
 }
 
+// IsDurable returns is queue durable
 func (queue *Queue) IsDurable() bool {
 	return queue.durable
 }
 
+// IsExclusive returns is queue exclusive
 func (queue *Queue) IsExclusive() bool {
 	return queue.exclusive
 }
 
+// ConnID returns ID of connection that create this queue
 func (queue *Queue) ConnID() uint64 {
 	return queue.connID
 }
 
+// isActive returns is queue's main loop is active
 func (queue *Queue) IsActive() bool {
 	return queue.active
 }

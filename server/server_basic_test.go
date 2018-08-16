@@ -231,7 +231,7 @@ func Test_BasicPublish_Persistent_Failed_QueueNonDurable(t *testing.T) {
 	time.Sleep(5 * time.Millisecond)
 
 	found := false
-	vhost := sc.server.GetVhost("/")
+	vhost := sc.server.getVhost("/")
 	storage := vhost.msgStorage
 	storage.Iterate(func(queue string, message *amqp2.Message) {
 		found = true
@@ -556,7 +556,7 @@ func Test_BasicNack_RequeueTrue_Success(t *testing.T) {
 		t.Fatalf("Expected %d unacked, actual %d", 0, unackedLength)
 	}
 
-	queueLength := sc.server.GetVhost("/").GetQueue(queue.Name).Length()
+	queueLength := sc.server.getVhost("/").GetQueue(queue.Name).Length()
 
 	if int(queueLength) != msgCount {
 		t.Fatalf("Expected %d queue length, actual %d", msgCount, queueLength)
@@ -616,7 +616,7 @@ func Test_BasicNack_RequeueTrue_Multiple_Success(t *testing.T) {
 		t.Fatalf("Expected %d unacked, actual %d", 0, unackedLength)
 	}
 
-	queueLength := sc.server.GetVhost("/").GetQueue(queue.Name).Length()
+	queueLength := sc.server.getVhost("/").GetQueue(queue.Name).Length()
 
 	if int(queueLength) != msgCount {
 		t.Fatalf("Expected %d queue length, actual %d", msgCount, queueLength)
@@ -674,7 +674,7 @@ func Test_BasicNack_RequeueFalse_Success(t *testing.T) {
 		t.Fatalf("Expected %d unacked, actual %d", 0, unackedLength)
 	}
 
-	queueLength := sc.server.GetVhost("/").GetQueue(queue.Name).Length()
+	queueLength := sc.server.getVhost("/").GetQueue(queue.Name).Length()
 
 	if queueLength != 0 {
 		t.Fatalf("Expected empty queue after nack with requeue false")
@@ -731,7 +731,7 @@ func Test_BasicNack_RequeueFalse_Multiple_Success(t *testing.T) {
 		t.Fatalf("Expected %d unacked, actual %d", 0, unackedLength)
 	}
 
-	queueLength := sc.server.GetVhost("/").GetQueue(queue.Name).Length()
+	queueLength := sc.server.getVhost("/").GetQueue(queue.Name).Length()
 
 	if queueLength != 0 {
 		t.Fatalf("Expected empty queue after nack with requeue false")

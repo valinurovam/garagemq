@@ -53,7 +53,7 @@ func Test_ChannelFlow_Active_Success(t *testing.T) {
 	}
 
 	channel := getServerChannel(sc, 1)
-	if channel.IsActive() == false {
+	if channel.isActive() == false {
 		t.Fatal("Channel inactive after change flow 'true'")
 	}
 }
@@ -69,7 +69,7 @@ func Test_ChannelFlow_InActive_Success(t *testing.T) {
 	}
 
 	channel := getServerChannel(sc, 1)
-	if channel.IsActive() == true {
+	if channel.isActive() == true {
 		t.Fatal("Channel active after change flow 'false'")
 	}
 }

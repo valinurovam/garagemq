@@ -20,15 +20,13 @@ import (
 	"github.com/valinurovam/garagemq/storage"
 )
 
+// server state statuses
 const (
 	Started  = iota
 	Stopping
 )
 
-type ConfirmServer interface {
-	GetConfirmChannel(meta amqp.ConfirmMeta) *Channel
-}
-
+// Server implements AMQP server
 type Server struct {
 	host         string
 	port         string
@@ -45,6 +43,7 @@ type Server struct {
 	storage      *srvstorage.SrvStorage
 }
 
+// NewServer returns new instance of AMQP Server
 func NewServer(host string, port string, protoVersion string, config *config.Config) (server *Server) {
 	server = &Server{
 		host:         host,
@@ -59,6 +58,7 @@ func NewServer(host string, port string, protoVersion string, config *config.Con
 	return
 }
 
+// Start start main server loop
 func (srv *Server) Start() {
 	log.WithFields(log.Fields{
 		"pid": os.Getpid(),
@@ -81,6 +81,7 @@ func (srv *Server) Start() {
 	select {}
 }
 
+// Stop stop server and all vhosts
 func (srv *Server) Stop() {
 	srv.vhostsLock.Lock()
 	defer srv.vhostsLock.Unlock()
@@ -101,10 +102,12 @@ func (srv *Server) Stop() {
 		virtualHost.Stop()
 	}
 
-	srv.storage.Close()
+	if srv.storage != nil {
+		srv.storage.Close()
+	}
 }
 
-func (srv *Server) GetVhost(name string) *VirtualHost {
+func (srv *Server) getVhost(name string) *VirtualHost {
 	srv.vhostsLock.Lock()
 	defer srv.vhostsLock.Unlock()
 
@@ -162,11 +165,11 @@ func (srv *Server) acceptConnection(conn *net.TCPConn) {
 	go connection.handleConnection()
 }
 
-func (srv *Server) removeConnection(connId uint64) {
+func (srv *Server) removeConnection(connID uint64) {
 	srv.connLock.Lock()
 	defer srv.connLock.Unlock()
 
-	delete(srv.connections, connId)
+	delete(srv.connections, connID)
 }
 
 func (srv *Server) checkAuth(saslData auth.SaslData) bool {
@@ -191,7 +194,7 @@ func (srv *Server) initUsers() {
 }
 
 func (srv *Server) initServerStorage() {
-	srv.storage = srvstorage.New(srv.getStorageInstance("server"), srv.protoVersion)
+	srv.storage = srvstorage.NewSrvStorage(srv.getStorageInstance("server"), srv.protoVersion)
 }
 
 func (srv *Server) initDefaultVirtualHosts() {
@@ -200,7 +203,7 @@ func (srv *Server) initDefaultVirtualHosts() {
 	}).Info("Initialize default vhost")
 
 	log.Info("Initialize host message msgStorage")
-	msgStorage := msgstorage.New(srv.getStorageInstance("vhost_default"), srv.protoVersion)
+	msgStorage := msgstorage.NewMsgStorage(srv.getStorageInstance("vhost_default"), srv.protoVersion)
 
 	srv.vhostsLock.Lock()
 	defer srv.vhostsLock.Unlock()
@@ -223,7 +226,7 @@ func (srv *Server) initVirtualHostsFromStorage() {
 		} else {
 			storageName = host
 		}
-		msgStorage := msgstorage.New(srv.getStorageInstance(storageName), srv.protoVersion)
+		msgStorage := msgstorage.NewMsgStorage(srv.getStorageInstance(storageName), srv.protoVersion)
 		srv.vhosts[host] = NewVhost(host, system, msgStorage, srv)
 	}
 
@@ -254,8 +257,8 @@ func (srv *Server) getStorageInstance(name string) interfaces.DbStorage {
 	switch srv.config.Db.Engine {
 	case "badger":
 		return storage.NewBadger(stPath)
-	//case "bunt":
-	//	return storage.NewBunt(stPath)
+	case "buntdb":
+		return storage.NewBuntDB(stPath)
 	default:
 		srv.stopWithError(nil, fmt.Sprintf("Unknown db engine '%s'", srv.config.Db.Engine))
 	}

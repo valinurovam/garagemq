@@ -24,13 +24,15 @@ type SrvStorage struct {
 	protoVersion string
 }
 
-func New(db interfaces.DbStorage, protoVersion string) *SrvStorage {
+// NewSrvStorage returns instance of server storage
+func NewSrvStorage(db interfaces.DbStorage, protoVersion string) *SrvStorage {
 	return &SrvStorage{
 		db:           db,
 		protoVersion: protoVersion,
 	}
 }
 
+// IsFirstStart checks is storage has lastStartTime key
 func (storage *SrvStorage) IsFirstStart() bool {
 	// TODO Handle error
 	data, _ := storage.db.Get("lastStartTime")
@@ -42,12 +44,14 @@ func (storage *SrvStorage) IsFirstStart() bool {
 	return true
 }
 
+// UpdateLastStart update last server start time
 func (storage *SrvStorage) UpdateLastStart() error {
 	buf := bytes.NewBuffer([]byte{})
 	binary.Write(buf, binary.BigEndian, time.Now().Unix())
 	return storage.db.Set("lastStartTime", buf.Bytes())
 }
 
+// AddVhost add vhost into storage
 func (storage *SrvStorage) AddVhost(vhost string, system bool) error {
 	key := fmt.Sprintf("%s.%s", vhostPrefix, vhost)
 	if system {
@@ -57,6 +61,7 @@ func (storage *SrvStorage) AddVhost(vhost string, system bool) error {
 	return storage.db.Set(key, []byte{})
 }
 
+// GetVhosts returns stored virtual hosts
 func (storage *SrvStorage) GetVhosts() map[string]bool {
 	vhosts := make(map[string]bool)
 	storage.db.Iterate(
@@ -73,36 +78,43 @@ func (storage *SrvStorage) GetVhosts() map[string]bool {
 	return vhosts
 }
 
+// AddBinding add binding into storage
 func (storage *SrvStorage) AddBinding(vhost string, bind *binding.Binding) error {
 	key := fmt.Sprintf("%s.%s.%s", bindingPrefix, vhost, bind.GetName())
 	return storage.db.Set(key, bind.Marshal())
 }
 
+// DelBinding remove binding from storage
 func (storage *SrvStorage) DelBinding(vhost string, bind *binding.Binding) error {
 	key := fmt.Sprintf("%s.%s.%s", bindingPrefix, vhost, bind.GetName())
 	return storage.db.Del(key)
 }
 
+// AddExchange add exchange into storage
 func (storage *SrvStorage) AddExchange(vhost string, ex *exchange.Exchange) error {
 	key := fmt.Sprintf("%s.%s.%s", exchangePrefix, vhost, ex.GetName())
 	return storage.db.Set(key, ex.Marshal(storage.protoVersion))
 }
 
+// DelExchange remove exchange from storage
 func (storage *SrvStorage) DelExchange(vhost string, ex *exchange.Exchange) error {
 	key := fmt.Sprintf("%s.%s.%s", exchangePrefix, vhost, ex.GetName())
 	return storage.db.Del(key)
 }
 
+// AddQueue add queue into storage
 func (storage *SrvStorage) AddQueue(vhost string, queue *queue.Queue) error {
 	key := fmt.Sprintf("%s.%s.%s", queuePrefix, vhost, queue.GetName())
 	return storage.db.Set(key, queue.Marshal(storage.protoVersion))
 }
 
+// DelQueue remove queue from storage
 func (storage *SrvStorage) DelQueue(vhost string, queue *queue.Queue) error {
 	key := fmt.Sprintf("%s.%s.%s", queuePrefix, vhost, queue.GetName())
 	return storage.db.Del(key)
 }
 
+// GetVhostQueues returns queue names that has given vhost
 func (storage *SrvStorage) GetVhostQueues(vhost string) []string {
 	var queueNames []string
 	storage.db.Iterate(
@@ -118,6 +130,7 @@ func (storage *SrvStorage) GetVhostQueues(vhost string) []string {
 	return queueNames
 }
 
+// GetVhostExchanges returns exchanges that has given vhost
 func (storage *SrvStorage) GetVhostExchanges(vhost string) []*exchange.Exchange {
 	var exchanges []*exchange.Exchange
 	storage.db.Iterate(
@@ -134,6 +147,7 @@ func (storage *SrvStorage) GetVhostExchanges(vhost string) []*exchange.Exchange 
 	return exchanges
 }
 
+// GetVhostBindings returns bindings that has given vhost
 func (storage *SrvStorage) GetVhostBindings(vhost string) []*binding.Binding {
 	var bindings []*binding.Binding
 	storage.db.Iterate(
@@ -155,6 +169,7 @@ func getVhostFromKey(key string) string {
 	return parts[2]
 }
 
+// Close properly close storage database
 func (storage *SrvStorage) Close() error {
 	return storage.db.Close()
 }

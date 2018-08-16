@@ -8,12 +8,14 @@ import (
 	"github.com/valinurovam/garagemq/interfaces"
 )
 
-type StorageBadger struct {
+// Badger implements wrapper for badger database
+type Badger struct {
 	db *badger.DB
 }
 
-func NewBadger(storageDir string) *StorageBadger {
-	storage := &StorageBadger{}
+// NewBadger returns new instance of badger wrapper
+func NewBadger(storageDir string) *Badger {
+	storage := &Badger{}
 	opts := badger.DefaultOptions
 	opts.SyncWrites = true
 	opts.TableLoadingMode = options.MemoryMap
@@ -28,7 +30,8 @@ func NewBadger(storageDir string) *StorageBadger {
 	return storage
 }
 
-func (storage *StorageBadger) ProcessBatch(batch []*interfaces.Operation) (err error) {
+// ProcessBatch process batch of operations
+func (storage *Badger) ProcessBatch(batch []*interfaces.Operation) (err error) {
 	return storage.db.Update(func(txn *badger.Txn) error {
 		for _, op := range batch {
 			if op.Op == interfaces.OpSet {
@@ -42,25 +45,29 @@ func (storage *StorageBadger) ProcessBatch(batch []*interfaces.Operation) (err e
 	})
 }
 
-func (storage *StorageBadger) Close() error {
+// Close properly closes badger database
+func (storage *Badger) Close() error {
 	return storage.db.Close()
 }
 
-func (storage *StorageBadger) Set(key string, value []byte) (err error) {
+// Set adds a key-value pair to the database
+func (storage *Badger) Set(key string, value []byte) (err error) {
 	return storage.db.Update(func(txn *badger.Txn) error {
 		err := txn.Set([]byte(key), value)
 		return err
 	})
 }
 
-func (storage *StorageBadger) Del(key string) (err error) {
+// Del deletes a key
+func (storage *Badger) Del(key string) (err error) {
 	return storage.db.Update(func(txn *badger.Txn) error {
 		err := txn.Delete([]byte(key))
 		return err
 	})
 }
 
-func (storage *StorageBadger) Get(key string) (value []byte, err error) {
+// Get returns value by key
+func (storage *Badger) Get(key string) (value []byte, err error) {
 	err = storage.db.View(func(txn *badger.Txn) error {
 		item, err := txn.Get([]byte(key))
 		if err != nil {
@@ -75,7 +82,8 @@ func (storage *StorageBadger) Get(key string) (value []byte, err error) {
 	return
 }
 
-func (storage *StorageBadger) Iterate(fn func(key []byte, value []byte)) {
+// Iterate iterates over all keys
+func (storage *Badger) Iterate(fn func(key []byte, value []byte)) {
 	storage.db.View(func(txn *badger.Txn) error {
 		opts := badger.DefaultIteratorOptions
 		opts.PrefetchValues = false
@@ -95,7 +103,7 @@ func (storage *StorageBadger) Iterate(fn func(key []byte, value []byte)) {
 	})
 }
 
-func (storage *StorageBadger) runStorageGC() {
+func (storage *Badger) runStorageGC() {
 	timer := time.Tick(30 * time.Minute)
 	for {
 		select {
