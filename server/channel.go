@@ -210,11 +210,16 @@ func (channel *Channel) handleContentBody(bodyFrame *amqp.Frame) *amqp.Error {
 	}
 	matchedQueues := ex.GetMatchedQueues(message)
 
-	if len(matchedQueues) == 0 && message.Mandatory {
-		channel.SendContent(
-			&amqp.BasicReturn{ReplyCode: amqp.NoConsumers, ReplyText: "No route", Exchange: message.Exchange, RoutingKey: message.RoutingKey},
-			message,
-		)
+	if len(matchedQueues) == 0 {
+		if message.Mandatory {
+			channel.SendContent(
+				&amqp.BasicReturn{ReplyCode: amqp.NoConsumers, ReplyText: "No route", Exchange: message.Exchange, RoutingKey: message.RoutingKey},
+				message,
+			)
+		} else {
+			channel.addConfirm(&message.ConfirmMeta)
+		}
+
 		return nil
 	}
 
@@ -224,11 +229,7 @@ func (channel *Channel) handleContentBody(bodyFrame *amqp.Frame) *amqp.Error {
 		qu.Push(message, false)
 
 		if message.ConfirmMeta.CanConfirm() && !message.IsPersistent() {
-			// send confirm immediate for non persistent messages
-			channel.SendMethod(&amqp.BasicAck{
-				DeliveryTag: message.ConfirmMeta.DeliveryTag,
-				Multiple:    false,
-			})
+			channel.addConfirm(&message.ConfirmMeta)
 		}
 	}
 	return nil

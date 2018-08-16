@@ -737,3 +737,121 @@ func Test_BasicNack_RequeueFalse_Multiple_Success(t *testing.T) {
 		t.Fatalf("Expected empty queue after nack with requeue false")
 	}
 }
+
+func Test_BasicReject_RequeueTrue_Success(t *testing.T) {
+	sc, _ := getNewSC(getDefaultTestConfig())
+	defer sc.clean()
+	ch, _ := sc.client.Channel()
+
+	queue, _ := ch.QueueDeclare("testQu", false, false, false, false, emptyTable)
+
+	msgCount := 10
+	for i := 0; i < msgCount; i++ {
+		ch.Publish("", queue.Name, false, false, amqp.Publishing{ContentType: "text/plain", Body: []byte("test")})
+	}
+
+	cmr, err := ch.Consume("testQu", "tag", false, false, false, false, emptyTable)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	tick := time.After(10 * time.Millisecond)
+	count := 0;
+	leave := false
+	deliveries := make([]amqp.Delivery, 0, 10)
+	for {
+		select {
+		case msg := <-cmr:
+			deliveries = append(deliveries, msg)
+			count++
+		case <-tick:
+			leave = true
+		default:
+
+		}
+		if leave {
+			break
+		}
+	}
+
+	ch.Cancel("tag", false)
+
+	unackedLength := len(getServerChannel(sc, 1).ackStore)
+	if unackedLength != msgCount {
+		t.Fatalf("Expected %d unacked, actual %d", msgCount, unackedLength)
+	}
+	for _, dlv := range deliveries {
+		ch.Reject(dlv.DeliveryTag, true)
+	}
+
+	time.Sleep(50 * time.Millisecond)
+
+	unackedLength = len(getServerChannel(sc, 1).ackStore)
+	if unackedLength != 0 {
+		t.Fatalf("Expected %d unacked, actual %d", 0, unackedLength)
+	}
+
+	queueLength := sc.server.getVhost("/").GetQueue(queue.Name).Length()
+
+	if int(queueLength) != msgCount {
+		t.Fatalf("Expected %d queue length, actual %d", msgCount, queueLength)
+	}
+}
+
+func Test_BasicReject_RequeueFalse_Success(t *testing.T) {
+	sc, _ := getNewSC(getDefaultTestConfig())
+	defer sc.clean()
+	ch, _ := sc.client.Channel()
+
+	queue, _ := ch.QueueDeclare("testQu", false, false, false, false, emptyTable)
+
+	msgCount := 10
+	for i := 0; i < msgCount; i++ {
+		ch.Publish("", queue.Name, false, false, amqp.Publishing{ContentType: "text/plain", Body: []byte("test")})
+	}
+
+	cmr, err := ch.Consume("testQu", "tag", false, false, false, false, emptyTable)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	tick := time.After(10 * time.Millisecond)
+	count := 0;
+	leave := false
+	deliveries := make([]amqp.Delivery, 0, 10)
+	for {
+		select {
+		case msg := <-cmr:
+			deliveries = append(deliveries, msg)
+			count++
+		case <-tick:
+			leave = true
+		default:
+
+		}
+		if leave {
+			break
+		}
+	}
+
+	unackedLength := len(getServerChannel(sc, 1).ackStore)
+	if unackedLength != msgCount {
+		t.Fatalf("Expected %d unacked, actual %d", msgCount, unackedLength)
+	}
+	for _, dlv := range deliveries {
+		ch.Reject(dlv.DeliveryTag, false)
+	}
+
+	time.Sleep(50 * time.Millisecond)
+
+	unackedLength = len(getServerChannel(sc, 1).ackStore)
+	if unackedLength != 0 {
+		t.Fatalf("Expected %d unacked, actual %d", 0, unackedLength)
+	}
+
+	queueLength := sc.server.getVhost("/").GetQueue(queue.Name).Length()
+
+	if queueLength != 0 {
+		t.Fatalf("Expected empty queue after nack with requeue false")
+	}
+}
