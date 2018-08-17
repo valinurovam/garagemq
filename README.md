@@ -10,9 +10,8 @@ AMQP-server implemented with #golang
 
 ### TODO
 - [ ] Admin interface
-- [ ] Add comments
+- [ ] Add more comments
 - [ ] Optimize binds
-- [ ] Fix golint exceptions
 - [ ] Replication
 - [ ] Own backend for durable entities and persistent messages
 - [ ] Migrate to message reference counting
@@ -23,6 +22,11 @@ Database backend is changeable through config `db.engine`
 db:
   defaultPath: db
   engine: badger
+```
+```
+db:
+  defaultPath: db
+  engine: buntdb
 ```
 - Badger https://github.com/dgraph-io/badger
 - BuntDB https://github.com/tidwall/buntdb
