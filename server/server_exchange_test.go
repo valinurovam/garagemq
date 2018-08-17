@@ -21,7 +21,7 @@ func Test_DefaultExchanges(t *testing.T) {
 
 	systemExchange := vhost.GetDefaultExchange()
 	if systemExchange == nil {
-		t.Fatal("Sytem exchange does not exists")
+		t.Fatal("System exchange does not exists")
 	}
 
 	if systemExchange.ExType() != exchange.ExTypeDirect {
@@ -112,7 +112,7 @@ func Test_ExchangeDeclare_Failed_EmptyName(t *testing.T) {
 	ch, _ := sc.client.Channel()
 
 	if err := ch.ExchangeDeclare("", "direct", false, false, false, false, emptyTable); err == nil {
-		t.Fatal("Expected: exchange name is requred error")
+		t.Fatal("Expected: exchange name is required error")
 	}
 }
 

@@ -2,11 +2,10 @@ package storage
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/tidwall/buntdb"
 	"github.com/valinurovam/garagemq/interfaces"
-
-	"time"
 )
 
 // BuntDB implements wrapper for BuntDB database

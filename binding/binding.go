@@ -139,7 +139,7 @@ func (b *Binding) Marshal() (data []byte, err error) {
 		return nil, err
 	}
 	if err = amqp.WriteShortstr(buf, b.Exchange); err != nil {
-		return nil,err
+		return nil, err
 	}
 	if err = amqp.WriteShortstr(buf, b.RoutingKey); err != nil {
 		return nil, err

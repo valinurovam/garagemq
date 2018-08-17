@@ -27,7 +27,7 @@ func (channel *Channel) exchangeDeclare(method *amqp.ExchangeDeclare) *amqp.Erro
 	if method.Exchange == "" {
 		return amqp.NewChannelError(
 			amqp.CommandInvalid,
-			"exchange name is requred",
+			"exchange name is required",
 			method.ClassIdentifier(),
 			method.MethodIdentifier(),
 		)
@@ -46,9 +46,9 @@ func (channel *Channel) exchangeDeclare(method *amqp.ExchangeDeclare) *amqp.Erro
 				method.ClassIdentifier(),
 				method.MethodIdentifier(),
 			)
-		} else {
-			channel.SendMethod(&amqp.ExchangeDeclareOk{})
 		}
+
+		channel.SendMethod(&amqp.ExchangeDeclareOk{})
 
 		return nil
 	}

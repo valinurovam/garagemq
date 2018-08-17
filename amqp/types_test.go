@@ -129,7 +129,7 @@ func TestMessage_IsPersistent(t *testing.T) {
 			BodySize:      4,
 			propertyFlags: 32768,
 			PropertyList: &BasicPropertyList{
-				DeliveryMode:    &dMode,
+				DeliveryMode: &dMode,
 			},
 		},
 	}
@@ -141,7 +141,7 @@ func TestMessage_IsPersistent(t *testing.T) {
 func TestConfirmMeta_CanConfirm(t *testing.T) {
 	meta := &ConfirmMeta{
 		ExpectedConfirms: 5,
-		ActualConfirms: 5,
+		ActualConfirms:   5,
 	}
 
 	if !meta.CanConfirm() {

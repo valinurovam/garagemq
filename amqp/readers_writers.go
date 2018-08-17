@@ -38,8 +38,8 @@ func ReadFrame(r io.Reader) (frame *Frame, err error) {
 	// check frame end
 	if payload[payloadSize] != FrameEnd {
 		return nil, fmt.Errorf(
-				"The frame-end octet MUST always be the hexadecimal value 'xCE', %x given",
-				payload[payloadSize])
+			"The frame-end octet MUST always be the hexadecimal value 'xCE', %x given",
+			payload[payloadSize])
 	}
 
 	return frame, nil

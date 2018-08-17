@@ -21,6 +21,7 @@ type Consumer interface {
 
 // OpSet identifier for set data into storeage
 const OpSet = 1
+
 // OpDel identifier for delete data from storage
 const OpDel = 2
 

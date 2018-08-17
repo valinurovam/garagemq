@@ -38,4 +38,3 @@ func Test_Connection_Failed_WhenWrongAuth(t *testing.T) {
 		t.Fatal("Expected auth error")
 	}
 }
-

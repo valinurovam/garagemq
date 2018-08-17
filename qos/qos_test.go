@@ -53,7 +53,7 @@ func TestAmqpQos_Inc(t *testing.T) {
 	res := q.Inc(1, 1)
 
 	if !res {
-		t.Fatalf("Inc: Expected successfull inc")
+		t.Fatalf("Inc: Expected successful inc")
 	}
 	if q.currentCount != 1 {
 		t.Fatalf("Inc: Expected currentCount %d, actual %d", 1, q.currentCount)

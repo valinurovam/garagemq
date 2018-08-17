@@ -102,7 +102,7 @@ func Test_QueueDeclare_Failed_EmptyName(t *testing.T) {
 	ch, _ := sc.client.Channel()
 
 	if _, err := ch.QueueDeclare("", false, false, false, false, emptyTable); err == nil {
-		t.Fatal("Expected: queue name is requred error")
+		t.Fatal("Expected: queue name is required error")
 	}
 }
 

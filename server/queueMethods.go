@@ -31,7 +31,7 @@ func (channel *Channel) queueDeclare(method *amqp.QueueDeclare) *amqp.Error {
 	if method.Queue == "" {
 		return amqp.NewChannelError(
 			amqp.CommandInvalid,
-			"queue name is requred",
+			"queue name is required",
 			method.ClassIdentifier(),
 			method.MethodIdentifier(),
 		)
@@ -47,17 +47,17 @@ func (channel *Channel) queueDeclare(method *amqp.QueueDeclare) *amqp.Error {
 
 		if existingQueue == nil {
 			return notFoundErr
-		} else {
-			if exclusiveErr != nil {
-				return exclusiveErr
-			}
-
-			channel.SendMethod(&amqp.QueueDeclareOk{
-				Queue:         method.Queue,
-				MessageCount:  uint32(existingQueue.Length()),
-				ConsumerCount: uint32(existingQueue.ConsumersCount()),
-			})
 		}
+
+		if exclusiveErr != nil {
+			return exclusiveErr
+		}
+
+		channel.SendMethod(&amqp.QueueDeclareOk{
+			Queue:         method.Queue,
+			MessageCount:  uint32(existingQueue.Length()),
+			ConsumerCount: uint32(existingQueue.ConsumersCount()),
+		})
 
 		return nil
 	}
