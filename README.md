@@ -1,4 +1,4 @@
-# GarageMQ
+# GarageMQ [![Build Status](https://travis-ci.org/valinurovam/garagemq.svg?branch=master)](https://travis-ci.org/valinurovam/garagemq) [![Coverage Status](https://coveralls.io/repos/github/valinurovam/garagemq/badge.svg)](https://coveralls.io/github/valinurovam/garagemq) [![Go Report Card](https://goreportcard.com/badge/github.com/valinurovam/garagemq)](https://goreportcard.com/report/github.com/valinurovam/garagemq)
 
 AMQP-server implemented with #golang
 

@@ -152,6 +152,7 @@ func Test_QueueDeclareExclusive_Success(t *testing.T) {
 	ch.Close()
 	sc.client.Close()
 
+	time.Sleep(100 * time.Millisecond)
 	if sc.server.getVhost("/").GetQueue("test") != nil {
 		t.Fatal("Exclusive queue exists after connection close")
 	}
