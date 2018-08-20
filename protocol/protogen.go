@@ -119,7 +119,6 @@ package amqp
 
 import ( 
 	"io"
-	"errors"
 	"fmt"
 	"time"
 )

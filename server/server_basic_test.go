@@ -80,7 +80,7 @@ func Test_BasicQos_Check_Global_Success(t *testing.T) {
 		t.Fatal("Expected consumers on channel consumers map")
 	}
 
-	tick := time.After(10 * time.Millisecond)
+	tick := time.After(100 * time.Millisecond)
 	count := 0;
 	leave := false
 	for {
@@ -97,7 +97,7 @@ func Test_BasicQos_Check_Global_Success(t *testing.T) {
 		}
 	}
 
-	time.Sleep(50 * time.Millisecond)
+	time.Sleep(100 * time.Millisecond)
 	if count != prefetchCount {
 		t.Fatalf("Expected %d messages, received %d", prefetchCount, count)
 	}
@@ -134,7 +134,7 @@ func Test_BasicQos_Check_NonGlobal_Success(t *testing.T) {
 		t.Fatal("Expected consumers on channel consumers map")
 	}
 
-	tick := time.After(10 * time.Millisecond)
+	tick := time.After(100 * time.Millisecond)
 	count := 0;
 	leave := false
 	for {
@@ -151,7 +151,7 @@ func Test_BasicQos_Check_NonGlobal_Success(t *testing.T) {
 		}
 	}
 
-	time.Sleep(50 * time.Millisecond)
+	time.Sleep(100 * time.Millisecond)
 	if count != prefetchCountCmr {
 		t.Fatalf("Expected %d messages, received %d", prefetchCountCmr, count)
 	}
@@ -192,7 +192,7 @@ func Test_BasicPublish_Persistent_Success(t *testing.T) {
 	}
 
 	// wait call persistStorage()
-	time.Sleep(50 * time.Millisecond)
+	time.Sleep(100 * time.Millisecond)
 	sc.server.Stop()
 
 	sc, _ = getNewSC(getDefaultTestConfig())
@@ -228,7 +228,7 @@ func Test_BasicPublish_Persistent_Failed_QueueNonDurable(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	time.Sleep(5 * time.Millisecond)
+	time.Sleep(100 * time.Millisecond)
 
 	found := false
 	vhost := sc.server.getVhost("/")
@@ -261,7 +261,7 @@ func Test_BasicPublish_Failed_ExchangeNotFound(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	time.Sleep(5 * time.Millisecond)
+	time.Sleep(100 * time.Millisecond)
 	select {
 	case <-c:
 	default:
@@ -288,7 +288,7 @@ func Test_BasicPublish_Failed_Immediate(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	time.Sleep(5 * time.Millisecond)
+	time.Sleep(100 * time.Millisecond)
 	select {
 	case <-c:
 	default:
@@ -315,7 +315,7 @@ func Test_BasicPublish_Failed_Mandatory(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	time.Sleep(5 * time.Millisecond)
+	time.Sleep(100 * time.Millisecond)
 	select {
 	case <-r:
 	default:
@@ -344,7 +344,7 @@ func Test_BasicConsume_WithOrderCheck_Success(t *testing.T) {
 		t.Fatal("Expected consumers on channel consumers map")
 	}
 
-	tick := time.After(10 * time.Millisecond)
+	tick := time.After(100 * time.Millisecond)
 	count := 0;
 	leave := false
 	for {
@@ -370,7 +370,7 @@ func Test_BasicConsume_WithOrderCheck_Success(t *testing.T) {
 		}
 	}
 
-	time.Sleep(50 * time.Millisecond)
+	time.Sleep(100 * time.Millisecond)
 	if count != msgCount {
 		t.Fatalf("Expected %d messages, received %d", msgCount, count)
 	}
@@ -416,7 +416,7 @@ func Test_BasicAck_Success(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	tick := time.After(10 * time.Millisecond)
+	tick := time.After(100 * time.Millisecond)
 	count := 0;
 	leave := false
 	deliveries := make([]amqp.Delivery, 0, 10)
@@ -443,7 +443,7 @@ func Test_BasicAck_Success(t *testing.T) {
 		ch.Ack(dlv.DeliveryTag, false)
 	}
 
-	time.Sleep(50 * time.Millisecond)
+	time.Sleep(100 * time.Millisecond)
 
 	unackedLength = len(getServerChannel(sc, 1).ackStore)
 	if unackedLength != 0 {
@@ -468,7 +468,7 @@ func Test_BasicAckMultiple_Success(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	tick := time.After(10 * time.Millisecond)
+	tick := time.After(100 * time.Millisecond)
 	count := 0;
 	leave := false
 	deliveries := make([]amqp.Delivery, 0, 10)
@@ -495,7 +495,7 @@ func Test_BasicAckMultiple_Success(t *testing.T) {
 	dlv := deliveries[len(deliveries)-1]
 	ch.Ack(dlv.DeliveryTag, true)
 
-	time.Sleep(50 * time.Millisecond)
+	time.Sleep(100 * time.Millisecond)
 
 	unackedLength = len(getServerChannel(sc, 1).ackStore)
 	if unackedLength != 0 {
@@ -520,7 +520,7 @@ func Test_BasicNack_RequeueTrue_Success(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	tick := time.After(10 * time.Millisecond)
+	tick := time.After(100 * time.Millisecond)
 	count := 0;
 	leave := false
 	deliveries := make([]amqp.Delivery, 0, 10)
@@ -549,7 +549,7 @@ func Test_BasicNack_RequeueTrue_Success(t *testing.T) {
 		ch.Nack(dlv.DeliveryTag, false, true)
 	}
 
-	time.Sleep(50 * time.Millisecond)
+	time.Sleep(100 * time.Millisecond)
 
 	unackedLength = len(getServerChannel(sc, 1).ackStore)
 	if unackedLength != 0 {
@@ -580,7 +580,7 @@ func Test_BasicNack_RequeueTrue_Multiple_Success(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	tick := time.After(10 * time.Millisecond)
+	tick := time.After(100 * time.Millisecond)
 	count := 0;
 	leave := false
 	deliveries := make([]amqp.Delivery, 0, 10)
@@ -609,7 +609,7 @@ func Test_BasicNack_RequeueTrue_Multiple_Success(t *testing.T) {
 	dlv := deliveries[len(deliveries)-1]
 	ch.Nack(dlv.DeliveryTag, true, true)
 
-	time.Sleep(50 * time.Millisecond)
+	time.Sleep(100 * time.Millisecond)
 
 	unackedLength = len(getServerChannel(sc, 1).ackStore)
 	if unackedLength != 0 {
@@ -640,7 +640,7 @@ func Test_BasicNack_RequeueFalse_Success(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	tick := time.After(10 * time.Millisecond)
+	tick := time.After(100 * time.Millisecond)
 	count := 0;
 	leave := false
 	deliveries := make([]amqp.Delivery, 0, 10)
@@ -667,7 +667,7 @@ func Test_BasicNack_RequeueFalse_Success(t *testing.T) {
 		ch.Nack(dlv.DeliveryTag, false, false)
 	}
 
-	time.Sleep(50 * time.Millisecond)
+	time.Sleep(100 * time.Millisecond)
 
 	unackedLength = len(getServerChannel(sc, 1).ackStore)
 	if unackedLength != 0 {
@@ -698,7 +698,7 @@ func Test_BasicNack_RequeueFalse_Multiple_Success(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	tick := time.After(10 * time.Millisecond)
+	tick := time.After(100 * time.Millisecond)
 	count := 0;
 	leave := false
 	deliveries := make([]amqp.Delivery, 0, 10)
@@ -724,7 +724,7 @@ func Test_BasicNack_RequeueFalse_Multiple_Success(t *testing.T) {
 	dlv := deliveries[len(deliveries)-1]
 	ch.Nack(dlv.DeliveryTag, true, false)
 
-	time.Sleep(50 * time.Millisecond)
+	time.Sleep(100 * time.Millisecond)
 
 	unackedLength = len(getServerChannel(sc, 1).ackStore)
 	if unackedLength != 0 {
@@ -755,7 +755,7 @@ func Test_BasicReject_RequeueTrue_Success(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	tick := time.After(10 * time.Millisecond)
+	tick := time.After(100 * time.Millisecond)
 	count := 0;
 	leave := false
 	deliveries := make([]amqp.Delivery, 0, 10)
@@ -784,7 +784,7 @@ func Test_BasicReject_RequeueTrue_Success(t *testing.T) {
 		ch.Reject(dlv.DeliveryTag, true)
 	}
 
-	time.Sleep(50 * time.Millisecond)
+	time.Sleep(100 * time.Millisecond)
 
 	unackedLength = len(getServerChannel(sc, 1).ackStore)
 	if unackedLength != 0 {
@@ -815,7 +815,7 @@ func Test_BasicReject_RequeueFalse_Success(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	tick := time.After(10 * time.Millisecond)
+	tick := time.After(100 * time.Millisecond)
 	count := 0;
 	leave := false
 	deliveries := make([]amqp.Delivery, 0, 10)
@@ -842,7 +842,7 @@ func Test_BasicReject_RequeueFalse_Success(t *testing.T) {
 		ch.Reject(dlv.DeliveryTag, false)
 	}
 
-	time.Sleep(50 * time.Millisecond)
+	time.Sleep(100 * time.Millisecond)
 
 	unackedLength = len(getServerChannel(sc, 1).ackStore)
 	if unackedLength != 0 {
