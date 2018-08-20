@@ -11,7 +11,7 @@ import (
 
 // available exchange types
 const (
-	ExTypeDirect  = iota + 1
+	ExTypeDirect = iota + 1
 	ExTypeFanout
 	ExTypeTopic
 	ExTypeHeaders

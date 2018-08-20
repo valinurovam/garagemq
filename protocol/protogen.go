@@ -56,8 +56,8 @@ type Method struct {
 	ID          uint16   `xml:"index,attr"`
 	Fields      []*Field `xml:"field"`
 	GoName      string
-	Doc         string   `xml:"doc"`
-	Synchronous byte     `xml:"synchronous,attr"`
+	Doc         string `xml:"doc"`
+	Synchronous byte   `xml:"synchronous,attr"`
 }
 
 type Field struct {

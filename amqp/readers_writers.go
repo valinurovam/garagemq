@@ -791,7 +791,7 @@ func WriteContentHeader(writer io.Writer, header *ContentHeader, protoVersion st
 	}
 
 	var propertyBuf = bytes.NewBuffer(make([]byte, 0))
-	properyFlags, err := header.PropertyList.Write(propertyBuf, protoVersion);
+	properyFlags, err := header.PropertyList.Write(propertyBuf, protoVersion)
 	if err != nil {
 		return err
 	}

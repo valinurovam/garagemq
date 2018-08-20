@@ -41,7 +41,7 @@ func Test_ConfirmReceive_Acks_Success(t *testing.T) {
 	}
 
 	tick := time.After(50 * time.Millisecond)
-	confirmsCount := 0;
+	confirmsCount := 0
 	leave := false
 	for {
 		select {
@@ -82,7 +82,7 @@ func Test_ConfirmReceive_Acks_NoRoute_Success(t *testing.T) {
 	}
 
 	tick := time.After(50 * time.Millisecond)
-	confirmsCount := 0;
+	confirmsCount := 0
 	leave := false
 	for {
 		select {
@@ -123,7 +123,7 @@ func Test_ConfirmReceive_Acks_Persistent_Success(t *testing.T) {
 	}
 
 	tick := time.After(50 * time.Millisecond)
-	confirmsCount := 0;
+	confirmsCount := 0
 	leave := false
 	for {
 		select {

@@ -16,7 +16,7 @@ import (
 
 // connection status list
 const (
-	ConnStart    = iota
+	ConnStart = iota
 	ConnStartOK
 	ConnSecure
 	ConnSecureOK

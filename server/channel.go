@@ -18,7 +18,7 @@ import (
 )
 
 const (
-	channelNew     = iota
+	channelNew = iota
 	channelOpen
 	channelClosing
 	channelClosed
@@ -60,7 +60,7 @@ type UnackedMessage struct {
 }
 
 // NewChannel returns new instance of Channel
-func NewChannel(id uint16, conn *Connection) (*Channel) {
+func NewChannel(id uint16, conn *Connection) *Channel {
 	channel := &Channel{
 		active: true,
 		id:     id,
@@ -110,15 +110,15 @@ func (channel *Channel) handleIncoming() {
 			}
 
 			if err := channel.handleMethod(method); err != nil {
-				channel.sendError(err);
+				channel.sendError(err)
 			}
 		case amqp.FrameHeader:
 			if err := channel.handleContentHeader(frame); err != nil {
-				channel.sendError(err);
+				channel.sendError(err)
 			}
 		case amqp.FrameBody:
 			if err := channel.handleContentBody(frame); err != nil {
-				channel.sendError(err);
+				channel.sendError(err)
 			}
 		}
 	}

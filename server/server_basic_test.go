@@ -81,7 +81,7 @@ func Test_BasicQos_Check_Global_Success(t *testing.T) {
 	}
 
 	tick := time.After(100 * time.Millisecond)
-	count := 0;
+	count := 0
 	leave := false
 	for {
 		select {
@@ -135,7 +135,7 @@ func Test_BasicQos_Check_NonGlobal_Success(t *testing.T) {
 	}
 
 	tick := time.After(100 * time.Millisecond)
-	count := 0;
+	count := 0
 	leave := false
 	for {
 		select {
@@ -345,7 +345,7 @@ func Test_BasicConsume_WithOrderCheck_Success(t *testing.T) {
 	}
 
 	tick := time.After(100 * time.Millisecond)
-	count := 0;
+	count := 0
 	leave := false
 	for {
 		select {
@@ -417,7 +417,7 @@ func Test_BasicAck_Success(t *testing.T) {
 	}
 
 	tick := time.After(100 * time.Millisecond)
-	count := 0;
+	count := 0
 	leave := false
 	deliveries := make([]amqp.Delivery, 0, 10)
 	for {
@@ -469,7 +469,7 @@ func Test_BasicAckMultiple_Success(t *testing.T) {
 	}
 
 	tick := time.After(100 * time.Millisecond)
-	count := 0;
+	count := 0
 	leave := false
 	deliveries := make([]amqp.Delivery, 0, 10)
 	for {
@@ -521,7 +521,7 @@ func Test_BasicNack_RequeueTrue_Success(t *testing.T) {
 	}
 
 	tick := time.After(100 * time.Millisecond)
-	count := 0;
+	count := 0
 	leave := false
 	deliveries := make([]amqp.Delivery, 0, 10)
 	for {
@@ -581,7 +581,7 @@ func Test_BasicNack_RequeueTrue_Multiple_Success(t *testing.T) {
 	}
 
 	tick := time.After(100 * time.Millisecond)
-	count := 0;
+	count := 0
 	leave := false
 	deliveries := make([]amqp.Delivery, 0, 10)
 	for {
@@ -641,7 +641,7 @@ func Test_BasicNack_RequeueFalse_Success(t *testing.T) {
 	}
 
 	tick := time.After(100 * time.Millisecond)
-	count := 0;
+	count := 0
 	leave := false
 	deliveries := make([]amqp.Delivery, 0, 10)
 	for {
@@ -699,7 +699,7 @@ func Test_BasicNack_RequeueFalse_Multiple_Success(t *testing.T) {
 	}
 
 	tick := time.After(100 * time.Millisecond)
-	count := 0;
+	count := 0
 	leave := false
 	deliveries := make([]amqp.Delivery, 0, 10)
 	for {
@@ -756,7 +756,7 @@ func Test_BasicReject_RequeueTrue_Success(t *testing.T) {
 	}
 
 	tick := time.After(100 * time.Millisecond)
-	count := 0;
+	count := 0
 	leave := false
 	deliveries := make([]amqp.Delivery, 0, 10)
 	for {
@@ -816,7 +816,7 @@ func Test_BasicReject_RequeueFalse_Success(t *testing.T) {
 	}
 
 	tick := time.After(100 * time.Millisecond)
-	count := 0;
+	count := 0
 	leave := false
 	deliveries := make([]amqp.Delivery, 0, 10)
 	for {

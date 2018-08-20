@@ -270,7 +270,7 @@ func (queue *Queue) cancelConsumers() {
 
 // Length returns queue length
 func (queue *Queue) Length() uint64 {
-	return queue.SafeQueue.Length();
+	return queue.SafeQueue.Length()
 }
 
 // ConsumersCount returns consumers count

@@ -160,11 +160,11 @@ func testEq(a, b []string) bool {
 	sort.Strings(a)
 	sort.Strings(b)
 	if a == nil && b == nil {
-		return true;
+		return true
 	}
 
 	if a == nil || b == nil {
-		return false;
+		return false
 	}
 
 	if len(a) != len(b) {

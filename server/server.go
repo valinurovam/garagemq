@@ -22,7 +22,7 @@ import (
 
 // server state statuses
 const (
-	Started  = iota
+	Started = iota
 	Stopping
 )
 
@@ -182,7 +182,7 @@ func (srv *Server) checkAuth(saslData auth.SaslData) bool {
 			saslData.Password,
 			passwordHash,
 			srv.config.Security.PasswordCheck == "md5",
-		);
+		)
 	}
 	return false
 }
