@@ -217,7 +217,7 @@ func (queue *Queue) AddConsumer(consumer interfaces.Consumer, exclusive bool) er
 	defer queue.cmrLock.Unlock()
 
 	if !queue.active {
-		return fmt.Errorf(("queue is not active"))
+		return fmt.Errorf("queue is not active")
 	}
 	queue.wasConsumed = true
 
@@ -282,7 +282,7 @@ func (queue *Queue) ConsumersCount() int {
 
 // EqualWithErr returns is given queue equal to current
 func (queue *Queue) EqualWithErr(qB *Queue) error {
-	errTemplate := "inequivalent arg '%s' for queue '%s': received '%s' but current is '%s'"
+	errTemplate := "inequivalent arg '%s' for queue '%s': received '%t' but current is '%t'"
 	if queue.durable != qB.IsDurable() {
 		return fmt.Errorf(errTemplate, "durable", queue.name, qB.IsDurable(), queue.durable)
 	}
