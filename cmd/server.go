@@ -2,7 +2,6 @@ package main
 
 import (
 	"io/ioutil"
-	"net/http"
 	_ "net/http/pprof"
 	"os"
 	"runtime"
@@ -22,7 +21,7 @@ func init() {
 
 func main() {
 	// for hprof debugging
-	go http.ListenAndServe("0.0.0.0:8080", nil)
+	//go http.ListenAndServe("0.0.0.0:8080", nil)
 
 	//if n, _ := syscall.SysctlUint32("hw.ncpu"); n > 0 {
 	//	runtime.GOMAXPROCS(int(n))
@@ -33,7 +32,7 @@ func main() {
 	file, _ := ioutil.ReadFile("etc/config.yaml")
 	yaml.Unmarshal(file, &cfg)
 
-	srv := server.NewServer("localhost", "5672", amqp.ProtoRabbit, &cfg)
+	srv := server.NewServer(cfg.TCP.IP, cfg.TCP.Port, amqp.ProtoRabbit, &cfg)
 	srv.Start()
 	defer srv.Stop()
 }

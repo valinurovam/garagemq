@@ -19,6 +19,8 @@ type User struct {
 
 // TCPConfig represents properties for tune network connections
 type TCPConfig struct {
+	IP           string `yaml:"ip"`
+	Port         string
 	Nodelay      bool
 	ReadBufSize  int `yaml:"readBufSize"`
 	WriteBufSize int `yaml:"writeBufSize"`
