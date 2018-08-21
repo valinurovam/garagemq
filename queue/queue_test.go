@@ -347,3 +347,133 @@ func TestQueue_Stop(t *testing.T) {
 		t.Fatal("Queue is still active after stop")
 	}
 }
+
+func TestQueue_Push_Durable_Persistent(t *testing.T) {
+	storage := &MsgStorageMock{}
+	queue := NewQueue("test", 0, false, false, true, SIZE, storage)
+	var dMode byte = 2
+	message := &amqp.Message{
+		ID: 1,
+		Header: &amqp.ContentHeader{
+			PropertyList: &amqp.BasicPropertyList{
+				DeliveryMode: &dMode,
+			},
+		},
+	}
+	queue.Push(message, true)
+	if storage.add {
+		t.Fatal("Storage.Add called on silent mode")
+	}
+
+	queue.Push(message, false)
+	if !storage.add {
+		t.Fatal("Storage.Add not called message push")
+	}
+}
+
+func TestQueue_Push_Durable_NonPersistent(t *testing.T) {
+	storage := &MsgStorageMock{}
+	queue := NewQueue("test", 0, false, false, true, SIZE, storage)
+	var dMode byte = 1
+	message := &amqp.Message{
+		ID: 1,
+		Header: &amqp.ContentHeader{
+			PropertyList: &amqp.BasicPropertyList{
+				DeliveryMode: &dMode,
+			},
+		},
+	}
+	queue.Push(message, true)
+	if storage.add {
+		t.Fatal("Storage.Add called on non persistent message")
+	}
+
+	queue.Push(message, false)
+	if storage.add {
+		t.Fatal("Storage.Add called on non persistent message")
+	}
+}
+
+func TestQueue_AckMsg_Persistent(t *testing.T) {
+	storage := &MsgStorageMock{}
+	queue := NewQueue("test", 0, false, false, true, SIZE, storage)
+	var dMode byte = 2
+	message := &amqp.Message{
+		ID: 1,
+		Header: &amqp.ContentHeader{
+			PropertyList: &amqp.BasicPropertyList{
+				DeliveryMode: &dMode,
+			},
+		},
+	}
+
+	queue.AckMsg(message)
+	if !storage.del {
+		t.Fatal("Storage.Del not called on ACK persistent message")
+	}
+}
+
+func TestQueue_AckMsg_NonPersistent(t *testing.T) {
+	storage := &MsgStorageMock{}
+	queue := NewQueue("test", 0, false, false, true, SIZE, storage)
+	var dMode byte = 1
+	message := &amqp.Message{
+		ID: 1,
+		Header: &amqp.ContentHeader{
+			PropertyList: &amqp.BasicPropertyList{
+				DeliveryMode: &dMode,
+			},
+		},
+	}
+
+	queue.AckMsg(message)
+	if storage.del {
+		t.Fatal("Storage.Del called on ACK non-persistent message")
+	}
+}
+
+func TestQueue_Purge_Durable(t *testing.T) {
+	storage := &MsgStorageMock{}
+	queue := NewQueue("test", 0, false, false, true, SIZE, storage)
+	queue.Purge()
+
+	if !storage.purged {
+		t.Fatal("Storage.Purge not called on purge durable queue")
+	}
+}
+
+func TestQueue_Delete_Durable(t *testing.T) {
+	storage := &MsgStorageMock{}
+	queue := NewQueue("test", 0, false, false, true, SIZE, storage)
+	queue.Delete(false, false)
+
+	if !storage.purged {
+		t.Fatal("Storage.Purge not called on delete durable queue")
+	}
+}
+
+func TestQueue_Requeue_Durable(t *testing.T) {
+	storage := &MsgStorageMock{}
+	queue := NewQueue("test", 0, false, false, true, SIZE, storage)
+
+	initDeliveryCount := 1
+	var dMode byte = 2
+	message := &amqp.Message{
+		DeliveryCount: uint32(initDeliveryCount),
+		ID:            1,
+		Header: &amqp.ContentHeader{
+			PropertyList: &amqp.BasicPropertyList{
+				DeliveryMode: &dMode,
+			},
+		},
+	}
+
+	queue.Requeue(message)
+	if message.DeliveryCount != uint32(initDeliveryCount+1) {
+		t.Fatal("Delivery count not not incremented")
+	}
+
+	if !storage.update {
+		t.Fatal("Storage.Update not called on requeue persistent message")
+	}
+}

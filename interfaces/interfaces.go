@@ -41,3 +41,10 @@ type DbStorage interface {
 	ProcessBatch(batch []*Operation) (err error)
 	Close() error
 }
+
+type MsgStorage interface {
+	Del(message *amqp.Message, queue string) error
+	PurgeQueue(queue string)
+	Add(message *amqp.Message, queue string) error
+	Update(message *amqp.Message, queue string) error
+}

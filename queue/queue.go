@@ -7,7 +7,6 @@ import (
 
 	"github.com/valinurovam/garagemq/amqp"
 	"github.com/valinurovam/garagemq/interfaces"
-	"github.com/valinurovam/garagemq/msgstorage"
 	"github.com/valinurovam/garagemq/qos"
 	"github.com/valinurovam/garagemq/safequeue"
 )
@@ -27,12 +26,12 @@ type Queue struct {
 	shardSize       int
 	actLock         sync.RWMutex
 	active          bool
-	storage         *msgstorage.MsgStorage
+	storage         interfaces.MsgStorage
 	currentConsumer int
 }
 
 // NewQueue returns new instance of Queue
-func NewQueue(name string, connID uint64, exclusive bool, autoDelete bool, durable bool, shardSize int, storage *msgstorage.MsgStorage) *Queue {
+func NewQueue(name string, connID uint64, exclusive bool, autoDelete bool, durable bool, shardSize int, storage interfaces.MsgStorage) *Queue {
 	return &Queue{
 		SafeQueue:       *safequeue.NewSafeQueue(shardSize),
 		name:            name,
