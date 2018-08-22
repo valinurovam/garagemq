@@ -314,6 +314,10 @@ func (queue *Queue) IsExclusive() bool {
 	return queue.exclusive
 }
 
+func (queue *Queue) IsAutoDelete() bool {
+	return queue.autoDelete
+}
+
 // ConnID returns ID of connection that create this queue
 func (queue *Queue) ConnID() uint64 {
 	return queue.connID

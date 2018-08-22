@@ -136,6 +136,10 @@ func (vhost *VirtualHost) getExchange(name string) *exchange.Exchange {
 	return vhost.exchanges[name]
 }
 
+func (vhost *VirtualHost) GetExchanges() map[string]*exchange.Exchange {
+	return vhost.exchanges
+}
+
 // GetDefaultExchange returns default exchange
 func (vhost *VirtualHost) GetDefaultExchange() *exchange.Exchange {
 	return vhost.exchanges[exDefaultName]

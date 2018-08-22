@@ -71,6 +71,12 @@ func GetExchangeTypeID(alias string) (id byte, err error) {
 	return 0, fmt.Errorf("undefined exchange alias '%s'", alias)
 }
 
+func (ex *Exchange) GetTypeAlias() string {
+	alias, _ := GetExchangeTypeAlias(ex.exType)
+
+	return alias
+}
+
 // AppendBinding check and append binding
 // method check if binding already exists and ignore it
 func (ex *Exchange) AppendBinding(newBind *binding.Binding) {

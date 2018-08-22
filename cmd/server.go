@@ -7,6 +7,7 @@ import (
 	"runtime"
 
 	log "github.com/sirupsen/logrus"
+	"github.com/valinurovam/garagemq/admin"
 	"github.com/valinurovam/garagemq/amqp"
 	"github.com/valinurovam/garagemq/config"
 	"github.com/valinurovam/garagemq/server"
@@ -33,6 +34,8 @@ func main() {
 	yaml.Unmarshal(file, &cfg)
 
 	srv := server.NewServer(cfg.TCP.IP, cfg.TCP.Port, amqp.ProtoRabbit, &cfg)
+	adminServer := admin.NewAdminServer(srv)
+	go adminServer.Start()
 	srv.Start()
 	defer srv.Stop()
 }

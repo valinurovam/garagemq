@@ -294,3 +294,15 @@ func (srv *Server) getConfirmChannel(meta *amqp.ConfirmMeta) *Channel {
 
 	return conn.getChannel(meta.ChanID)
 }
+
+func (srv *Server) GetVhost(name string) *VirtualHost {
+	return srv.vhosts[name]
+}
+
+func (srv *Server) GetVhosts() map[string]*VirtualHost {
+	return srv.vhosts
+}
+
+func (srv *Server) GetConnections() map[uint64]*Connection {
+	return srv.connections
+}
