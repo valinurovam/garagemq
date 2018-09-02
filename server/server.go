@@ -15,6 +15,7 @@ import (
 	"github.com/valinurovam/garagemq/auth"
 	"github.com/valinurovam/garagemq/config"
 	"github.com/valinurovam/garagemq/interfaces"
+	"github.com/valinurovam/garagemq/metrics"
 	"github.com/valinurovam/garagemq/msgstorage"
 	"github.com/valinurovam/garagemq/srvstorage"
 	"github.com/valinurovam/garagemq/storage"
@@ -25,6 +26,21 @@ const (
 	Started = iota
 	Stopping
 )
+
+type SrvMetricsState struct {
+	Publish     *metrics.TrackCounter
+	Deliver     *metrics.TrackCounter
+	Confirm     *metrics.TrackCounter
+	Acknowledge *metrics.TrackCounter
+	Get         *metrics.TrackCounter
+
+	Ready   *metrics.TrackCounter
+	Unacked *metrics.TrackCounter
+	Total   *metrics.TrackCounter
+
+	TrafficIn  *metrics.TrackCounter
+	TrafficOut *metrics.TrackCounter
+}
 
 // Server implements AMQP server
 type Server struct {
@@ -41,6 +57,7 @@ type Server struct {
 	vhosts       map[string]*VirtualHost
 	status       int
 	storage      *srvstorage.SrvStorage
+	metrics      *SrvMetricsState
 }
 
 // NewServer returns new instance of AMQP Server
@@ -55,7 +72,26 @@ func NewServer(host string, port string, protoVersion string, config *config.Con
 		vhosts:       make(map[string]*VirtualHost),
 		connSeq:      1,
 	}
+	server.initMetrics()
+
 	return
+}
+
+func (srv *Server) initMetrics() {
+	srv.metrics = &SrvMetricsState{
+		Publish:     metrics.NewCounter("server.publish"),
+		Deliver:     metrics.NewCounter("server.deliver"),
+		Confirm:     metrics.NewCounter("server.confirm"),
+		Get:         metrics.NewCounter("server.get"),
+		Acknowledge: metrics.NewCounter("server.acknowledge"),
+
+		Ready:   metrics.NewCounter("server.ready"),
+		Unacked: metrics.NewCounter("server.unacked"),
+		Total:   metrics.NewCounter("server.total"),
+
+		TrafficIn:  metrics.NewCounter("server.traffic_in"),
+		TrafficOut: metrics.NewCounter("server.traffic_out"),
+	}
 }
 
 // Start start main server loop

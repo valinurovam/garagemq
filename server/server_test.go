@@ -4,11 +4,13 @@ import (
 	"io/ioutil"
 	"net"
 	"os"
+	"time"
 
 	"github.com/sirupsen/logrus"
 	amqpclient "github.com/streadway/amqp"
 	"github.com/valinurovam/garagemq/amqp"
 	"github.com/valinurovam/garagemq/config"
+	"github.com/valinurovam/garagemq/metrics"
 )
 
 var emptyTable = make(amqpclient.Table)
@@ -80,6 +82,7 @@ func getDefaultTestConfig() TestConfig {
 	}
 }
 func getNewSC(config TestConfig) (*ServerClient, error) {
+	metrics.NewTrackRegistry(15, time.Second)
 	sc := &ServerClient{}
 	sc.server = NewServer("localhost", "0", amqp.ProtoRabbit, &config.srvConfig)
 	sc.server.initServerStorage()

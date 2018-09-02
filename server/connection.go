@@ -56,6 +56,7 @@ type Connection struct {
 	virtualHost      *VirtualHost
 	vhostName        string
 	closeCh          chan bool
+	srvMetrics       *SrvMetricsState
 }
 
 // NewConnection returns new instance of amqp Connection
@@ -70,6 +71,7 @@ func NewConnection(server *Server, netConn *net.TCPConn) (connection *Connection
 		maxFrameSize: server.config.Connection.FrameMaxSize,
 		qos:          qos.NewAmqpQos(0, 0),
 		closeCh:      make(chan bool, 1),
+		srvMetrics:   server.metrics,
 	}
 
 	connection.logger = log.WithFields(log.Fields{
@@ -140,7 +142,7 @@ func (conn *Connection) safeClose(wg *sync.WaitGroup) {
 }
 
 func (conn *Connection) clearQueues() {
-	virtualHost := conn.getVirtualHost()
+	virtualHost := conn.GetVirtualHost()
 	if virtualHost == nil {
 		// it is possible when conn close before open, for example login failure
 		return
@@ -216,6 +218,7 @@ func (conn *Connection) handleOutgoing() {
 		}
 
 		if frame.Sync {
+			conn.srvMetrics.TrafficOut.Counter.Inc(int64(buffer.Buffered()))
 			buffer.Flush()
 		} else {
 			conn.mayBeFlushBuffer(buffer)
@@ -225,12 +228,14 @@ func (conn *Connection) handleOutgoing() {
 
 func (conn *Connection) mayBeFlushBuffer(buffer *bufio.Writer) {
 	if buffer.Buffered() >= flushThreshold {
+		conn.srvMetrics.TrafficOut.Counter.Inc(int64(buffer.Buffered()))
 		buffer.Flush()
 	}
 
 	if len(conn.outgoing) == 0 {
 		// outgoing channel is buffered and we can check is here more messages for store into buffer
 		// if nothing to store into buffer - we flush
+		conn.srvMetrics.TrafficOut.Counter.Inc(int64(buffer.Buffered()))
 		buffer.Flush()
 	}
 }
@@ -257,6 +262,7 @@ func (conn *Connection) handleIncoming() {
 			conn.close()
 			return
 		}
+		conn.srvMetrics.TrafficIn.Counter.Inc(int64(len(frame.Payload)))
 
 		channel, ok := conn.channels[frame.ChannelID]
 		if !ok {
@@ -269,6 +275,18 @@ func (conn *Connection) handleIncoming() {
 	}
 }
 
-func (conn *Connection) getVirtualHost() *VirtualHost {
+func (conn *Connection) GetVirtualHost() *VirtualHost {
 	return conn.virtualHost
+}
+
+func (conn *Connection) GetRemoteAddr() net.Addr {
+	return conn.netConn.RemoteAddr()
+}
+
+func (conn *Connection) GetChannels() map[uint16]*Channel {
+	return conn.channels
+}
+
+func (conn *Connection) GetID() uint64 {
+	return conn.id
 }

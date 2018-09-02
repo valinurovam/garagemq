@@ -12,6 +12,8 @@ type AdminServer struct {
 }
 
 func NewAdminServer(amqpServer *server.Server) *AdminServer {
+	http.Handle("/", http.FileServer(http.Dir("admin-frontend/build")))
+	http.Handle("/overview", NewOverviewHandler(amqpServer))
 	http.Handle("/exchanges", NewExchangesHandler(amqpServer))
 	http.Handle("/queues", NewQueuesHandler(amqpServer))
 	http.Handle("/connections", NewConnectionsHandler(amqpServer))

@@ -7,6 +7,6 @@ WORKDIR /go/src/github.com/valinurovam/garagemq
 
 RUN GOOS=linux GOARCH=amd64 make build
 
-EXPOSE 5672
+EXPOSE 5672 15672
 
 CMD ["cmd/server"]

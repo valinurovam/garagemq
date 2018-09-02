@@ -2,6 +2,7 @@ package admin
 
 import (
 	"net/http"
+	"sort"
 
 	"github.com/valinurovam/garagemq/server"
 )
@@ -31,10 +32,14 @@ func (h *ExchangesHandler) ServeHTTP(resp http.ResponseWriter, req *http.Request
 	response := &ExchangesResponse{}
 	for vhostName, vhost := range h.amqpServer.GetVhosts() {
 		for _, exchange := range vhost.GetExchanges() {
+			name := exchange.GetName()
+			if name == "" {
+				name = "(AMQP default)"
+			}
 			response.Items = append(
 				response.Items,
 				&Exchange{
-					Name:       exchange.GetName(),
+					Name:       name,
 					Vhost:      vhostName,
 					Durable:    exchange.IsDurable(),
 					Internal:   exchange.IsInternal(),
@@ -45,5 +50,6 @@ func (h *ExchangesHandler) ServeHTTP(resp http.ResponseWriter, req *http.Request
 		}
 	}
 
+	sort.Slice(response.Items, func(i, j int) bool { return response.Items[i].Name < response.Items[j].Name })
 	JSONResponse(resp, response, 200)
 }

@@ -228,6 +228,8 @@ func (vhost *VirtualHost) loadMessagesIntoQueues() {
 		}
 
 		q.Push(message, true)
+		vhost.srv.metrics.Total.Counter.Inc(1)
+		vhost.srv.metrics.Ready.Counter.Inc(1)
 	})
 }
 
@@ -299,4 +301,8 @@ func (vhost *VirtualHost) Stop() error {
 	vhost.msgStorage.Close()
 	vhost.logger.Info("Storage closed")
 	return nil
+}
+
+func (vhost *VirtualHost) GetName() string {
+	return vhost.name
 }

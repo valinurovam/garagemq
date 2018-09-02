@@ -5,11 +5,13 @@ import (
 	_ "net/http/pprof"
 	"os"
 	"runtime"
+	"time"
 
 	log "github.com/sirupsen/logrus"
 	"github.com/valinurovam/garagemq/admin"
 	"github.com/valinurovam/garagemq/amqp"
 	"github.com/valinurovam/garagemq/config"
+	"github.com/valinurovam/garagemq/metrics"
 	"github.com/valinurovam/garagemq/server"
 	"gopkg.in/yaml.v2"
 )
@@ -28,6 +30,8 @@ func main() {
 	//	runtime.GOMAXPROCS(int(n))
 	//}
 	runtime.GOMAXPROCS(8)
+
+	metrics.NewTrackRegistry(15, time.Second)
 
 	cfg := config.Config{}
 	file, _ := ioutil.ReadFile("etc/config.yaml")

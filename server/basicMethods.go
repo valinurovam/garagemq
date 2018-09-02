@@ -125,5 +125,7 @@ func (channel *Channel) basicGet(method *amqp.BasicGet) (err *amqp.Error) {
 		MessageCount: 1,
 	}, message)
 
+	channel.server.metrics.Get.Counter.Inc(1)
+
 	return nil
 }

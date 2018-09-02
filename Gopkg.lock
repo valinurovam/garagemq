@@ -39,6 +39,12 @@
   version = "v0.8.0"
 
 [[projects]]
+  branch = "master"
+  name = "github.com/rcrowley/go-metrics"
+  packages = ["."]
+  revision = "e2704e165165ec55d062f5919b4b29494e9fa790"
+
+[[projects]]
   name = "github.com/sirupsen/logrus"
   packages = ["."]
   revision = "c155da19408a8799da419ed3eeb0cb5db0ad5dbc"
@@ -133,6 +139,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "68552e4af2247330f9b56adc08f6bfc18dbd975fcdca067703d2fed807a911dd"
+  inputs-digest = "0a164760443ed70cc19574be86ca29dd29803bee4cf8dec42b3d45328155829c"
   solver-name = "gps-cdcl"
   solver-version = 1
