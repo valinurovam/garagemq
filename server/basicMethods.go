@@ -115,6 +115,12 @@ func (channel *Channel) basicGet(method *amqp.BasicGet) (err *amqp.Error) {
 	dTag := channel.NextDeliveryTag()
 	if !method.NoAck {
 		channel.AddUnackedMessage(dTag, "", qu.GetName(), message)
+
+		qu.GetMetrics().Unacked.Counter.Inc(1)
+		channel.server.GetMetrics().Unacked.Counter.Inc(1)
+	} else {
+		qu.GetMetrics().Total.Counter.Dec(1)
+		qu.GetMetrics().ServerTotal.Counter.Dec(1)
 	}
 
 	channel.SendContent(&amqp.BasicGetOk{
@@ -124,6 +130,13 @@ func (channel *Channel) basicGet(method *amqp.BasicGet) (err *amqp.Error) {
 		RoutingKey:   message.RoutingKey,
 		MessageCount: 1,
 	}, message)
+
+	channel.server.GetMetrics().Get.Counter.Inc(1)
+	channel.metrics.Get.Counter.Inc(1)
+	qu.GetMetrics().Get.Counter.Inc(1)
+
+	qu.GetMetrics().Ready.Counter.Dec(1)
+	qu.GetMetrics().ServerReady.Counter.Dec(1)
 
 	return nil
 }

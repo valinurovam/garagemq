@@ -100,7 +100,6 @@ db:
 RabbitMQ Qos means for channel(global=true) or each new consumer(global=false).
 
 ## TODO
-- [ ] Admin interface
 - [ ] Add more comments
 - [ ] Optimize binds
 - [ ] Replication

@@ -71,7 +71,7 @@ func (channel *Channel) connectionStartOk(method *amqp.ConnectionStartOk) *amqp.
 	if !channel.server.checkAuth(saslData) {
 		return amqp.NewConnectionError(amqp.NotAllowed, "login failure", method.ClassIdentifier(), method.MethodIdentifier())
 	}
-
+	channel.conn.userName = saslData.Username
 	channel.conn.clientProperties = method.ClientProperties
 
 	// @todo Send HeartBeat 0 cause not supported yet

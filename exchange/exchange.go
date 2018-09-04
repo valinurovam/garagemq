@@ -7,6 +7,7 @@ import (
 
 	"github.com/valinurovam/garagemq/amqp"
 	"github.com/valinurovam/garagemq/binding"
+	"github.com/valinurovam/garagemq/metrics"
 )
 
 // available exchange types
@@ -31,6 +32,12 @@ var exchangeTypeAliasIDMap = map[string]byte{
 	"headers": ExTypeHeaders,
 }
 
+// MetricsState implements exchange's metrics state
+type MetricsState struct {
+	MsgIn  *metrics.TrackCounter
+	MsgOut *metrics.TrackCounter
+}
+
 // Exchange implements AMQP-exchange
 type Exchange struct {
 	Name       string
@@ -41,6 +48,7 @@ type Exchange struct {
 	system     bool
 	bindLock   sync.Mutex
 	bindings   []*binding.Binding
+	metrics    *MetricsState
 }
 
 // NewExchange returns new instance of Exchange
@@ -52,6 +60,10 @@ func NewExchange(name string, exType byte, durable bool, autoDelete bool, intern
 		autoDelete: autoDelete,
 		internal:   internal,
 		system:     system,
+		metrics: &MetricsState{
+			MsgIn:  metrics.NewTrackCounter(0, true),
+			MsgOut: metrics.NewTrackCounter(0, true),
+		},
 	}
 }
 
@@ -69,6 +81,12 @@ func GetExchangeTypeID(alias string) (id byte, err error) {
 		return id, nil
 	}
 	return 0, fmt.Errorf("undefined exchange alias '%s'", alias)
+}
+
+func (ex *Exchange) GetTypeAlias() string {
+	alias, _ := GetExchangeTypeAlias(ex.exType)
+
+	return alias
 }
 
 // AppendBinding check and append binding
@@ -234,4 +252,14 @@ func (ex *Exchange) GetName() string {
 // ExType returns exchange type
 func (ex *Exchange) ExType() byte {
 	return ex.exType
+}
+
+// SetMetrics set external metrics
+func (ex *Exchange) SetMetrics(m *MetricsState) {
+	ex.metrics = m
+}
+
+// GetMetrics returns metrics
+func (ex *Exchange) GetMetrics() *MetricsState {
+	return ex.metrics
 }

@@ -15,6 +15,7 @@ import (
 	"github.com/valinurovam/garagemq/auth"
 	"github.com/valinurovam/garagemq/config"
 	"github.com/valinurovam/garagemq/interfaces"
+	"github.com/valinurovam/garagemq/metrics"
 	"github.com/valinurovam/garagemq/msgstorage"
 	"github.com/valinurovam/garagemq/srvstorage"
 	"github.com/valinurovam/garagemq/storage"
@@ -25,6 +26,21 @@ const (
 	Started = iota
 	Stopping
 )
+
+type SrvMetricsState struct {
+	Publish *metrics.TrackCounter
+	Deliver *metrics.TrackCounter
+	Confirm *metrics.TrackCounter
+	Ack     *metrics.TrackCounter
+	Get     *metrics.TrackCounter
+
+	Ready   *metrics.TrackCounter
+	Unacked *metrics.TrackCounter
+	Total   *metrics.TrackCounter
+
+	TrafficIn  *metrics.TrackCounter
+	TrafficOut *metrics.TrackCounter
+}
 
 // Server implements AMQP server
 type Server struct {
@@ -41,6 +57,7 @@ type Server struct {
 	vhosts       map[string]*VirtualHost
 	status       int
 	storage      *srvstorage.SrvStorage
+	metrics      *SrvMetricsState
 }
 
 // NewServer returns new instance of AMQP Server
@@ -55,7 +72,26 @@ func NewServer(host string, port string, protoVersion string, config *config.Con
 		vhosts:       make(map[string]*VirtualHost),
 		connSeq:      1,
 	}
+	server.initMetrics()
+
 	return
+}
+
+func (srv *Server) initMetrics() {
+	srv.metrics = &SrvMetricsState{
+		Publish: metrics.AddCounter("server.publish"),
+		Deliver: metrics.AddCounter("server.deliver"),
+		Confirm: metrics.AddCounter("server.confirm"),
+		Get:     metrics.AddCounter("server.get"),
+		Ack:     metrics.AddCounter("server.acknowledge"),
+
+		Ready:   metrics.AddCounter("server.ready"),
+		Unacked: metrics.AddCounter("server.unacked"),
+		Total:   metrics.AddCounter("server.total"),
+
+		TrafficIn:  metrics.AddCounter("server.traffic_in"),
+		TrafficOut: metrics.AddCounter("server.traffic_out"),
+	}
 }
 
 // Start start main server loop
@@ -293,4 +329,24 @@ func (srv *Server) getConfirmChannel(meta *amqp.ConfirmMeta) *Channel {
 	}
 
 	return conn.getChannel(meta.ChanID)
+}
+
+func (srv *Server) GetVhost(name string) *VirtualHost {
+	return srv.vhosts[name]
+}
+
+func (srv *Server) GetVhosts() map[string]*VirtualHost {
+	return srv.vhosts
+}
+
+func (srv *Server) GetConnections() map[uint64]*Connection {
+	return srv.connections
+}
+
+func (srv *Server) GetProtoVersion() string {
+	return srv.protoVersion
+}
+
+func (srv *Server) GetMetrics() *SrvMetricsState {
+	return srv.metrics
 }

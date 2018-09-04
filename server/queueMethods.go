@@ -62,7 +62,7 @@ func (channel *Channel) queueDeclare(method *amqp.QueueDeclare) *amqp.Error {
 		return nil
 	}
 
-	newQueue := channel.conn.getVirtualHost().NewQueue(
+	newQueue := channel.conn.GetVirtualHost().NewQueue(
 		method.Queue,
 		channel.conn.id,
 		method.Exclusive,
@@ -94,7 +94,7 @@ func (channel *Channel) queueDeclare(method *amqp.QueueDeclare) *amqp.Error {
 	}
 
 	newQueue.Start()
-	channel.conn.getVirtualHost().AppendQueue(newQueue)
+	channel.conn.GetVirtualHost().AppendQueue(newQueue)
 	channel.SendMethod(&amqp.QueueDeclareOk{
 		Queue:         method.Queue,
 		MessageCount:  0,
@@ -125,7 +125,7 @@ func (channel *Channel) queueBind(method *amqp.QueueBind) *amqp.Error {
 	ex.AppendBinding(bind)
 
 	if ex.IsDurable() && qu.IsDurable() {
-		channel.conn.getVirtualHost().PersistBinding(bind)
+		channel.conn.GetVirtualHost().PersistBinding(bind)
 	}
 
 	if !method.NoWait {
@@ -154,7 +154,7 @@ func (channel *Channel) queueUnbind(method *amqp.QueueUnbind) *amqp.Error {
 
 	bind := binding.NewBinding(method.Queue, method.Exchange, method.RoutingKey, method.Arguments, ex.ExType() == exchange.ExTypeTopic)
 	ex.RemoveBinding(bind)
-	channel.conn.getVirtualHost().RemoveBindings([]*binding.Binding{bind})
+	channel.conn.GetVirtualHost().RemoveBindings([]*binding.Binding{bind})
 	channel.SendMethod(&amqp.QueueUnbindOk{})
 
 	return nil
@@ -191,7 +191,7 @@ func (channel *Channel) queueDelete(method *amqp.QueueDelete) *amqp.Error {
 		return err
 	}
 
-	var length, errDel = channel.conn.getVirtualHost().DeleteQueue(method.Queue, method.IfUnused, method.IfEmpty)
+	var length, errDel = channel.conn.GetVirtualHost().DeleteQueue(method.Queue, method.IfUnused, method.IfEmpty)
 	if errDel != nil {
 		return amqp.NewChannelError(amqp.PreconditionFailed, errDel.Error(), method.ClassIdentifier(), method.MethodIdentifier())
 	}

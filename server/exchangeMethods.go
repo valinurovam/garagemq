@@ -33,7 +33,7 @@ func (channel *Channel) exchangeDeclare(method *amqp.ExchangeDeclare) *amqp.Erro
 		)
 	}
 
-	existingExchange := channel.conn.getVirtualHost().GetExchange(method.Exchange)
+	existingExchange := channel.conn.GetVirtualHost().GetExchange(method.Exchange)
 	if method.Passive {
 		if method.NoWait {
 			return nil
@@ -84,7 +84,7 @@ func (channel *Channel) exchangeDeclare(method *amqp.ExchangeDeclare) *amqp.Erro
 		return nil
 	}
 
-	channel.conn.getVirtualHost().AppendExchange(newExchange)
+	channel.conn.GetVirtualHost().AppendExchange(newExchange)
 	if !method.NoWait {
 		channel.SendMethod(&amqp.ExchangeDeclareOk{})
 	}

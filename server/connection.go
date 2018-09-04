@@ -3,6 +3,7 @@ package server
 import (
 	"bufio"
 	"bytes"
+	"fmt"
 	"net"
 	"sort"
 	"sync"
@@ -11,6 +12,7 @@ import (
 
 	log "github.com/sirupsen/logrus"
 	"github.com/valinurovam/garagemq/amqp"
+	"github.com/valinurovam/garagemq/metrics"
 	"github.com/valinurovam/garagemq/qos"
 )
 
@@ -39,6 +41,11 @@ const (
 // exceeding the MSS.
 const flushThreshold = 1414
 
+type ConnMetricsState struct {
+	TrafficIn  *metrics.TrackCounter
+	TrafficOut *metrics.TrackCounter
+}
+
 // Connection represents AMQP-connection
 type Connection struct {
 	id               uint64
@@ -56,6 +63,9 @@ type Connection struct {
 	virtualHost      *VirtualHost
 	vhostName        string
 	closeCh          chan bool
+	srvMetrics       *SrvMetricsState
+	metrics          *ConnMetricsState
+	userName         string
 }
 
 // NewConnection returns new instance of amqp Connection
@@ -70,13 +80,23 @@ func NewConnection(server *Server, netConn *net.TCPConn) (connection *Connection
 		maxFrameSize: server.config.Connection.FrameMaxSize,
 		qos:          qos.NewAmqpQos(0, 0),
 		closeCh:      make(chan bool, 1),
+		srvMetrics:   server.metrics,
 	}
 
 	connection.logger = log.WithFields(log.Fields{
 		"connectionId": connection.id,
 	})
 
+	connection.initMetrics()
+
 	return
+}
+
+func (conn *Connection) initMetrics() {
+	conn.metrics = &ConnMetricsState{
+		TrafficIn:  metrics.AddCounter(fmt.Sprintf("conn.%d.traffic_in", conn.id)),
+		TrafficOut: metrics.AddCounter(fmt.Sprintf("conn.%d.traffic_out", conn.id)),
+	}
 }
 
 func (conn *Connection) close() {
@@ -140,7 +160,7 @@ func (conn *Connection) safeClose(wg *sync.WaitGroup) {
 }
 
 func (conn *Connection) clearQueues() {
-	virtualHost := conn.getVirtualHost()
+	virtualHost := conn.GetVirtualHost()
 	if virtualHost == nil {
 		// it is possible when conn close before open, for example login failure
 		return
@@ -216,6 +236,8 @@ func (conn *Connection) handleOutgoing() {
 		}
 
 		if frame.Sync {
+			conn.srvMetrics.TrafficOut.Counter.Inc(int64(buffer.Buffered()))
+			conn.metrics.TrafficOut.Counter.Inc(int64(buffer.Buffered()))
 			buffer.Flush()
 		} else {
 			conn.mayBeFlushBuffer(buffer)
@@ -225,12 +247,16 @@ func (conn *Connection) handleOutgoing() {
 
 func (conn *Connection) mayBeFlushBuffer(buffer *bufio.Writer) {
 	if buffer.Buffered() >= flushThreshold {
+		conn.srvMetrics.TrafficOut.Counter.Inc(int64(buffer.Buffered()))
+		conn.metrics.TrafficOut.Counter.Inc(int64(buffer.Buffered()))
 		buffer.Flush()
 	}
 
 	if len(conn.outgoing) == 0 {
 		// outgoing channel is buffered and we can check is here more messages for store into buffer
 		// if nothing to store into buffer - we flush
+		conn.srvMetrics.TrafficOut.Counter.Inc(int64(buffer.Buffered()))
+		conn.metrics.TrafficOut.Counter.Inc(int64(buffer.Buffered()))
 		buffer.Flush()
 	}
 }
@@ -257,6 +283,8 @@ func (conn *Connection) handleIncoming() {
 			conn.close()
 			return
 		}
+		conn.srvMetrics.TrafficIn.Counter.Inc(int64(len(frame.Payload)))
+		conn.metrics.TrafficIn.Counter.Inc(int64(len(frame.Payload)))
 
 		channel, ok := conn.channels[frame.ChannelID]
 		if !ok {
@@ -269,6 +297,27 @@ func (conn *Connection) handleIncoming() {
 	}
 }
 
-func (conn *Connection) getVirtualHost() *VirtualHost {
+func (conn *Connection) GetVirtualHost() *VirtualHost {
 	return conn.virtualHost
+}
+
+func (conn *Connection) GetRemoteAddr() net.Addr {
+	return conn.netConn.RemoteAddr()
+}
+
+func (conn *Connection) GetChannels() map[uint16]*Channel {
+	return conn.channels
+}
+
+func (conn *Connection) GetID() uint64 {
+	return conn.id
+}
+
+func (conn *Connection) GetUsername() string {
+	return conn.userName
+}
+
+// GetMetrics returns metrics
+func (conn *Connection) GetMetrics() *ConnMetricsState {
+	return conn.metrics
 }

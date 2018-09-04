@@ -148,3 +148,19 @@ func TestConfirmMeta_CanConfirm(t *testing.T) {
 		t.Fatalf("Expected CanConfirm true")
 	}
 }
+
+func TestNewChannelError(t *testing.T) {
+	er := NewChannelError(PreconditionFailed, "text", 0, 0)
+
+	if er.ErrorType != ErrorOnChannel {
+		t.Fatal("Expected channel error")
+	}
+}
+
+func TestNewConnectionError(t *testing.T) {
+	er := NewConnectionError(PreconditionFailed, "text", 0, 0)
+
+	if er.ErrorType != ErrorOnConnection {
+		t.Fatal("Expected connection error")
+	}
+}
