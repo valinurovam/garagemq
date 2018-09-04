@@ -25,6 +25,7 @@ import Exchanges from './components/exchanges';
 import Connections from './components/connections';
 import Queues from './components/queues';
 import Overview from './components/overview';
+import Channels from './components/channels';
 
 const drawerWidth = 200;
 
@@ -180,6 +181,7 @@ class App extends React.Component {
                             <Route exact path='/exchanges' component={Exchanges}/>
                             <Route exact path='/connections' component={Connections}/>
                             <Route exact path='/queues' component={Queues}/>
+                            <Route exact path='/channels' component={Channels}/>
                         </Switch>
 
                     </main>

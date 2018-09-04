@@ -7,9 +7,26 @@ import (
 
 	"github.com/valinurovam/garagemq/amqp"
 	"github.com/valinurovam/garagemq/interfaces"
+	"github.com/valinurovam/garagemq/metrics"
 	"github.com/valinurovam/garagemq/qos"
 	"github.com/valinurovam/garagemq/safequeue"
 )
+
+type MetricsState struct {
+	Ready    *metrics.TrackCounter
+	Unacked  *metrics.TrackCounter
+	Total    *metrics.TrackCounter
+	Incoming *metrics.TrackCounter
+	Deliver  *metrics.TrackCounter
+	Get      *metrics.TrackCounter
+	Ack      *metrics.TrackCounter
+
+	ServerReady   *metrics.TrackCounter
+	ServerUnacked *metrics.TrackCounter
+	ServerTotal   *metrics.TrackCounter
+	ServerDeliver *metrics.TrackCounter
+	ServerAck     *metrics.TrackCounter
+}
 
 // Queue is an implementation of the AMQP-queue entity
 type Queue struct {
@@ -28,6 +45,7 @@ type Queue struct {
 	active          bool
 	storage         interfaces.MsgStorage
 	currentConsumer int
+	metrics         *MetricsState
 }
 
 // NewQueue returns new instance of Queue
@@ -45,6 +63,21 @@ func NewQueue(name string, connID uint64, exclusive bool, autoDelete bool, durab
 		shardSize:       shardSize,
 		storage:         storage,
 		currentConsumer: 0,
+		metrics: &MetricsState{
+			Ready:    metrics.NewTrackCounter(0, true),
+			Unacked:  metrics.NewTrackCounter(0, true),
+			Total:    metrics.NewTrackCounter(0, true),
+			Incoming: metrics.NewTrackCounter(0, true),
+			Deliver:  metrics.NewTrackCounter(0, true),
+			Get:      metrics.NewTrackCounter(0, true),
+			Ack:      metrics.NewTrackCounter(0, true),
+
+			ServerReady:   metrics.NewTrackCounter(0, true),
+			ServerUnacked: metrics.NewTrackCounter(0, true),
+			ServerTotal:   metrics.NewTrackCounter(0, true),
+			ServerDeliver: metrics.NewTrackCounter(0, true),
+			ServerAck:     metrics.NewTrackCounter(0, true),
+		},
 	}
 }
 
@@ -87,6 +120,12 @@ func (queue *Queue) GetName() string {
 // When push call with silent mode true - only append message into queue
 // Silent mode used in server start
 func (queue *Queue) Push(message *amqp.Message, silent bool) {
+	queue.metrics.ServerTotal.Counter.Inc(1)
+	queue.metrics.ServerReady.Counter.Inc(1)
+
+	queue.metrics.Total.Counter.Inc(1)
+	queue.metrics.Ready.Counter.Inc(1)
+
 	if silent {
 		queue.SafeQueue.Push(message)
 		return
@@ -98,6 +137,8 @@ func (queue *Queue) Push(message *amqp.Message, silent bool) {
 	} else {
 		message.ConfirmMeta.ActualConfirms++
 	}
+
+	queue.metrics.Incoming.Counter.Inc(1)
 
 	queue.SafeQueue.Push(message)
 	queue.callConsumers()
@@ -154,6 +195,15 @@ func (queue *Queue) AckMsg(message *amqp.Message) {
 		// TODO handle error
 		queue.storage.Del(message, queue.name)
 	}
+
+	queue.metrics.Ack.Counter.Inc(1)
+	queue.metrics.Total.Counter.Dec(1)
+
+	queue.metrics.ServerAck.Counter.Inc(1)
+	queue.metrics.ServerTotal.Counter.Dec(1)
+
+	queue.metrics.Unacked.Counter.Dec(1)
+	queue.metrics.ServerUnacked.Counter.Dec(1)
 }
 
 // Requeue add message into queue head
@@ -164,6 +214,12 @@ func (queue *Queue) Requeue(message *amqp.Message) {
 		// TODO handle error
 		queue.storage.Update(message, queue.name)
 	}
+	queue.metrics.Ready.Counter.Inc(1)
+	queue.metrics.ServerReady.Counter.Inc(1)
+
+	queue.metrics.Unacked.Counter.Dec(1)
+	queue.metrics.ServerUnacked.Counter.Dec(1)
+
 	queue.callConsumers()
 }
 
@@ -177,6 +233,11 @@ func (queue *Queue) Purge() (length uint64) {
 	if queue.durable {
 		queue.storage.PurgeQueue(queue.name)
 	}
+	queue.metrics.Total.Counter.Dec(int64(length))
+	queue.metrics.Ready.Counter.Dec(int64(length))
+
+	queue.metrics.ServerTotal.Counter.Dec(int64(length))
+	queue.metrics.ServerReady.Counter.Dec(int64(length))
 	return
 }
 
@@ -206,6 +267,12 @@ func (queue *Queue) Delete(ifUnused bool, ifEmpty bool) (uint64, error) {
 	if queue.durable {
 		queue.storage.PurgeQueue(queue.name)
 	}
+
+	queue.metrics.Total.Counter.Dec(int64(length))
+	queue.metrics.Ready.Counter.Dec(int64(length))
+
+	queue.metrics.ServerTotal.Counter.Dec(int64(length))
+	queue.metrics.ServerReady.Counter.Dec(int64(length))
 
 	return length, nil
 }
@@ -326,4 +393,14 @@ func (queue *Queue) ConnID() uint64 {
 // IsActive returns is queue's main loop is active
 func (queue *Queue) IsActive() bool {
 	return queue.active
+}
+
+// SetMetrics set external metrics
+func (queue *Queue) SetMetrics(m *MetricsState) {
+	queue.metrics = m
+}
+
+// GetMetrics returns metrics
+func (queue *Queue) GetMetrics() *MetricsState {
+	return queue.metrics
 }

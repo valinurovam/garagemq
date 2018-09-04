@@ -2,6 +2,7 @@ package server
 
 import (
 	"errors"
+	"fmt"
 	"sync"
 
 	log "github.com/sirupsen/logrus"
@@ -9,6 +10,7 @@ import (
 	"github.com/valinurovam/garagemq/binding"
 	"github.com/valinurovam/garagemq/config"
 	"github.com/valinurovam/garagemq/exchange"
+	"github.com/valinurovam/garagemq/metrics"
 	"github.com/valinurovam/garagemq/msgstorage"
 	"github.com/valinurovam/garagemq/queue"
 	"github.com/valinurovam/garagemq/srvstorage"
@@ -159,6 +161,12 @@ func (vhost *VirtualHost) AppendExchange(ex *exchange.Exchange) {
 	if ex.IsDurable() && !ex.IsSystem() {
 		vhost.srvStorage.AddExchange(vhost.name, ex)
 	}
+
+	ex.SetMetrics(&exchange.MetricsState{
+		MsgIn:  metrics.AddCounter(fmt.Sprintf("exchange.%s.%s.msg_in", vhost.name, ex.GetName())),
+		MsgOut: metrics.AddCounter(fmt.Sprintf("exchange.%s.%s.msg_out", vhost.name, ex.GetName())),
+	})
+
 }
 
 // NewQueue returns new instance of queue by params
@@ -193,6 +201,22 @@ func (vhost *VirtualHost) AppendQueue(qu *queue.Queue) {
 	if qu.IsDurable() {
 		vhost.srvStorage.AddQueue(vhost.name, qu)
 	}
+
+	qu.SetMetrics(&queue.MetricsState{
+		Ready:    metrics.AddCounter(fmt.Sprintf("queue.%s.%s.ready", vhost.name, qu.GetName())),
+		Unacked:  metrics.AddCounter(fmt.Sprintf("queue.%s.%s.unacked", vhost.name, qu.GetName())),
+		Total:    metrics.AddCounter(fmt.Sprintf("queue.%s.%s.total", vhost.name, qu.GetName())),
+		Incoming: metrics.AddCounter(fmt.Sprintf("queue.%s.%s.incoming", vhost.name, qu.GetName())),
+		Deliver:  metrics.AddCounter(fmt.Sprintf("queue.%s.%s.deliver", vhost.name, qu.GetName())),
+		Get:      metrics.AddCounter(fmt.Sprintf("queue.%s.%s.get", vhost.name, qu.GetName())),
+		Ack:      metrics.AddCounter(fmt.Sprintf("queue.%s.%s.ack", vhost.name, qu.GetName())),
+
+		ServerReady:   vhost.srv.metrics.Ready,
+		ServerUnacked: vhost.srv.metrics.Unacked,
+		ServerTotal:   vhost.srv.metrics.Total,
+		ServerDeliver: vhost.srv.metrics.Deliver,
+		ServerAck:     vhost.srv.metrics.Ack,
+	})
 }
 
 // PersistBinding store binding into server storage
@@ -228,8 +252,6 @@ func (vhost *VirtualHost) loadMessagesIntoQueues() {
 		}
 
 		q.Push(message, true)
-		vhost.srv.metrics.Total.Counter.Inc(1)
-		vhost.srv.metrics.Ready.Counter.Inc(1)
 	})
 }
 

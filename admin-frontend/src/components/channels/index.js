@@ -30,20 +30,20 @@ const styles = theme => ({
     }
 });
 
-class Connections extends React.Component {
+class Channels extends React.Component {
     constructor() {
         super();
 
         this.state = {
-            connections: [],
+            channels: [],
         };
 
-        this.loadConnections()
+        this.loadChannels()
     }
 
-    loadConnections = () => {
-        AMQPAPI.get('/connections')
-            .then(response => this.setState({connections: response.data.items ? response.data.items : []}))
+    loadChannels = () => {
+        AMQPAPI.get('/channels')
+            .then(response => this.setState({channels: response.data.items ? response.data.items : []}))
     };
 
 
@@ -55,28 +55,32 @@ class Connections extends React.Component {
             <Table className={classes.table}>
                 <TableHead>
                     <TableRow>
-                        <TableCell className={classes.tableHead}>ID</TableCell>
-                        <TableCell className={classes.tableHead}>Virtual Host</TableCell>
-                        <TableCell className={classes.tableHead}>Name</TableCell>
+                        <TableCell className={classes.tableHead}>Channel</TableCell>
+                        <TableCell className={classes.tableHead}>Virtual host</TableCell>
                         <TableCell className={classes.tableHead}>User name</TableCell>
-                        <TableCell className={classes.tableHead}>Protocol</TableCell>
-                        <TableCell className={classes.tableHead} numeric>Channels</TableCell>
-                        <TableCell className={classes.tableHead}>From client</TableCell>
-                        <TableCell className={classes.tableHead}>To client</TableCell>
+                        <TableCell className={classes.tableHead}>QOS</TableCell>
+                        <TableCell className={classes.tableHead}>Unacked</TableCell>
+                        <TableCell className={classes.tableHead}>Publish</TableCell>
+                        <TableCell className={classes.tableHead}>Confirm</TableCell>
+                        <TableCell className={classes.tableHead}>Deliver</TableCell>
+                        <TableCell className={classes.tableHead}>Get</TableCell>
+                        <TableCell className={classes.tableHead}>Ack</TableCell>
                     </TableRow>
                 </TableHead>
                 <TableBody>
-                    {this.state.connections.map(row => {
+                    {this.state.channels.map(row => {
                         return (
                             <TableRow key={rowId++}>
-                                <TableCell>{row.id}</TableCell>
+                                <TableCell>{row.channel}</TableCell>
                                 <TableCell>{row.vhost}</TableCell>
-                                <TableCell>{row.addr}</TableCell>
                                 <TableCell>{row.user}</TableCell>
-                                <TableCell>{row.protocol}</TableCell>
-                                <TableCell numeric>{row.channels_count}</TableCell>
-                                <TableCell>{this.transformTraffic(row.from_client)}</TableCell>
-                                <TableCell>{this.transformTraffic(row.to_client)}</TableCell>
+                                <TableCell>{row.qos}</TableCell>
+                                <TableCell>{row.counters.unacked.value}</TableCell>
+                                <TableCell>{this.transformRate(row.counters.publish)}</TableCell>
+                                <TableCell>{this.transformRate(row.counters.confirm)}</TableCell>
+                                <TableCell>{this.transformRate(row.counters.deliver)}</TableCell>
+                                <TableCell>{this.transformRate(row.counters.get)}</TableCell>
+                                <TableCell>{this.transformRate(row.counters.ack)}</TableCell>
                             </TableRow>
                         );
                     })}
@@ -85,24 +89,16 @@ class Connections extends React.Component {
         )
     };
 
-    transformTraffic = (trackValue) => {
-        let value = 0;
-        if (trackValue) {
-            value = trackValue.value;
+    transformRate = (trackValue) => {
+        if (!trackValue || !trackValue.value) {
+            return '0/s'
         }
-        if (value > 1024 * 1024) {
-            value = Math.round(value * 100 / 1024 / 1024) / 100;
-            return value + ' MB/s';
-        } else if (value > 1024) {
-            value = Math.round(value * 100 / 1024) / 100;
-            return value + ' KB/s';
-        } else {
-            return value + ' B/s';
-        }
+
+        return trackValue.value + '/s'
     };
 
     render() {
-        setTimeout(this.loadConnections, 5000);
+        setTimeout(this.loadChannels, 5000);
         const {classes} = this.props;
 
         return (
@@ -120,4 +116,4 @@ class Connections extends React.Component {
     }
 }
 
-export default withStyles(styles)(Connections);
+export default withStyles(styles)(Channels);

@@ -40,6 +40,7 @@ func (sc *ServerClient) clean() {
 	// ulimit -n 1024
 	//sc.server.Stop()
 	os.RemoveAll(cfg.srvConfig.Db.DefaultPath)
+	metrics.Destroy()
 }
 
 func getDefaultTestConfig() TestConfig {
@@ -82,7 +83,7 @@ func getDefaultTestConfig() TestConfig {
 	}
 }
 func getNewSC(config TestConfig) (*ServerClient, error) {
-	metrics.NewTrackRegistry(15, time.Second)
+	metrics.NewTrackRegistry(15, time.Second, true)
 	sc := &ServerClient{}
 	sc.server = NewServer("localhost", "0", amqp.ProtoRabbit, &config.srvConfig)
 	sc.server.initServerStorage()

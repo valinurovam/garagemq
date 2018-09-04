@@ -18,6 +18,7 @@ func NewAdminServer(amqpServer *server.Server) *AdminServer {
 	http.Handle("/queues", NewQueuesHandler(amqpServer))
 	http.Handle("/connections", NewConnectionsHandler(amqpServer))
 	http.Handle("/bindings", NewBindingsHandler(amqpServer))
+	http.Handle("/channels", NewChannelsHandler(amqpServer))
 
 	adminServer := &AdminServer{}
 	adminServer.s = &http.Server{

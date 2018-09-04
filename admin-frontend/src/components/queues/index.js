@@ -54,10 +54,16 @@ class Queues extends React.Component {
                     <TableRow>
                         <TableCell>Virtual Host</TableCell>
                         <TableCell>Name</TableCell>
-                        <TableCell>Durable</TableCell>
-                        <TableCell>Auto Delete</TableCell>
-                        <TableCell>Exclusive</TableCell>
-                        <TableCell>Length</TableCell>
+                        <TableCell>D</TableCell>
+                        <TableCell>AD</TableCell>
+                        <TableCell>Excl</TableCell>
+                        <TableCell>Ready</TableCell>
+                        <TableCell>Unacked</TableCell>
+                        <TableCell>Total</TableCell>
+                        <TableCell>Incoming</TableCell>
+                        <TableCell>Deliver</TableCell>
+                        <TableCell>Get</TableCell>
+                        <TableCell>Ack</TableCell>
                     </TableRow>
                 </TableHead>
                 <TableBody>
@@ -66,10 +72,16 @@ class Queues extends React.Component {
                             <TableRow key={rowId++}>
                                 <TableCell>{row.vhost}</TableCell>
                                 <TableCell>{row.name}</TableCell>
-                                <TableCell><Checkbox disabled checked={row.durable}/></TableCell>
-                                <TableCell><Checkbox disabled checked={row.auto_delete}/></TableCell>
-                                <TableCell><Checkbox disabled checked={row.exclusive}/></TableCell>
-                                <TableCell>{row.length}</TableCell>
+                                <TableCell padding={'checkbox'}><Checkbox disabled checked={row.durable}/></TableCell>
+                                <TableCell padding={'checkbox'}><Checkbox disabled checked={row.auto_delete}/></TableCell>
+                                <TableCell padding={'checkbox'}><Checkbox disabled checked={row.exclusive}/></TableCell>
+                                <TableCell>{row.counters.ready ? row.counters.ready.value : 0}</TableCell>
+                                <TableCell>{row.counters.unacked ? row.counters.unacked.value : 0}</TableCell>
+                                <TableCell>{row.counters.total ? row.counters.total.value : 0}</TableCell>
+                                <TableCell>{this.transformRate(row.counters.incoming)}</TableCell>
+                                <TableCell>{this.transformRate(row.counters.deliver)}</TableCell>
+                                <TableCell>{this.transformRate(row.counters.get)}</TableCell>
+                                <TableCell>{this.transformRate(row.counters.ack)}</TableCell>
                             </TableRow>
                         );
                     })}
@@ -78,7 +90,16 @@ class Queues extends React.Component {
         )
     };
 
+    transformRate = (trackValue) => {
+        if (!trackValue || !trackValue.value) {
+            return '0/s'
+        }
+
+        return trackValue.value + '/s'
+    };
+
     render() {
+        setTimeout(this.loadQueues, 5000);
         const {classes} = this.props;
 
         return (

@@ -28,11 +28,11 @@ const (
 )
 
 type SrvMetricsState struct {
-	Publish     *metrics.TrackCounter
-	Deliver     *metrics.TrackCounter
-	Confirm     *metrics.TrackCounter
-	Acknowledge *metrics.TrackCounter
-	Get         *metrics.TrackCounter
+	Publish *metrics.TrackCounter
+	Deliver *metrics.TrackCounter
+	Confirm *metrics.TrackCounter
+	Ack     *metrics.TrackCounter
+	Get     *metrics.TrackCounter
 
 	Ready   *metrics.TrackCounter
 	Unacked *metrics.TrackCounter
@@ -79,18 +79,18 @@ func NewServer(host string, port string, protoVersion string, config *config.Con
 
 func (srv *Server) initMetrics() {
 	srv.metrics = &SrvMetricsState{
-		Publish:     metrics.NewCounter("server.publish"),
-		Deliver:     metrics.NewCounter("server.deliver"),
-		Confirm:     metrics.NewCounter("server.confirm"),
-		Get:         metrics.NewCounter("server.get"),
-		Acknowledge: metrics.NewCounter("server.acknowledge"),
+		Publish: metrics.AddCounter("server.publish"),
+		Deliver: metrics.AddCounter("server.deliver"),
+		Confirm: metrics.AddCounter("server.confirm"),
+		Get:     metrics.AddCounter("server.get"),
+		Ack:     metrics.AddCounter("server.acknowledge"),
 
-		Ready:   metrics.NewCounter("server.ready"),
-		Unacked: metrics.NewCounter("server.unacked"),
-		Total:   metrics.NewCounter("server.total"),
+		Ready:   metrics.AddCounter("server.ready"),
+		Unacked: metrics.AddCounter("server.unacked"),
+		Total:   metrics.AddCounter("server.total"),
 
-		TrafficIn:  metrics.NewCounter("server.traffic_in"),
-		TrafficOut: metrics.NewCounter("server.traffic_out"),
+		TrafficIn:  metrics.AddCounter("server.traffic_in"),
+		TrafficOut: metrics.AddCounter("server.traffic_out"),
 	}
 }
 
@@ -341,4 +341,12 @@ func (srv *Server) GetVhosts() map[string]*VirtualHost {
 
 func (srv *Server) GetConnections() map[uint64]*Connection {
 	return srv.connections
+}
+
+func (srv *Server) GetProtoVersion() string {
+	return srv.protoVersion
+}
+
+func (srv *Server) GetMetrics() *SrvMetricsState {
+	return srv.metrics
 }

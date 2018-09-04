@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"sort"
 
+	"github.com/valinurovam/garagemq/metrics"
 	"github.com/valinurovam/garagemq/server"
 )
 
@@ -16,12 +17,14 @@ type ExchangesResponse struct {
 }
 
 type Exchange struct {
-	Name       string `json:"name"`
-	Vhost      string `json:"vhost"`
-	Type       string `json:"type"`
-	Durable    bool   `json:"durable"`
-	Internal   bool   `json:"internal"`
-	AutoDelete bool   `json:"auto_delete"`
+	Name       string             `json:"name"`
+	Vhost      string             `json:"vhost"`
+	Type       string             `json:"type"`
+	Durable    bool               `json:"durable"`
+	Internal   bool               `json:"internal"`
+	AutoDelete bool               `json:"auto_delete"`
+	MsgRateIn  *metrics.TrackItem `json:"msg_rate_in"`
+	MsgRateOut *metrics.TrackItem `json:"msg_rate_out"`
 }
 
 func NewExchangesHandler(amqpServer *server.Server) http.Handler {
@@ -30,6 +33,7 @@ func NewExchangesHandler(amqpServer *server.Server) http.Handler {
 
 func (h *ExchangesHandler) ServeHTTP(resp http.ResponseWriter, req *http.Request) {
 	response := &ExchangesResponse{}
+
 	for vhostName, vhost := range h.amqpServer.GetVhosts() {
 		for _, exchange := range vhost.GetExchanges() {
 			name := exchange.GetName()
@@ -45,6 +49,8 @@ func (h *ExchangesHandler) ServeHTTP(resp http.ResponseWriter, req *http.Request
 					Internal:   exchange.IsInternal(),
 					AutoDelete: exchange.IsAutoDelete(),
 					Type:       exchange.GetTypeAlias(),
+					MsgRateIn:  exchange.GetMetrics().MsgIn.Track.GetLastDiffTrackItem(),
+					MsgRateOut: exchange.GetMetrics().MsgOut.Track.GetLastDiffTrackItem(),
 				},
 			)
 		}

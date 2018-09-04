@@ -58,6 +58,8 @@ class Exchanges extends React.Component {
                         <TableCell>Durable</TableCell>
                         <TableCell>Internal</TableCell>
                         <TableCell>Auto Delete</TableCell>
+                        <TableCell>Msg rate in</TableCell>
+                        <TableCell>Msg rate out</TableCell>
                     </TableRow>
                 </TableHead>
                 <TableBody>
@@ -70,6 +72,8 @@ class Exchanges extends React.Component {
                                 <TableCell><Checkbox disabled checked={row.durable}/></TableCell>
                                 <TableCell><Checkbox disabled checked={row.internal}/></TableCell>
                                 <TableCell><Checkbox disabled checked={row.auto_delete}/></TableCell>
+                                <TableCell>{this.transformRate(row.msg_rate_in)}</TableCell>
+                                <TableCell>{this.transformRate(row.msg_rate_out)}</TableCell>
                             </TableRow>
                         );
                     })}
@@ -78,7 +82,16 @@ class Exchanges extends React.Component {
         )
     };
 
+    transformRate = (trackValue) => {
+        if (!trackValue || !trackValue.value) {
+            return ''
+        }
+
+        return trackValue.value + '/s'
+    };
+
     render() {
+        setTimeout(this.loadExchanges, 5000);
         const {classes} = this.props;
 
         return (

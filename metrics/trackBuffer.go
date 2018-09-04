@@ -5,19 +5,25 @@ import (
 	"time"
 )
 
+// TrackItem implements tracked item with value and timestamp
 type TrackItem struct {
 	Value     int64 `json:"value"`
 	Timestamp int64 `json:"timestamp"`
 }
 
+// TrackBuffer implements buffer of TrackItems
 type TrackBuffer struct {
 	track     []*TrackItem
 	trackDiff []*TrackItem
 	lock      sync.RWMutex
 	pos       int
 	length    int
+
+	last     *TrackItem
+	lastDiff *TrackItem
 }
 
+// NewTrackBuffer returns new TrackBuffer
 func NewTrackBuffer(length int) *TrackBuffer {
 	return &TrackBuffer{
 		track:     make([]*TrackItem, length),
@@ -27,6 +33,7 @@ func NewTrackBuffer(length int) *TrackBuffer {
 	}
 }
 
+// Add adds counter value into track
 func (t *TrackBuffer) Add(item int64) {
 	t.lock.Lock()
 	defer t.lock.Unlock()
@@ -48,9 +55,13 @@ func (t *TrackBuffer) Add(item int64) {
 	}
 	t.trackDiff[t.pos].Value = diffItem
 
+	t.last = t.track[t.pos]
+	t.lastDiff = t.trackDiff[t.pos]
+
 	t.pos = (t.pos + 1) % t.length
 }
 
+// GetTrack returns current recorded track
 func (t *TrackBuffer) GetTrack() []*TrackItem {
 	t.lock.RLock()
 	defer t.lock.RUnlock()
@@ -61,6 +72,7 @@ func (t *TrackBuffer) GetTrack() []*TrackItem {
 	return track
 }
 
+// GetTrack returns current recorded diff-track
 func (t *TrackBuffer) GetDiffTrack() []*TrackItem {
 	t.lock.RLock()
 	defer t.lock.RUnlock()
@@ -69,4 +81,20 @@ func (t *TrackBuffer) GetDiffTrack() []*TrackItem {
 	copy(track[t.length-t.pos:], t.trackDiff[:t.pos])
 
 	return track
+}
+
+// GetLastTrackItem returns last tracked item
+func (t *TrackBuffer) GetLastTrackItem() *TrackItem {
+	t.lock.RLock()
+	defer t.lock.RUnlock()
+
+	return t.last
+}
+
+// GetLastDiffTrackItem returns last tracked diff item
+func (t *TrackBuffer) GetLastDiffTrackItem() *TrackItem {
+	t.lock.RLock()
+	defer t.lock.RUnlock()
+
+	return t.lastDiff
 }

@@ -13,6 +13,7 @@ import (
 	"github.com/valinurovam/garagemq/amqp"
 	"github.com/valinurovam/garagemq/consumer"
 	"github.com/valinurovam/garagemq/exchange"
+	"github.com/valinurovam/garagemq/metrics"
 	"github.com/valinurovam/garagemq/qos"
 	"github.com/valinurovam/garagemq/queue"
 )
@@ -23,6 +24,15 @@ const (
 	channelClosing
 	channelClosed
 )
+
+type ChannelMetricsState struct {
+	Publish     *metrics.TrackCounter
+	Confirm     *metrics.TrackCounter
+	Deliver     *metrics.TrackCounter
+	Get         *metrics.TrackCounter
+	Acknowledge *metrics.TrackCounter
+	Unacked     *metrics.TrackCounter
+}
 
 // Channel is an implementation of the AMQP-channel entity
 // Within a single socket connection, there can be multiple
@@ -50,7 +60,7 @@ type Channel struct {
 	confirmQueue       []*amqp.ConfirmMeta
 	ackLock            sync.Mutex
 	ackStore           map[uint64]*UnackedMessage
-	srvMetrics         *SrvMetricsState
+	metrics            *ChannelMetricsState
 }
 
 // UnackedMessage represents the unacknowledged message
@@ -78,7 +88,6 @@ func NewChannel(id uint16, conn *Connection) *Channel {
 		consumerQos:  qos.NewAmqpQos(0, 0),
 		ackStore:     make(map[uint64]*UnackedMessage),
 		confirmQueue: make([]*amqp.ConfirmMeta, 0),
-		srvMetrics:   conn.server.metrics,
 	}
 
 	channel.logger = log.WithFields(log.Fields{
@@ -86,7 +95,20 @@ func NewChannel(id uint16, conn *Connection) *Channel {
 		"channelId":    id,
 	})
 
+	channel.initMetrics()
+
 	return channel
+}
+
+func (channel *Channel) initMetrics() {
+	channel.metrics = &ChannelMetricsState{
+		Publish:     metrics.AddCounter(fmt.Sprintf("channel.%d.%d.publish", channel.conn.id, channel.id)),
+		Confirm:     metrics.AddCounter(fmt.Sprintf("channel.%d.%d.confirm", channel.conn.id, channel.id)),
+		Deliver:     metrics.AddCounter(fmt.Sprintf("channel.%d.%d.deliver", channel.conn.id, channel.id)),
+		Get:         metrics.AddCounter(fmt.Sprintf("channel.%d.%d.get", channel.conn.id, channel.id)),
+		Acknowledge: metrics.AddCounter(fmt.Sprintf("channel.%d.%d.acknowledge", channel.conn.id, channel.id)),
+		Unacked:     metrics.AddCounter(fmt.Sprintf("channel.%d.%d.unacked", channel.conn.id, channel.id)),
+	}
 }
 
 func (channel *Channel) start() {
@@ -210,6 +232,7 @@ func (channel *Channel) handleContentBody(bodyFrame *amqp.Frame) *amqp.Error {
 		)
 		return nil
 	}
+	ex.GetMetrics().MsgIn.Counter.Inc(1)
 	matchedQueues := ex.GetMatchedQueues(message)
 
 	if len(matchedQueues) == 0 {
@@ -225,14 +248,15 @@ func (channel *Channel) handleContentBody(bodyFrame *amqp.Frame) *amqp.Error {
 		return nil
 	}
 
-	channel.srvMetrics.Publish.Counter.Inc(1)
+	channel.server.GetMetrics().Publish.Counter.Inc(1)
+	channel.metrics.Publish.Counter.Inc(1)
 
 	message.ConfirmMeta.ExpectedConfirms = len(matchedQueues)
 	for queueName := range matchedQueues {
 		qu := channel.conn.GetVirtualHost().GetQueue(queueName)
 		qu.Push(message, false)
-		channel.srvMetrics.Total.Counter.Inc(1)
-		channel.srvMetrics.Ready.Counter.Inc(1)
+
+		ex.GetMetrics().MsgOut.Counter.Inc(1)
 
 		if message.ConfirmMeta.CanConfirm() && !message.IsPersistent() {
 			channel.addConfirm(&message.ConfirmMeta)
@@ -275,7 +299,7 @@ func (channel *Channel) SendContent(method amqp.Method, message *amqp.Message) {
 
 	switch method.(type) {
 	case *amqp.BasicDeliver:
-		channel.srvMetrics.Deliver.Counter.Inc(1)
+		channel.metrics.Deliver.Counter.Inc(1)
 	}
 }
 
@@ -308,7 +332,8 @@ func (channel *Channel) sendConfirms() {
 				DeliveryTag: confirm.DeliveryTag,
 				Multiple:    false,
 			})
-			channel.srvMetrics.Confirm.Counter.Inc(1)
+			channel.server.GetMetrics().Confirm.Counter.Inc(1)
+			channel.metrics.Confirm.Counter.Inc(1)
 		}
 	}
 }
@@ -384,6 +409,10 @@ func (channel *Channel) updateQos(prefetchCount uint16, prefetchSize uint32, glo
 	}
 }
 
+func (channel *Channel) GetQos() *qos.AmqpQos {
+	return channel.qos
+}
+
 // NextDeliveryTag returns next delivery tag for current channel
 func (channel *Channel) NextDeliveryTag() uint64 {
 	return atomic.AddUint64(&channel.deliveryTag, 1)
@@ -402,8 +431,7 @@ func (channel *Channel) AddUnackedMessage(dTag uint64, cTag string, queue string
 		msg:   message,
 		queue: queue,
 	}
-	channel.srvMetrics.Unacked.Counter.Inc(1)
-	channel.srvMetrics.Ready.Counter.Dec(1)
+	channel.metrics.Unacked.Counter.Inc(1)
 }
 
 func (channel *Channel) handleAck(method *amqp.BasicAck) *amqp.Error {
@@ -436,9 +464,9 @@ func (channel *Channel) ackMsg(unackedMessage *UnackedMessage, deliveryTag uint6
 	q := channel.conn.GetVirtualHost().GetQueue(unackedMessage.queue)
 	if q != nil {
 		q.AckMsg(unackedMessage.msg)
-		channel.srvMetrics.Acknowledge.Counter.Inc(1)
-		channel.srvMetrics.Total.Counter.Dec(1)
-		channel.srvMetrics.Unacked.Counter.Dec(1)
+
+		channel.metrics.Acknowledge.Counter.Inc(1)
+		channel.metrics.Unacked.Counter.Dec(1)
 	}
 
 	channel.decQosAndConsumerNext(unackedMessage)
@@ -486,11 +514,10 @@ func (channel *Channel) rejectMsg(unackedMessage *UnackedMessage, deliveryTag ui
 	if qu != nil {
 		if requeue {
 			qu.Requeue(unackedMessage.msg)
-			channel.srvMetrics.Ready.Counter.Inc(1)
 		} else {
 			qu.AckMsg(unackedMessage.msg)
 		}
-		channel.srvMetrics.Unacked.Counter.Dec(1)
+		channel.metrics.Unacked.Counter.Dec(1)
 	}
 
 	channel.decQosAndConsumerNext(unackedMessage)
@@ -577,6 +604,12 @@ func (channel *Channel) changeFlow(active bool) {
 	channel.cmrLock.Unlock()
 }
 
+// GetConsumersCount returns consumers count on channel
 func (channel *Channel) GetConsumersCount() int {
 	return len(channel.consumers)
+}
+
+// GetMetrics returns metrics
+func (channel *Channel) GetMetrics() *ChannelMetricsState {
+	return channel.metrics
 }

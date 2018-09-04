@@ -36,45 +36,46 @@ func (h *OverviewHandler) ServeHTTP(resp http.ResponseWriter, req *http.Request)
 }
 
 func (h *OverviewHandler) populateMetrics(response *OverviewResponse) {
+	serverMetrics := h.amqpServer.GetMetrics()
 	response.Metrics = append(response.Metrics, &Metric{
 		Name:   "server.publish",
-		Sample: metrics.GetCounter("server.publish").Track.GetDiffTrack(),
+		Sample: serverMetrics.Publish.Track.GetDiffTrack(),
 	})
 	response.Metrics = append(response.Metrics, &Metric{
 		Name:   "server.deliver",
-		Sample: metrics.GetCounter("server.deliver").Track.GetDiffTrack(),
+		Sample: serverMetrics.Deliver.Track.GetDiffTrack(),
 	})
 	response.Metrics = append(response.Metrics, &Metric{
 		Name:   "server.confirm",
-		Sample: metrics.GetCounter("server.confirm").Track.GetDiffTrack(),
+		Sample: serverMetrics.Confirm.Track.GetDiffTrack(),
 	})
 	response.Metrics = append(response.Metrics, &Metric{
 		Name:   "server.acknowledge",
-		Sample: metrics.GetCounter("server.acknowledge").Track.GetDiffTrack(),
+		Sample: serverMetrics.Ack.Track.GetDiffTrack(),
 	})
 	response.Metrics = append(response.Metrics, &Metric{
 		Name:   "server.traffic_in",
-		Sample: metrics.GetCounter("server.traffic_in").Track.GetDiffTrack(),
+		Sample: serverMetrics.TrafficIn.Track.GetDiffTrack(),
 	})
 	response.Metrics = append(response.Metrics, &Metric{
 		Name:   "server.traffic_out",
-		Sample: metrics.GetCounter("server.traffic_out").Track.GetDiffTrack(),
+		Sample: serverMetrics.TrafficOut.Track.GetDiffTrack(),
 	})
 	response.Metrics = append(response.Metrics, &Metric{
 		Name:   "server.get",
-		Sample: metrics.GetCounter("server.get").Track.GetDiffTrack(),
+		Sample: serverMetrics.Get.Track.GetDiffTrack(),
 	})
 	response.Metrics = append(response.Metrics, &Metric{
 		Name:   "server.ready",
-		Sample: metrics.GetCounter("server.ready").Track.GetTrack(),
+		Sample: serverMetrics.Ready.Track.GetTrack(),
 	})
 	response.Metrics = append(response.Metrics, &Metric{
 		Name:   "server.unacked",
-		Sample: metrics.GetCounter("server.unacked").Track.GetTrack(),
+		Sample: serverMetrics.Unacked.Track.GetTrack(),
 	})
 	response.Metrics = append(response.Metrics, &Metric{
 		Name:   "server.total",
-		Sample: metrics.GetCounter("server.total").Track.GetTrack(),
+		Sample: serverMetrics.Total.Track.GetTrack(),
 	})
 }
 
@@ -86,15 +87,15 @@ func (h *OverviewHandler) populateCounters(response *OverviewResponse) {
 	response.Counters["consumers"] = 0
 
 	for _, vhost := range h.amqpServer.GetVhosts() {
-		response.Counters["exchanges"] = response.Counters["exchanges"] + len(vhost.GetExchanges())
-		response.Counters["queues"] = response.Counters["queues"] + len(vhost.GetQueues())
+		response.Counters["exchanges"] += len(vhost.GetExchanges())
+		response.Counters["queues"] += len(vhost.GetQueues())
 	}
 
 	for _, conn := range h.amqpServer.GetConnections() {
-		response.Counters["channels"] = response.Counters["channels"] + len(conn.GetChannels())
+		response.Counters["channels"] += len(conn.GetChannels())
 
 		for _, ch := range conn.GetChannels() {
-			response.Counters["consumers"] = response.Counters["consumers"] + ch.GetConsumersCount()
+			response.Counters["consumers"] += ch.GetConsumersCount()
 		}
 	}
 }

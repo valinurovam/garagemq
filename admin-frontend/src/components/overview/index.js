@@ -63,7 +63,6 @@ class Overview extends React.Component {
         };
 
         this.loadMetrics();
-        setInterval(this.loadMetrics, 1000)
     }
 
     loadMetrics = () => {
@@ -78,6 +77,10 @@ class Overview extends React.Component {
         metricsData.forEach(function (metric) {
             if (metric.name === 'server.traffic_in' || metric.name === 'server.traffic_out') {
                 metric.sample.map((sample) => {
+                    if (!sample) {
+                        return
+                    }
+                    // convert to MB/s
                     sample.value = Math.round(sample.value * 100 / 1024 / 1024) / 100
                 })
             }
@@ -188,6 +191,8 @@ class Overview extends React.Component {
     };
 
     renderMessageRatesCharts = () => {
+        setTimeout(this.loadMetrics, 5000);
+
         const {metrics} = this.state;
         const {classes} = this.props;
         return (
@@ -238,7 +243,7 @@ class Overview extends React.Component {
         return (
             <div className={classes.chartDiv}>
                 <Typography variant="subheading" color="inherit" className={classes.chartTitle}>
-                    Network Traffic rates, Mb/s
+                    Network Traffic rates, MB/s
                 </Typography>
                 <LineChart width={1000} height={300}
                            margin={{top: 5, left: 20, right: 30, bottom: 5}}>

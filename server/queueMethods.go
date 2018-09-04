@@ -173,8 +173,6 @@ func (channel *Channel) queuePurge(method *amqp.QueuePurge) *amqp.Error {
 	}
 
 	msgCnt := qu.Purge()
-	channel.srvMetrics.Total.Counter.Dec(int64(msgCnt))
-	channel.srvMetrics.Ready.Counter.Dec(int64(msgCnt))
 	if !method.NoWait {
 		channel.SendMethod(&amqp.QueuePurgeOk{MessageCount: uint32(msgCnt)})
 	}
@@ -194,8 +192,6 @@ func (channel *Channel) queueDelete(method *amqp.QueueDelete) *amqp.Error {
 	}
 
 	var length, errDel = channel.conn.GetVirtualHost().DeleteQueue(method.Queue, method.IfUnused, method.IfEmpty)
-	channel.srvMetrics.Total.Counter.Dec(int64(length))
-	channel.srvMetrics.Ready.Counter.Dec(int64(length))
 	if errDel != nil {
 		return amqp.NewChannelError(amqp.PreconditionFailed, errDel.Error(), method.ClassIdentifier(), method.MethodIdentifier())
 	}
