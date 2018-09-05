@@ -87,14 +87,6 @@ func (consumer *Consumer) startConsume() {
 			consumer.channel.AddUnackedMessage(dTag, consumer.ConsumerTag, consumer.queue.GetName(), message)
 		}
 
-		consumer.channel.SendContent(&amqp.BasicDeliver{
-			ConsumerTag: consumer.ConsumerTag,
-			DeliveryTag: dTag,
-			Redelivered: message.DeliveryCount > 1,
-			Exchange:    message.Exchange,
-			RoutingKey:  message.RoutingKey,
-		}, message)
-
 		// handle metrics
 		if consumer.noAck {
 			consumer.queue.GetMetrics().Total.Counter.Dec(1)
@@ -104,10 +96,19 @@ func (consumer *Consumer) startConsume() {
 			consumer.queue.GetMetrics().ServerUnacked.Counter.Inc(1)
 		}
 
-		consumer.queue.GetMetrics().Deliver.Counter.Inc(1)
-		consumer.queue.GetMetrics().ServerDeliver.Counter.Inc(1)
 		consumer.queue.GetMetrics().Ready.Counter.Dec(1)
 		consumer.queue.GetMetrics().ServerReady.Counter.Dec(1)
+
+		consumer.channel.SendContent(&amqp.BasicDeliver{
+			ConsumerTag: consumer.ConsumerTag,
+			DeliveryTag: dTag,
+			Redelivered: message.DeliveryCount > 1,
+			Exchange:    message.Exchange,
+			RoutingKey:  message.RoutingKey,
+		}, message)
+
+		consumer.queue.GetMetrics().Deliver.Counter.Inc(1)
+		consumer.queue.GetMetrics().ServerDeliver.Counter.Inc(1)
 
 		consumer.Consume()
 	}
