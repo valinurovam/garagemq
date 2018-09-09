@@ -39,8 +39,8 @@ func Test_QueueDeclareDurable_Success(t *testing.T) {
 		t.Fatal("Queue does not exists into storage after 'QueueDeclareDurable'")
 	}
 	found := false
-	for _, name := range storedQueues {
-		if name == "test" {
+	for _, q := range storedQueues {
+		if q.GetName() == "test" {
 			found = true
 		}
 	}
@@ -450,8 +450,8 @@ func Test_QueueDeleteDurable_Success(t *testing.T) {
 	}
 
 	found := false
-	for _, name := range storedQueues {
-		if name == "test" {
+	for _, q := range storedQueues {
+		if q.GetName() == "test" {
 			found = true
 		}
 	}

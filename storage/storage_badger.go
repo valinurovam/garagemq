@@ -4,7 +4,6 @@ import (
 	"time"
 
 	"github.com/dgraph-io/badger"
-	"github.com/dgraph-io/badger/options"
 	"github.com/valinurovam/garagemq/interfaces"
 )
 
@@ -18,7 +17,6 @@ func NewBadger(storageDir string) *Badger {
 	storage := &Badger{}
 	opts := badger.DefaultOptions
 	opts.SyncWrites = true
-	opts.TableLoadingMode = options.MemoryMap
 	opts.Dir = storageDir
 	opts.ValueDir = storageDir
 	var err error
@@ -35,10 +33,14 @@ func (storage *Badger) ProcessBatch(batch []*interfaces.Operation) (err error) {
 	return storage.db.Update(func(txn *badger.Txn) error {
 		for _, op := range batch {
 			if op.Op == interfaces.OpSet {
-				txn.Set([]byte(op.Key), op.Value)
+				if err = txn.Set([]byte(op.Key), op.Value); err != nil {
+					return err
+				}
 			}
 			if op.Op == interfaces.OpDel {
-				txn.Delete([]byte(op.Key))
+				if err = txn.Delete([]byte(op.Key)); err != nil {
+					return err
+				}
 			}
 		}
 		return nil

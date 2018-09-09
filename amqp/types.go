@@ -17,18 +17,18 @@ type Decimal struct {
 
 // Frame is raw frame
 type Frame struct {
-	Type       byte
 	ChannelID  uint16
-	Payload    []byte
+	Type       byte
 	CloseAfter bool
 	Sync       bool
+	Payload    []byte
 }
 
 // ContentHeader represents amqp-message content-header
 type ContentHeader struct {
+	BodySize      uint64
 	ClassID       uint16
 	Weight        uint16
-	BodySize      uint64
 	propertyFlags uint16
 	PropertyList  *BasicPropertyList
 }
@@ -50,19 +50,19 @@ func (meta *ConfirmMeta) CanConfirm() bool {
 // Message represents amqp-message and meta-data
 type Message struct {
 	ID            uint64
-	Header        *ContentHeader
-	Exchange      string
-	RoutingKey    string
+	BodySize      uint64
+	DeliveryCount uint32
 	Mandatory     bool
 	Immediate     bool
-	BodySize      uint64
+	Exchange      string
+	RoutingKey    string
+	ConfirmMeta   *ConfirmMeta
+	Header        *ContentHeader
 	Body          []*Frame
-	DeliveryCount uint32
-	ConfirmMeta   ConfirmMeta
 }
 
 // when server restart we can't start again count messages from 0
-var msgID = uint64(time.Now().Unix())
+var msgID = uint64(time.Now().UnixNano())
 
 // NewMessage returns new message instance
 func NewMessage(method *BasicPublish) *Message {

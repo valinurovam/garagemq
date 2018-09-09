@@ -84,11 +84,11 @@ func (vhost *VirtualHost) handleConfirms() {
 		if !confirm.ConfirmMeta.CanConfirm() {
 			continue
 		}
-		channel := vhost.srv.getConfirmChannel(&confirm.ConfirmMeta)
+		channel := vhost.srv.getConfirmChannel(confirm.ConfirmMeta)
 		if channel == nil {
 			continue
 		}
-		channel.addConfirm(&confirm.ConfirmMeta)
+		channel.addConfirm(confirm.ConfirmMeta)
 	}
 }
 
@@ -233,13 +233,13 @@ func (vhost *VirtualHost) RemoveBindings(bindings []*binding.Binding) {
 
 func (vhost *VirtualHost) loadQueues() {
 	vhost.logger.Info("Initialize queues...")
-	queueNames := vhost.srvStorage.GetVhostQueues(vhost.name)
-	if len(queueNames) == 0 {
+	queues := vhost.srvStorage.GetVhostQueues(vhost.name)
+	if len(queues) == 0 {
 		return
 	}
-	for _, name := range queueNames {
+	for _, q := range queues {
 		vhost.AppendQueue(
-			vhost.NewQueue(name, 0, false, false, true, vhost.srvConfig.Queue.ShardSize),
+			vhost.NewQueue(q.GetName(), 0, false, q.IsAutoDelete(), q.IsDurable(), vhost.srvConfig.Queue.ShardSize),
 		)
 	}
 }

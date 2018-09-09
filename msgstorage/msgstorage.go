@@ -25,6 +25,7 @@ type MsgStorage struct {
 	closeCh       chan bool
 	confirmSyncCh chan *amqp.Message
 	confirmMode   bool
+	writeCh       chan struct{}
 }
 
 // NewMsgStorage returns new instance of message storage
@@ -34,6 +35,7 @@ func NewMsgStorage(db interfaces.DbStorage, protoVersion string) *MsgStorage {
 		protoVersion:  protoVersion,
 		closeCh:       make(chan bool),
 		confirmSyncCh: make(chan *amqp.Message, 4096),
+		writeCh:       make(chan struct{}, 5),
 	}
 	msgStorage.cleanPersistQueue()
 	go msgStorage.periodicPersist()
@@ -46,9 +48,17 @@ func (storage *MsgStorage) cleanPersistQueue() {
 	storage.del = make(map[string]*amqp.Message)
 }
 
+// We try to persist messages every 20ms and every 1000msg
 func (storage *MsgStorage) periodicPersist() {
 	tick := time.NewTicker(20 * time.Millisecond)
-	for range tick.C {
+
+	go func() {
+		for range tick.C {
+			storage.writeCh <- struct{}{}
+		}
+	}()
+
+	for range storage.writeCh {
 		select {
 		case <-storage.closeCh:
 			return
@@ -56,6 +66,11 @@ func (storage *MsgStorage) periodicPersist() {
 			storage.persist()
 		}
 	}
+}
+
+// no need to be thread safe
+func (storage *MsgStorage) getQueueLen() int {
+	return len(storage.add) + len(storage.add) + len(storage.add)
 }
 
 func (storage *MsgStorage) persist() {
@@ -115,10 +130,12 @@ func (storage *MsgStorage) persist() {
 		)
 	}
 
-	storage.db.ProcessBatch(batch)
+	if err := storage.db.ProcessBatch(batch); err != nil {
+		panic(err)
+	}
 
 	for _, message := range add {
-		if storage.confirmMode && message.ConfirmMeta.DeliveryTag > 0 {
+		if message.ConfirmMeta != nil && storage.confirmMode && message.ConfirmMeta.DeliveryTag > 0 {
 			message.ConfirmMeta.ActualConfirms++
 			storage.confirmSyncCh <- message
 		}
@@ -133,8 +150,13 @@ func (storage *MsgStorage) ReceiveConfirms() chan *amqp.Message {
 
 // Add append message into add-queue
 func (storage *MsgStorage) Add(message *amqp.Message, queue string) error {
+	if storage.getQueueLen() > 1000 {
+		storage.writeCh <- struct{}{}
+	}
+
 	storage.persistLock.Lock()
 	defer storage.persistLock.Unlock()
+
 	storage.add[makeKey(message.ID, queue)] = message
 	return nil
 }

@@ -113,7 +113,11 @@ func (storage *SrvStorage) DelExchange(vhost string, ex *exchange.Exchange) erro
 // AddQueue add queue into storage
 func (storage *SrvStorage) AddQueue(vhost string, queue *queue.Queue) error {
 	key := fmt.Sprintf("%s.%s.%s", queuePrefix, vhost, queue.GetName())
-	return storage.db.Set(key, queue.Marshal(storage.protoVersion))
+	data, err := queue.Marshal(storage.protoVersion)
+	if err != nil {
+		return err
+	}
+	return storage.db.Set(key, data)
 }
 
 // DelQueue remove queue from storage
@@ -123,19 +127,20 @@ func (storage *SrvStorage) DelQueue(vhost string, queue *queue.Queue) error {
 }
 
 // GetVhostQueues returns queue names that has given vhost
-func (storage *SrvStorage) GetVhostQueues(vhost string) []string {
-	var queueNames []string
+func (storage *SrvStorage) GetVhostQueues(vhost string) []*queue.Queue {
+	var queues []*queue.Queue
 	storage.db.Iterate(
 		func(key []byte, value []byte) {
 			if !bytes.HasPrefix(key, []byte(queuePrefix)) || getVhostFromKey(string(key)) != vhost {
 				return
 			}
-			queueNames = append(queueNames, string(value))
-
+			q := &queue.Queue{}
+			q.Unmarshal(value, storage.protoVersion)
+			queues = append(queues, q)
 		},
 	)
 
-	return queueNames
+	return queues
 }
 
 // GetVhostExchanges returns exchanges that has given vhost

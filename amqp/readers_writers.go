@@ -7,7 +7,14 @@ import (
 	"fmt"
 	"io"
 	"time"
+
+	"github.com/valinurovam/garagemq/pool"
 )
+
+var emptyBufferPool = pool.NewBufferPool(0)
+
+// 14 bytes for class-id | weight | body size | property flags
+var headerBufferPool = pool.NewBufferPool(14)
 
 // supported protocol identifiers
 const (
@@ -482,7 +489,9 @@ func readValueRabbit(r io.Reader) (data interface{}, err error) {
 // Standard amqp table and rabbitmq table are little different
 // So we have second argument protoVersion to handle that issue
 func WriteTable(writer io.Writer, table *Table, protoVersion string) (err error) {
-	var buf = bytes.NewBuffer(make([]byte, 0))
+	//var buf = bytes.NewBuffer(make([]byte, 0))
+	var buf = emptyBufferPool.Get()
+	defer emptyBufferPool.Put(buf)
 	for key, v := range *table {
 		if err := WriteShortstr(buf, key); err != nil {
 			return err
@@ -716,7 +725,9 @@ func writeValueRabbit(writer io.Writer, v interface{}) (err error) {
 }
 
 func writeArray(writer io.Writer, array []interface{}, protoVersion string) error {
-	var buf = bytes.NewBuffer([]byte{})
+	var buf = emptyBufferPool.Get()
+	defer emptyBufferPool.Put(buf)
+
 	for _, v := range array {
 		if err := writeV(buf, v, protoVersion); err != nil {
 			return err
@@ -749,13 +760,16 @@ func readArray(r io.Reader, protoVersion string) (data []interface{}, err error)
 func ReadContentHeader(r io.Reader, protoVersion string) (*ContentHeader, error) {
 	var err error
 	// 14 bytes for class-id | weight | body size | property flags
+	headerBuf := headerBufferPool.Get()
+	defer headerBufferPool.Put(headerBuf)
+
 	var header = make([]byte, 14)
 	if err = binary.Read(r, binary.BigEndian, header); err != nil {
 		return nil, err
 	}
+	headerBuf.Write(header)
 
 	contentHeader := &ContentHeader{}
-	headerBuf := bytes.NewBuffer(header)
 
 	if contentHeader.ClassID, err = ReadShort(headerBuf); err != nil {
 		return nil, err
@@ -790,7 +804,10 @@ func WriteContentHeader(writer io.Writer, header *ContentHeader, protoVersion st
 		return err
 	}
 
-	var propertyBuf = bytes.NewBuffer(make([]byte, 0))
+	var propertyBuf = emptyBufferPool.Get()
+	defer emptyBufferPool.Put(propertyBuf)
+
+	//var propertyBuf = bytes.NewBuffer(make([]byte, 0))
 	properyFlags, err := header.PropertyList.Write(propertyBuf, protoVersion)
 	if err != nil {
 		return err

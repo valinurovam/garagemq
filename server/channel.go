@@ -120,12 +120,13 @@ func (channel *Channel) start() {
 }
 
 func (channel *Channel) handleIncoming() {
+	buffer := bytes.NewReader([]byte{})
 	for {
 		frame := <-channel.incoming
 
 		switch frame.Type {
 		case amqp.FrameMethod:
-			buffer := bytes.NewReader(frame.Payload)
+			buffer.Reset(frame.Payload)
 			method, err := amqp.ReadMethod(buffer, channel.protoVersion)
 			channel.logger.Debug("Incoming method <- " + method.Name())
 			if err != nil {
@@ -242,7 +243,7 @@ func (channel *Channel) handleContentBody(bodyFrame *amqp.Frame) *amqp.Error {
 				message,
 			)
 		} else {
-			channel.addConfirm(&message.ConfirmMeta)
+			channel.addConfirm(message.ConfirmMeta)
 		}
 
 		return nil
@@ -251,15 +252,18 @@ func (channel *Channel) handleContentBody(bodyFrame *amqp.Frame) *amqp.Error {
 	channel.server.GetMetrics().Publish.Counter.Inc(1)
 	channel.metrics.Publish.Counter.Inc(1)
 
-	message.ConfirmMeta.ExpectedConfirms = len(matchedQueues)
+	if channel.confirmMode {
+		message.ConfirmMeta.ExpectedConfirms = len(matchedQueues)
+	}
+
 	for queueName := range matchedQueues {
 		qu := channel.conn.GetVirtualHost().GetQueue(queueName)
 		qu.Push(message, false)
 
 		ex.GetMetrics().MsgOut.Counter.Inc(1)
 
-		if message.ConfirmMeta.CanConfirm() && !message.IsPersistent() {
-			channel.addConfirm(&message.ConfirmMeta)
+		if channel.confirmMode && message.ConfirmMeta.CanConfirm() && !message.IsPersistent() {
+			channel.addConfirm(message.ConfirmMeta)
 		}
 	}
 	return nil
@@ -268,7 +272,7 @@ func (channel *Channel) handleContentBody(bodyFrame *amqp.Frame) *amqp.Error {
 // SendMethod send method to client
 // Method will be packed into frame and send to outgoing channel
 func (channel *Channel) SendMethod(method amqp.Method) {
-	rawMethod := bytes.NewBuffer([]byte{})
+	var rawMethod = emptyBufferPool.Get()
 	if err := amqp.WriteMethod(rawMethod, method, channel.server.protoVersion); err != nil {
 		logrus.WithError(err).Error("Error")
 	}
@@ -277,7 +281,11 @@ func (channel *Channel) SendMethod(method amqp.Method) {
 
 	channel.logger.Debug("Outgoing -> " + method.Name())
 
-	channel.sendOutgoing(&amqp.Frame{Type: byte(amqp.FrameMethod), ChannelID: channel.id, Payload: rawMethod.Bytes(), CloseAfter: closeAfter, Sync: method.Sync()})
+	payload := make([]byte, rawMethod.Len())
+	copy(payload, rawMethod.Bytes())
+	emptyBufferPool.Put(rawMethod)
+
+	channel.sendOutgoing(&amqp.Frame{Type: byte(amqp.FrameMethod), ChannelID: channel.id, Payload: payload, CloseAfter: closeAfter, Sync: method.Sync()})
 }
 
 func (channel *Channel) sendOutgoing(frame *amqp.Frame) {
@@ -288,9 +296,14 @@ func (channel *Channel) sendOutgoing(frame *amqp.Frame) {
 func (channel *Channel) SendContent(method amqp.Method, message *amqp.Message) {
 	channel.SendMethod(method)
 
-	rawHeader := bytes.NewBuffer([]byte{})
+	var rawHeader = emptyBufferPool.Get()
 	amqp.WriteContentHeader(rawHeader, message.Header, channel.server.protoVersion)
-	channel.sendOutgoing(&amqp.Frame{Type: byte(amqp.FrameHeader), ChannelID: channel.id, Payload: rawHeader.Bytes(), CloseAfter: false})
+
+	payload := make([]byte, rawHeader.Len())
+	copy(payload, rawHeader.Bytes())
+	emptyBufferPool.Put(rawHeader)
+
+	channel.sendOutgoing(&amqp.Frame{Type: byte(amqp.FrameHeader), ChannelID: channel.id, Payload: payload, CloseAfter: false})
 
 	for _, payload := range message.Body {
 		payload.ChannelID = channel.id

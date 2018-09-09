@@ -1,7 +1,6 @@
 package queue
 
 import (
-	"bytes"
 	"testing"
 
 	"github.com/valinurovam/garagemq/amqp"
@@ -323,12 +322,13 @@ func TestQueue_Delete_Failed_IfUnused(t *testing.T) {
 
 func TestQueue_Marshal(t *testing.T) {
 	queue := NewQueue("test", 0, false, false, false, SIZE, nil)
-	marshaled := queue.Marshal(amqp.ProtoRabbit)
-	if !bytes.Equal(marshaled, []byte("test")) {
-		t.Fatal("Error on marshal queue")
+	marshaled, err := queue.Marshal(amqp.ProtoRabbit)
+	if err != nil {
+		t.Fatal(err)
 	}
 
-	if queue.Unmarshal(marshaled, amqp.ProtoRabbit) != "test" {
+	uQueue := &Queue{}
+	if err = uQueue.Unmarshal(marshaled, amqp.ProtoRabbit); err != nil || uQueue.name != "test" {
 		t.Fatal("Error on unmarshal queue")
 	}
 }

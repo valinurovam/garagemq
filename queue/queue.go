@@ -1,6 +1,7 @@
 package queue
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"sync"
@@ -134,7 +135,7 @@ func (queue *Queue) Push(message *amqp.Message, silent bool) {
 	if queue.durable && message.IsPersistent() {
 		// TODO handle error
 		queue.storage.Add(message, queue.name)
-	} else {
+	} else if message.ConfirmMeta != nil {
 		message.ConfirmMeta.ActualConfirms++
 	}
 
@@ -362,13 +363,41 @@ func (queue *Queue) EqualWithErr(qB *Queue) error {
 }
 
 // Marshal returns raw representation of queue to store into storage
-func (queue *Queue) Marshal(protoVersion string) []byte {
-	return []byte(queue.name)
+func (queue *Queue) Marshal(protoVersion string) (data []byte, err error) {
+
+	buf := bytes.NewBuffer(make([]byte, 0))
+	if err = amqp.WriteShortstr(buf, queue.name); err != nil {
+		return nil, err
+	}
+
+	var autoDelete byte
+	if queue.autoDelete {
+		autoDelete = 1
+	} else {
+		autoDelete = 0
+	}
+
+	if err = amqp.WriteOctet(buf, autoDelete); err != nil {
+		return nil, err
+	}
+	return buf.Bytes(), nil
 }
 
 // Unmarshal returns queue from storage raw bytes data
-func (queue *Queue) Unmarshal(data []byte, protoVersion string) string {
-	return string(data)
+func (queue *Queue) Unmarshal(data []byte, protoVersion string) (err error) {
+	buf := bytes.NewReader(data)
+	if queue.name, err = amqp.ReadShortstr(buf); err != nil {
+		return err
+	}
+
+	var autoDelete byte
+
+	if autoDelete, err = amqp.ReadOctet(buf); err != nil {
+		return err
+	}
+	queue.autoDelete = autoDelete > 0
+	queue.durable = true
+	return
 }
 
 // IsDurable returns is queue durable
@@ -381,6 +410,7 @@ func (queue *Queue) IsExclusive() bool {
 	return queue.exclusive
 }
 
+// IsAutoDelete returns is queue should be deleted automatically
 func (queue *Queue) IsAutoDelete() bool {
 	return queue.autoDelete
 }

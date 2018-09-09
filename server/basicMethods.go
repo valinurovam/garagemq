@@ -60,7 +60,7 @@ func (channel *Channel) basicPublish(method *amqp.BasicPublish) (err *amqp.Error
 
 	channel.currentMessage = amqp.NewMessage(method)
 	if channel.confirmMode {
-		channel.currentMessage.ConfirmMeta = amqp.ConfirmMeta{
+		channel.currentMessage.ConfirmMeta = &amqp.ConfirmMeta{
 			ChanID:      channel.id,
 			ConnID:      channel.conn.id,
 			DeliveryTag: channel.nextConfirmDeliveryTag(),
