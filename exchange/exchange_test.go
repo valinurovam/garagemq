@@ -219,6 +219,54 @@ func TestExchange_EqualWithErr_Success(t *testing.T) {
 	}
 }
 
+func TestExchange_EqualWithErr_Failed_UndefinedExTypeA(t *testing.T) {
+	e1 := &Exchange{
+		Name:       "test",
+		exType:     100,
+		durable:    false,
+		autoDelete: false,
+		internal:   false,
+		system:     false,
+	}
+
+	e2 := &Exchange{
+		Name:       "test",
+		exType:     ExTypeDirect,
+		durable:    false,
+		autoDelete: false,
+		internal:   false,
+		system:     false,
+	}
+
+	if err := e1.EqualWithErr(e2); err == nil {
+		t.Fatal("Expected undefined exchange type error")
+	}
+}
+
+func TestExchange_EqualWithErr_Failed_UndefinedExTypeB(t *testing.T) {
+	e1 := &Exchange{
+		Name:       "test",
+		exType:     ExTypeDirect,
+		durable:    false,
+		autoDelete: false,
+		internal:   false,
+		system:     false,
+	}
+
+	e2 := &Exchange{
+		Name:       "test",
+		exType:     100,
+		durable:    false,
+		autoDelete: false,
+		internal:   false,
+		system:     false,
+	}
+
+	if err := e1.EqualWithErr(e2); err == nil {
+		t.Fatal("Expected undefined exchange type error")
+	}
+}
+
 func TestExchange_EqualWithErr_Failed_ExType(t *testing.T) {
 	e1 := &Exchange{
 		Name:       "test",
@@ -386,6 +434,22 @@ func TestExchange_Marshal(t *testing.T) {
 	}
 }
 
+// useless, for coverage only
+func TestExchange_Unmarshal_FailedEmpty(t *testing.T) {
+	ex := &Exchange{}
+	if ex.Unmarshal([]byte{}) == nil {
+		t.Fatal("Expected unmarshal error")
+	}
+}
+
+// useless, for coverage only
+func TestExchange_Unmarshal_FailedNameOnly(t *testing.T) {
+	ex := &Exchange{}
+	if ex.Unmarshal([]byte{4, 't', 'e', 's', 't'}) == nil {
+		t.Fatal("Expected unmarshal error")
+	}
+}
+
 func TestExchange_IsSystem(t *testing.T) {
 	e := &Exchange{
 		Name:       "test",
@@ -398,5 +462,38 @@ func TestExchange_IsSystem(t *testing.T) {
 
 	if e.IsSystem() {
 		t.Fatal("Expected non system exchange")
+	}
+}
+
+// useless, for coverage only
+func TestExchange_SetMetrics(t *testing.T) {
+	e := &Exchange{
+		Name:       "test",
+		exType:     ExTypeDirect,
+		durable:    false,
+		autoDelete: false,
+		internal:   false,
+		system:     false,
+	}
+	e.SetMetrics(nil)
+	if e.GetMetrics() != nil {
+		t.Fatal("Expected nil metrics")
+	}
+}
+
+func TestExchange_GetTypeAlias(t *testing.T) {
+	for id, alias := range exchangeTypeIDAliasMap {
+		e := &Exchange{
+			Name:       "test",
+			exType:     id,
+			durable:    false,
+			autoDelete: false,
+			internal:   false,
+			system:     false,
+		}
+
+		if e.GetTypeAlias() != alias {
+			t.Fatalf("Expected %s, actual %s", alias, e.GetTypeAlias())
+		}
 	}
 }

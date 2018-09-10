@@ -31,6 +31,10 @@ func TestQueue_Property(t *testing.T) {
 		t.Fatalf("Expected IsActive %t, actual %t", false, queue.IsActive())
 	}
 
+	if queue.IsAutoDelete() != false {
+		t.Fatalf("Expected IsAutoDelete %t, actual %t", false, queue.IsAutoDelete())
+	}
+
 	queue.Start()
 
 	if queue.IsActive() != true {
@@ -333,6 +337,22 @@ func TestQueue_Marshal(t *testing.T) {
 	}
 }
 
+// useless, for coverage only
+func TestQueue_Unmarshal_FailedEmpty(t *testing.T) {
+	queue := &Queue{}
+	if queue.Unmarshal([]byte{}, amqp.ProtoRabbit) == nil {
+		t.Fatal("Expected unmarshal error")
+	}
+}
+
+// useless, for coverage only
+func TestQueue_Unmarshal_FailedNameOnly(t *testing.T) {
+	queue := &Queue{}
+	if queue.Unmarshal([]byte{4, 't', 'e', 's', 't'}, amqp.ProtoRabbit) == nil {
+		t.Fatal("Expected unmarshal error")
+	}
+}
+
 func TestQueue_Stop(t *testing.T) {
 	queue := NewQueue("test", 0, false, false, false, SIZE, nil)
 	queue.Start()
@@ -475,5 +495,14 @@ func TestQueue_Requeue_Durable(t *testing.T) {
 
 	if !storage.update {
 		t.Fatal("Storage.Update not called on requeue persistent message")
+	}
+}
+
+// useless, for coverage only
+func TestQueue_SetMetrics(t *testing.T) {
+	queue := NewQueue("test", 0, false, false, false, SIZE, nil)
+	queue.SetMetrics(nil)
+	if queue.GetMetrics() != nil {
+		t.Fatal("Expected nil metrics")
 	}
 }

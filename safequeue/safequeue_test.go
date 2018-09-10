@@ -4,7 +4,7 @@ import (
 	"testing"
 )
 
-const SIZE = 4096
+const SIZE = 32
 
 var safeQueueTest = NewSafeQueue(SIZE)
 
