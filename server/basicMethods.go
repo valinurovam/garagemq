@@ -89,7 +89,7 @@ func (channel *Channel) basicCancel(method *amqp.BasicCancel) (err *amqp.Error) 
 		return amqp.NewChannelError(amqp.NotFound, "Consumer not found", method.ClassIdentifier(), method.MethodIdentifier())
 	}
 	channel.removeConsumer(method.ConsumerTag)
-	channel.SendMethod(&amqp.BasicConsumeOk{ConsumerTag: method.ConsumerTag})
+	channel.SendMethod(&amqp.BasicCancelOk{ConsumerTag: method.ConsumerTag})
 	return nil
 }
 

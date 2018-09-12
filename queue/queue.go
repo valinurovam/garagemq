@@ -39,6 +39,7 @@ type Queue struct {
 	durable         bool
 	cmrLock         sync.RWMutex
 	consumers       []interfaces.Consumer
+	consumeExcl     bool
 	call            chan bool
 	wasConsumed     bool
 	shardSize       int
@@ -288,9 +289,14 @@ func (queue *Queue) AddConsumer(consumer interfaces.Consumer, exclusive bool) er
 	}
 	queue.wasConsumed = true
 
-	if exclusive && len(queue.consumers) != 0 {
+	if len(queue.consumers) != 0 && (queue.consumeExcl || exclusive) {
 		return fmt.Errorf("queue is busy by %d consumers", len(queue.consumers))
 	}
+
+	if exclusive {
+		queue.consumeExcl = true
+	}
+
 	queue.consumers = append(queue.consumers, consumer)
 
 	queue.callConsumers()
@@ -312,6 +318,7 @@ func (queue *Queue) RemoveConsumer(cTag string) {
 	cmrCount := len(queue.consumers)
 	if cmrCount == 0 {
 		queue.currentConsumer = 0
+		queue.consumeExcl = false
 	} else {
 		queue.currentConsumer = (queue.currentConsumer + 1) % cmrCount
 	}
@@ -364,7 +371,6 @@ func (queue *Queue) EqualWithErr(qB *Queue) error {
 
 // Marshal returns raw representation of queue to store into storage
 func (queue *Queue) Marshal(protoVersion string) (data []byte, err error) {
-
 	buf := bytes.NewBuffer(make([]byte, 0))
 	if err = amqp.WriteShortstr(buf, queue.name); err != nil {
 		return nil, err

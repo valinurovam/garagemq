@@ -264,7 +264,7 @@ func readValue091(r io.Reader) (data interface{}, err error) {
 		if err != nil {
 			return nil, err
 		}
-		data = rData != 0
+		return rData != 0, nil
 	case 'b':
 		var rData int8
 		if err = binary.Read(r, binary.BigEndian, &rData); err != nil {
@@ -372,7 +372,7 @@ func readValue091(r io.Reader) (data interface{}, err error) {
 		return nil, nil
 	}
 
-	return nil, fmt.Errorf("Unsupported type by %s protocol", Proto091)
+	return nil, fmt.Errorf("unsupported type %c (%d) by %s protocol", vType, vType, Proto091)
 }
 
 /*
@@ -482,7 +482,7 @@ func readValueRabbit(r io.Reader) (data interface{}, err error) {
 		return nil, nil
 	}
 
-	return nil, fmt.Errorf("Unsupported type %c (%d) by %s protocol", vType, vType, ProtoRabbit)
+	return nil, fmt.Errorf("unsupported type %c (%d) by %s protocol", vType, vType, ProtoRabbit)
 }
 
 // WriteTable writes amqp table
@@ -616,7 +616,7 @@ func writeValue091(writer io.Writer, v interface{}) (err error) {
 	case nil:
 		err = binary.Write(writer, binary.BigEndian, byte('V'))
 	default:
-		err = fmt.Errorf("Unsupported type by %s protocol", Proto091)
+		err = fmt.Errorf("unsupported type by %s protocol", Proto091)
 	}
 
 	return
@@ -718,7 +718,7 @@ func writeValueRabbit(writer io.Writer, v interface{}) (err error) {
 	case nil:
 		err = binary.Write(writer, binary.BigEndian, byte('V'))
 	default:
-		err = fmt.Errorf("Unsupported type by %s protocol", Proto091)
+		err = fmt.Errorf("unsupported type by %s protocol", Proto091)
 	}
 
 	return

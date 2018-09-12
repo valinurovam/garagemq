@@ -335,7 +335,7 @@ func (srv *Server) getConfirmChannel(meta *amqp.ConfirmMeta) *Channel {
 }
 
 func (srv *Server) GetVhost(name string) *VirtualHost {
-	return srv.vhosts[name]
+	return srv.getVhost(name)
 }
 
 func (srv *Server) GetVhosts() map[string]*VirtualHost {

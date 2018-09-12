@@ -38,9 +38,8 @@ func ParsePlain(response []byte) (SaslData, error) {
 func HashPassword(password string, isMd5 bool) (string, error) {
 	if isMd5 {
 		h := md5.New()
-		if _, err := h.Write([]byte(password)); err != nil {
-			return "", err
-		}
+		// digest.Write never return any error, so skip error ckeck
+		h.Write([]byte(password))
 		return hex.EncodeToString(h.Sum(nil)), nil
 	}
 	hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
@@ -51,9 +50,8 @@ func HashPassword(password string, isMd5 bool) (string, error) {
 func CheckPasswordHash(password, hash string, isMd5 bool) bool {
 	if isMd5 {
 		h := md5.New()
-		if _, err := h.Write([]byte(password)); err != nil {
-			return false
-		}
+		// digest.Write never return any error, so skip error ckeck
+		h.Write([]byte(password))
 
 		return hash == hex.EncodeToString(h.Sum(nil))
 	}

@@ -103,7 +103,7 @@ RabbitMQ Qos means for channel(global=true) or each new consumer(global=false).
 
 The administration server is available at standard `:15672` port and is `read only mode` at the moment. Main page above, and [more screenshots](/readme) at /readme folder
 
-![Overview](readme/overview.jpg)!
+![Overview](readme/overview.jpg)
 
 ## TODO
 - [ ] Add more comments

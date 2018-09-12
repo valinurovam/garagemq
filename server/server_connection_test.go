@@ -38,3 +38,18 @@ func Test_Connection_Failed_WhenWrongAuth(t *testing.T) {
 		t.Fatal("Expected auth error")
 	}
 }
+
+func Test_Connection_Failed_WhenWrongAuth_UnknownUser(t *testing.T) {
+	cfg := getDefaultTestConfig()
+	cfg.srvConfig.Users = []config.User{
+		{
+			Username: "guest_unknown",
+			Password: "guest",
+		},
+	}
+	sc, err := getNewSC(cfg)
+	defer sc.clean()
+	if err == nil {
+		t.Fatal("Expected auth error")
+	}
+}

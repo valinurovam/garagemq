@@ -5,6 +5,7 @@ import (
 	"encoding/binary"
 	"reflect"
 	"testing"
+	"time"
 )
 
 func TestReadFrame_Success(t *testing.T) {
@@ -248,5 +249,67 @@ func TestWriteLongstr(t *testing.T) {
 
 	if rData, _ := ReadLongstr(wr); !bytes.Equal(rData, data) {
 		t.Fatalf("Expected '%v', actual '%v'", data, rData)
+	}
+}
+
+/*
+Rabbitmq table fields
+
+'t' bool			boolean
+'b' int8			short-short-int
+'s'	int16			short-int
+'I' int32			long-int
+'l' int64			long-long-int
+'f' float			float
+'d' double			double
+'D' Decimal			decimal-value
+'S'	[]byte			long-string
+'T' time.Time		timestamp
+'F' Table			field-table
+'V' nil				no-field
+'x' []interface{} 	field-array
+*/
+func TestReadWriteTable(t *testing.T) {
+
+	table := Table{}
+	table["bool_true"] = true
+	table["bool_false"] = false
+	table["int8"] = int8(16)
+	table["uint8"] = uint8(16)
+	table["int16"] = int16(16)
+	table["uint16"] = uint16(16)
+	table["int32"] = int32(32)
+	table["uint32"] = uint32(32)
+	table["int64"] = int64(64)
+	table["uint64"] = uint64(64)
+	table["float32"] = float32(32.32)
+	table["float64"] = float64(64.64)
+	table["decimal"] = Decimal{Scale: 1, Value: 10}
+	table["byte_array"] = []byte{'a', 'r', 'r', 'a', 'y'}
+	table["string"] = "string"
+	table["time"] = time.Now()
+	table["array_of_data"] = []interface{}{int8(16), Decimal{Scale: 1, Value: 10}, "string"}
+	table["nil"] = nil
+	table["table"] = Table{}
+
+	wr := bytes.NewBuffer(make([]byte, 0))
+	err := WriteTable(wr, &table, ProtoRabbit)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = WriteTable(wr, &table, Proto091)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	_, err = ReadTable(wr, ProtoRabbit)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	_, err = ReadTable(wr, Proto091)
+	if err != nil {
+		t.Fatal(err)
 	}
 }

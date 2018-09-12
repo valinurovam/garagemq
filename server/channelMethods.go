@@ -14,8 +14,6 @@ func (channel *Channel) channelRoute(method amqp.Method) *amqp.Error {
 		return channel.channelCloseOk(method)
 	case *amqp.ChannelFlow:
 		return channel.channelFlow(method)
-	case *amqp.ChannelFlowOk:
-		return amqp.NewConnectionError(amqp.NotImplemented, "method ChannelFlowOk does not implemented yet", method.ClassIdentifier(), method.MethodIdentifier())
 	}
 
 	return amqp.NewConnectionError(amqp.NotImplemented, "unable to route channel method "+method.Name(), method.ClassIdentifier(), method.MethodIdentifier())

@@ -7,7 +7,7 @@ import (
 	"github.com/valinurovam/garagemq/qos"
 )
 
-const SIZE = 4096
+const SIZE = 32
 
 func TestQueue_Property(t *testing.T) {
 	queue := NewQueue("test", 0, false, false, false, SIZE, nil)

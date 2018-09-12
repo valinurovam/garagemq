@@ -4,6 +4,7 @@ import (
 	"io/ioutil"
 	"net"
 	"os"
+	"testing"
 	"time"
 
 	"github.com/sirupsen/logrus"
@@ -14,6 +15,7 @@ import (
 )
 
 var emptyTable = make(amqpclient.Table)
+var proto = amqp.ProtoRabbit
 
 func init() {
 	logrus.SetOutput(ioutil.Discard)
@@ -85,7 +87,7 @@ func getDefaultTestConfig() TestConfig {
 func getNewSC(config TestConfig) (*ServerClient, error) {
 	metrics.NewTrackRegistry(15, time.Second, true)
 	sc := &ServerClient{}
-	sc.server = NewServer("localhost", "0", amqp.ProtoRabbit, &config.srvConfig)
+	sc.server = NewServer("localhost", "0", proto, &config.srvConfig)
 	sc.server.initServerStorage()
 	sc.server.initUsers()
 	sc.server.initDefaultVirtualHosts()
@@ -151,4 +153,39 @@ func networkSim() (net.Conn, net.Conn, *net.TCPConn, *net.TCPConn, error) {
 func getServerChannel(sc *ServerClient, id uint16) *Channel {
 	channels := sc.server.connections[sc.server.connSeq-1].channels
 	return channels[id]
+}
+
+func TestServer_GetConnections(t *testing.T) {
+	sc, _ := getNewSC(getDefaultTestConfig())
+	defer sc.clean()
+
+	conns := sc.server.GetConnections()
+	if len(conns) == 0 {
+		t.Fatal("Expected at least test connections")
+	}
+}
+
+func TestServer_GetProtoVersion(t *testing.T) {
+	sc, _ := getNewSC(getDefaultTestConfig())
+	defer sc.clean()
+
+	version := sc.server.GetProtoVersion()
+	if version != proto {
+		t.Fatalf("Expected %s, actual %s", proto, version)
+	}
+}
+
+func TestServer_GetVhosts(t *testing.T) {
+	sc, _ := getNewSC(getDefaultTestConfig())
+	defer sc.clean()
+
+	vhosts := sc.server.GetVhosts()
+	if len(vhosts) == 0 {
+		t.Fatal("Expected at least default vhost")
+	}
+	for _, vhost := range vhosts {
+		if sc.server.GetVhost(vhost.GetName()) != vhost {
+			t.Fatal("Expected equal vhosts")
+		}
+	}
 }

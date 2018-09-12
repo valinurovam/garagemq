@@ -376,6 +376,90 @@ func Test_BasicConsume_WithOrderCheck_Success(t *testing.T) {
 	}
 }
 
+func Test_BasicConsume_Failed_QueueNotFound(t *testing.T) {
+	sc, _ := getNewSC(getDefaultTestConfig())
+	defer sc.clean()
+	ch, _ := sc.client.Channel()
+
+	ch.QueueDeclare("testQu", false, false, false, false, emptyTable)
+
+	_, err := ch.Consume("test", "tag", false, false, false, false, emptyTable)
+	if err == nil {
+		t.Fatal("Expected NOT_FOUND error")
+	}
+}
+
+func Test_BasicConsume_Failed_SameTag(t *testing.T) {
+	sc, _ := getNewSC(getDefaultTestConfig())
+	defer sc.clean()
+	ch, _ := sc.client.Channel()
+
+	ch.QueueDeclare("testQu", false, false, false, false, emptyTable)
+
+	_, err := ch.Consume("testQu", "tag", false, false, false, false, emptyTable)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	_, err = ch.Consume("testQu", "tag", false, false, false, false, emptyTable)
+	if err == nil {
+		t.Fatal("Expected NOT_ALLOWED error")
+	}
+}
+
+func Test_BasicConsume_Failed_ExclusiveQueue(t *testing.T) {
+	sc, _ := getNewSC(getDefaultTestConfig())
+	defer sc.clean()
+	ch1, _ := sc.client.Channel()
+	ch2, _ := sc.client.Channel()
+
+	ch1.QueueDeclare("testQu_Ex1", false, false, false, false, emptyTable)
+	ch1.QueueDeclare("testQu_Ex2", false, false, false, false, emptyTable)
+
+	_, err := ch1.Consume("testQu_Ex1", "tag_ex1", false, true, false, false, emptyTable)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	_, err = ch1.Consume("testQu_Ex1", "tag1", false, false, false, false, emptyTable)
+	if err == nil {
+		t.Fatal("Expected ACCESS_REFUSED error")
+	}
+
+	_, err = ch2.Consume("testQu_Ex2", "tag_ex2", false, false, false, false, emptyTable)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	_, err = ch2.Consume("testQu_Ex2", "tag2", false, true, false, false, emptyTable)
+	if err == nil {
+		t.Fatal("Expected ACCESS_REFUSED error")
+	}
+}
+
+func Test_BasicConsume_Success_Exclusive_Reconsume(t *testing.T) {
+	sc, _ := getNewSC(getDefaultTestConfig())
+	defer sc.clean()
+	ch, _ := sc.client.Channel()
+
+	ch.QueueDeclare("testQu", false, false, false, false, emptyTable)
+
+	_, err := ch.Consume("testQu", "tag", false, true, false, false, emptyTable)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if err = ch.Cancel("tag", false); err != nil {
+		t.Fatal(err)
+	}
+
+	// after cancel exclusive consumer server must allow us to consume again
+	_, err = ch.Consume("testQu", "tag", false, true, false, false, emptyTable)
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+
 func Test_BasicCancel_Success(t *testing.T) {
 	sc, _ := getNewSC(getDefaultTestConfig())
 	defer sc.clean()
@@ -392,10 +476,29 @@ func Test_BasicCancel_Success(t *testing.T) {
 		t.Fatal("Expected consumers on channel consumers map")
 	}
 
-	ch.Cancel("tag", false)
+	if err = ch.Cancel("tag", false); err != nil {
+		t.Fatal(err)
+	}
 
 	if len(getServerChannel(sc, 1).consumers) != 0 {
 		t.Fatal("Expected empty channel consumers map")
+	}
+}
+
+func Test_BasicCancel_Failed_Unknown_Tag(t *testing.T) {
+	sc, _ := getNewSC(getDefaultTestConfig())
+	defer sc.clean()
+	ch, _ := sc.client.Channel()
+
+	ch.QueueDeclare("testQu", false, false, false, false, emptyTable)
+
+	_, err := ch.Consume("testQu", "tag", false, false, false, false, emptyTable)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if err = ch.Cancel("tag_unknown", false); err == nil {
+		t.Fatal("Expected NOT_FOUND error")
 	}
 }
 
@@ -853,5 +956,102 @@ func Test_BasicReject_RequeueFalse_Success(t *testing.T) {
 
 	if queueLength != 0 {
 		t.Fatalf("Expected empty queue after nack with requeue false")
+	}
+}
+
+func Test_BasicGet_Success(t *testing.T) {
+	sc, _ := getNewSC(getDefaultTestConfig())
+	defer sc.clean()
+	ch, _ := sc.client.Channel()
+
+	qu, _ := ch.QueueDeclare("testQu", true, false, false, false, emptyTable)
+
+	if err := ch.Publish(
+		"",
+		qu.Name,
+		false, false,
+		amqp.Publishing{ContentType: "text/plain", Body: []byte("testMessage")},
+	); err != nil {
+		t.Fatal(err)
+	}
+
+	msg, ok, errGet := ch.Get("testQu", true)
+	if errGet != nil {
+		t.Fatal(errGet)
+	}
+
+	if !ok {
+		t.Fatal("Message not found")
+	}
+
+	if !bytes.Equal(msg.Body, []byte("testMessage")) {
+		t.Fatal("Received strange message")
+	}
+}
+
+func Test_BasicGet_Success_Empty(t *testing.T) {
+	sc, _ := getNewSC(getDefaultTestConfig())
+	defer sc.clean()
+	ch, _ := sc.client.Channel()
+
+	ch.QueueDeclare("testQu", true, false, false, false, emptyTable)
+
+	_, ok, errGet := ch.Get("testQu", true)
+	if errGet != nil {
+		t.Fatal(errGet)
+	}
+
+	if ok {
+		t.Fatal("Expected BasicEmpty")
+	}
+}
+
+func Test_BasicGet_Success_WithAck(t *testing.T) {
+	sc, _ := getNewSC(getDefaultTestConfig())
+	defer sc.clean()
+	ch, _ := sc.client.Channel()
+
+	qu, _ := ch.QueueDeclare("testQu", true, false, false, false, emptyTable)
+
+	if err := ch.Publish(
+		"",
+		qu.Name,
+		false, false,
+		amqp.Publishing{ContentType: "text/plain", Body: []byte("testMessage")},
+	); err != nil {
+		t.Fatal(err)
+	}
+
+	ch.Get("testQu", false)
+	unackedLength := len(getServerChannel(sc, 1).ackStore)
+	if unackedLength != 1 {
+		t.Fatalf("Expected %d unacked, actual %d", 1, unackedLength)
+	}
+
+}
+
+func Test_BasicGet_Succ(t *testing.T) {
+	sc, _ := getNewSC(getDefaultTestConfig())
+	defer sc.clean()
+	ch, _ := sc.client.Channel()
+
+	ch.QueueDeclare("testQu", true, false, false, false, emptyTable)
+
+	_, _, errGet := ch.Get("testQu_unknown", true)
+	if errGet == nil {
+		t.Fatal("Expected NOT_FOUND error")
+	}
+}
+
+func Test_BasicGet_Failed_QueueNotFound(t *testing.T) {
+	sc, _ := getNewSC(getDefaultTestConfig())
+	defer sc.clean()
+	ch, _ := sc.client.Channel()
+
+	ch.QueueDeclare("testQu", true, false, false, false, emptyTable)
+
+	_, _, errGet := ch.Get("testQu_unknown", true)
+	if errGet == nil {
+		t.Fatal("Expected NOT_FOUND error")
 	}
 }
