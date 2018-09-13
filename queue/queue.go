@@ -48,10 +48,11 @@ type Queue struct {
 	storage         interfaces.MsgStorage
 	currentConsumer int
 	metrics         *MetricsState
+	autoDeleteQueue chan string
 }
 
 // NewQueue returns new instance of Queue
-func NewQueue(name string, connID uint64, exclusive bool, autoDelete bool, durable bool, shardSize int, storage interfaces.MsgStorage) *Queue {
+func NewQueue(name string, connID uint64, exclusive bool, autoDelete bool, durable bool, shardSize int, storage interfaces.MsgStorage, autoDeleteQueue chan string) *Queue {
 	return &Queue{
 		SafeQueue:       *safequeue.NewSafeQueue(shardSize),
 		name:            name,
@@ -65,6 +66,7 @@ func NewQueue(name string, connID uint64, exclusive bool, autoDelete bool, durab
 		shardSize:       shardSize,
 		storage:         storage,
 		currentConsumer: 0,
+		autoDeleteQueue: autoDeleteQueue,
 		metrics: &MetricsState{
 			Ready:    metrics.NewTrackCounter(0, true),
 			Unacked:  metrics.NewTrackCounter(0, true),
@@ -193,6 +195,11 @@ func (queue *Queue) PopQos(qosList []*qos.AmqpQos) *amqp.Message {
 
 // AckMsg accept ack event for message
 func (queue *Queue) AckMsg(message *amqp.Message) {
+	queue.actLock.RLock()
+	defer queue.actLock.RUnlock()
+	if !queue.active {
+		return
+	}
 	if queue.durable && message.IsPersistent() {
 		// TODO handle error
 		queue.storage.Del(message, queue.name)
@@ -210,6 +217,11 @@ func (queue *Queue) AckMsg(message *amqp.Message) {
 
 // Requeue add message into queue head
 func (queue *Queue) Requeue(message *amqp.Message) {
+	queue.actLock.RLock()
+	defer queue.actLock.RUnlock()
+	if !queue.active {
+		return
+	}
 	message.DeliveryCount++
 	queue.SafeQueue.PushHead(message)
 	if queue.durable && message.IsPersistent() {
@@ -244,7 +256,6 @@ func (queue *Queue) Purge() (length uint64) {
 }
 
 // Delete cancel consumers and delete its messages from storage
-// TODO: method not completed, should purge messages
 func (queue *Queue) Delete(ifUnused bool, ifEmpty bool) (uint64, error) {
 	queue.actLock.Lock()
 	queue.cmrLock.Lock()
@@ -324,7 +335,7 @@ func (queue *Queue) RemoveConsumer(cTag string) {
 	}
 
 	if cmrCount == 0 && queue.wasConsumed && queue.autoDelete {
-		// TODO deleteQueue
+		queue.autoDeleteQueue <- queue.name
 	}
 }
 

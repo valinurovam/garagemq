@@ -21,17 +21,18 @@ const exDefaultName = ""
 // VirtualHost represents AMQP virtual host
 // Each virtual host is "parent" for its queues and exchanges
 type VirtualHost struct {
-	name       string
-	system     bool
-	exLock     sync.Mutex
-	exchanges  map[string]*exchange.Exchange
-	quLock     sync.Mutex
-	queues     map[string]*queue.Queue
-	msgStorage *msgstorage.MsgStorage
-	srv        *Server
-	srvStorage *srvstorage.SrvStorage
-	srvConfig  *config.Config
-	logger     *log.Entry
+	name            string
+	system          bool
+	exLock          sync.Mutex
+	exchanges       map[string]*exchange.Exchange
+	quLock          sync.Mutex
+	queues          map[string]*queue.Queue
+	msgStorage      *msgstorage.MsgStorage
+	srv             *Server
+	srvStorage      *srvstorage.SrvStorage
+	srvConfig       *config.Config
+	logger          *log.Entry
+	autoDeleteQueue chan string
 }
 
 // NewVhost returns instance of VirtualHost
@@ -43,14 +44,15 @@ type VirtualHost struct {
 // Only after that vhost is in state running
 func NewVhost(name string, system bool, msgStorage *msgstorage.MsgStorage, srv *Server) *VirtualHost {
 	vhost := &VirtualHost{
-		name:       name,
-		system:     system,
-		exchanges:  make(map[string]*exchange.Exchange),
-		queues:     make(map[string]*queue.Queue),
-		msgStorage: msgStorage,
-		srvStorage: srv.storage,
-		srvConfig:  srv.config,
-		srv:        srv,
+		name:            name,
+		system:          system,
+		exchanges:       make(map[string]*exchange.Exchange),
+		queues:          make(map[string]*queue.Queue),
+		msgStorage:      msgStorage,
+		srvStorage:      srv.storage,
+		srvConfig:       srv.config,
+		srv:             srv,
+		autoDeleteQueue: make(chan string, 1),
 	}
 
 	vhost.logger = log.WithFields(log.Fields{
@@ -74,8 +76,15 @@ func NewVhost(name string, system bool, msgStorage *msgstorage.MsgStorage, srv *
 	}
 
 	go vhost.handleConfirms()
+	go vhost.handleAutoDeleteQueue()
 
 	return vhost
+}
+
+func (vhost *VirtualHost) handleAutoDeleteQueue() {
+	for queueName := range vhost.autoDeleteQueue {
+		vhost.DeleteQueue(queueName, false, false)
+	}
 }
 
 func (vhost *VirtualHost) handleConfirms() {
@@ -180,6 +189,7 @@ func (vhost *VirtualHost) NewQueue(name string, connID uint64, exclusive bool, a
 		durable,
 		shardSize,
 		vhost.msgStorage,
+		vhost.autoDeleteQueue,
 	)
 }
 
@@ -322,6 +332,7 @@ func (vhost *VirtualHost) Stop() error {
 
 	vhost.msgStorage.Close()
 	vhost.logger.Info("Storage closed")
+	close(vhost.autoDeleteQueue)
 	return nil
 }
 

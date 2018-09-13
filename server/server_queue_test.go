@@ -505,3 +505,30 @@ func Test_QueueDelete_Failed_OnExclusiveQueue(t *testing.T) {
 		t.Fatal("Expected: queue is locked error")
 	}
 }
+
+func Test_Basic_AutoDelete(t *testing.T) {
+	sc, _ := getNewSC(getDefaultTestConfig())
+	defer sc.clean()
+	ch, _ := sc.client.Channel()
+
+	ch.QueueDeclare("testQu", false, true, false, false, emptyTable)
+
+	ch.Consume("testQu", "tag1", false, false, false, false, emptyTable)
+	ch.Consume("testQu", "tag2", false, false, false, false, emptyTable)
+
+	ch.Cancel("tag2", false)
+
+	queues := sc.server.GetVhost("/").GetQueues()
+	time.Sleep(50 * time.Millisecond)
+	if len(queues) == 0 {
+		t.Fatal("Expected non-empty queues")
+	}
+
+	ch.Cancel("tag1", false)
+
+	queues = sc.server.GetVhost("/").GetQueues()
+	time.Sleep(50 * time.Millisecond)
+	if len(queues) != 0 {
+		t.Fatal("Expected empty queues")
+	}
+}

@@ -531,6 +531,11 @@ func (channel *Channel) rejectMsg(unackedMessage *UnackedMessage, deliveryTag ui
 			qu.AckMsg(unackedMessage.msg)
 		}
 		channel.metrics.Unacked.Counter.Dec(1)
+	} else {
+		// TODO When a queue is deleted any pending messages are sent to a dead­letter
+		channel.metrics.Unacked.Counter.Dec(1)
+		channel.server.GetMetrics().Total.Counter.Dec(1)
+		channel.server.GetMetrics().Unacked.Counter.Dec(1)
 	}
 
 	channel.decQosAndConsumerNext(unackedMessage)
