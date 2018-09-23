@@ -38,6 +38,7 @@ type DbStorage interface {
 	Del(key string) (err error)
 	Get(key string) (value []byte, err error)
 	Iterate(fn func(key []byte, value []byte))
+	IterateByPrefix(prefix []byte, fn func(key []byte, value []byte))
 	ProcessBatch(batch []*Operation) (err error)
 	Close() error
 }

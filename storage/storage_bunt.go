@@ -95,6 +95,17 @@ func (storage *BuntDB) Iterate(fn func(key []byte, value []byte)) {
 	})
 }
 
+// Iterate iterates over keys with prefix
+func (storage *BuntDB) IterateByPrefix(prefix []byte, fn func(key []byte, value []byte)) {
+	storage.db.View(func(tx *buntdb.Tx) error {
+		err := tx.AscendKeys(string(prefix), func(key, value string) bool {
+			fn([]byte(key), []byte(value))
+			return true
+		})
+		return err
+	})
+}
+
 func (storage *BuntDB) runStorageGC() {
 	timer := time.Tick(30 * time.Minute)
 	for {

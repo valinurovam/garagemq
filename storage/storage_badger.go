@@ -88,11 +88,31 @@ func (storage *Badger) Get(key string) (value []byte, err error) {
 func (storage *Badger) Iterate(fn func(key []byte, value []byte)) {
 	storage.db.View(func(txn *badger.Txn) error {
 		opts := badger.DefaultIteratorOptions
-		opts.PrefetchValues = false
 		opts.AllVersions = false
 		it := txn.NewIterator(opts)
 		defer it.Close()
 		for it.Rewind(); it.Valid(); it.Next() {
+			item := it.Item()
+			k := item.Key()
+			v, err := item.Value()
+			if err != nil {
+				return err
+			}
+			fn(k, v)
+		}
+		return nil
+	})
+}
+
+// Iterate iterates over keys with prefix
+func (storage *Badger) IterateByPrefix(prefix []byte, fn func(key []byte, value []byte)) {
+	storage.db.View(func(txn *badger.Txn) error {
+		opts := badger.DefaultIteratorOptions
+		opts.AllVersions = false
+		it := txn.NewIterator(opts)
+		defer it.Close()
+
+		for it.Seek(prefix); it.ValidForPrefix(prefix); it.Next() {
 			item := it.Item()
 			k := item.Key()
 			v, err := item.Value()

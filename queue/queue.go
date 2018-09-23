@@ -152,6 +152,7 @@ func (queue *Queue) Push(message *amqp.Message, silent bool) {
 func (queue *Queue) Pop() *amqp.Message {
 	queue.actLock.RLock()
 	defer queue.actLock.RUnlock()
+
 	if !queue.active {
 		return nil
 	}
@@ -166,6 +167,7 @@ func (queue *Queue) Pop() *amqp.Message {
 func (queue *Queue) PopQos(qosList []*qos.AmqpQos) *amqp.Message {
 	queue.actLock.RLock()
 	defer queue.actLock.RUnlock()
+
 	if !queue.active {
 		return nil
 	}

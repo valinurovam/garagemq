@@ -255,14 +255,17 @@ func (vhost *VirtualHost) loadQueues() {
 }
 
 func (vhost *VirtualHost) loadMessagesIntoQueues() {
-	vhost.msgStorage.Iterate(func(queue string, message *amqp.Message) {
-		q, ok := vhost.queues[queue]
-		if !ok {
-			return
-		}
-
-		q.Push(message, true)
-	})
+	var wg sync.WaitGroup
+	for queueName, q := range vhost.queues {
+		wg.Add(1)
+		go func(queueName string, queue *queue.Queue) {
+			vhost.msgStorage.IterateByQueue(queueName, func(message *amqp.Message) {
+				queue.Push(message, true)
+			})
+			wg.Done()
+		}(queueName, q)
+	}
+	wg.Wait()
 }
 
 func (vhost *VirtualHost) loadExchanges() {

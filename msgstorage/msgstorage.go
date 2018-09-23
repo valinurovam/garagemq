@@ -189,6 +189,19 @@ func (storage *MsgStorage) Iterate(fn func(queue string, message *amqp.Message))
 	)
 }
 
+// Iterate with func fn over messages
+func (storage *MsgStorage) IterateByQueue(queue string, fn func(message *amqp.Message)) {
+	prefix := "msg." + queue + "."
+	storage.db.IterateByPrefix(
+		[]byte(prefix),
+		func(key []byte, value []byte) {
+			message := &amqp.Message{}
+			message.Unmarshal(value, storage.protoVersion)
+			fn(message)
+		},
+	)
+}
+
 // PurgeQueue delete messages
 func (storage *MsgStorage) PurgeQueue(queue string) {
 	prefix := []byte("msg." + queue)
