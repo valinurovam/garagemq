@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/dgraph-io/badger"
+	"github.com/dgraph-io/badger/options"
 	"github.com/valinurovam/garagemq/interfaces"
 )
 
@@ -16,6 +17,8 @@ type Badger struct {
 func NewBadger(storageDir string) *Badger {
 	storage := &Badger{}
 	opts := badger.DefaultOptions
+	//opts.MaxTableSize = 32 << 20
+	opts.TableLoadingMode = options.MemoryMap
 	opts.SyncWrites = true
 	opts.Dir = storageDir
 	opts.ValueDir = storageDir
@@ -24,6 +27,8 @@ func NewBadger(storageDir string) *Badger {
 	if err != nil {
 		panic(err)
 	}
+
+	go storage.runStorageGC()
 
 	return storage
 }
@@ -93,8 +98,8 @@ func (storage *Badger) Iterate(fn func(key []byte, value []byte)) {
 		defer it.Close()
 		for it.Rewind(); it.Valid(); it.Next() {
 			item := it.Item()
-			k := item.Key()
-			v, err := item.Value()
+			k := item.KeyCopy(nil)
+			v, err := item.ValueCopy(nil)
 			if err != nil {
 				return err
 			}
@@ -105,32 +110,136 @@ func (storage *Badger) Iterate(fn func(key []byte, value []byte)) {
 }
 
 // Iterate iterates over keys with prefix
-func (storage *Badger) IterateByPrefix(prefix []byte, fn func(key []byte, value []byte)) {
+func (storage *Badger) IterateByPrefix(prefix []byte, limit uint64, fn func(key []byte, value []byte)) uint64 {
+	var totalIterated uint64
 	storage.db.View(func(txn *badger.Txn) error {
 		opts := badger.DefaultIteratorOptions
 		opts.AllVersions = false
 		it := txn.NewIterator(opts)
 		defer it.Close()
 
-		for it.Seek(prefix); it.ValidForPrefix(prefix); it.Next() {
+		for it.Seek(prefix); it.ValidForPrefix(prefix) && ((limit > 0 && totalIterated < limit) || limit <= 0); it.Next() {
 			item := it.Item()
-			k := item.Key()
-			v, err := item.Value()
+			k := item.KeyCopy(nil)
+			v, err := item.ValueCopy(nil)
 			if err != nil {
 				return err
 			}
 			fn(k, v)
+			totalIterated++
 		}
+		return nil
+	})
+
+	return totalIterated
+}
+
+func (storage *Badger) KeysByPrefixCount(prefix []byte) uint64 {
+	var count uint64
+	storage.db.View(func(txn *badger.Txn) error {
+		opts := badger.DefaultIteratorOptions
+		opts.AllVersions = false
+		opts.PrefetchValues = false
+		it := txn.NewIterator(opts)
+		defer it.Close()
+
+		for it.Seek(prefix); it.ValidForPrefix(prefix); it.Next() {
+			count++
+		}
+
+		return nil
+	})
+
+	return count
+}
+
+// Iterate iterates over keys with prefix
+func (storage *Badger) DeleteByPrefix(prefix []byte) {
+	deleteKeys := func(keysForDelete [][]byte) error {
+		if err := storage.db.Update(func(txn *badger.Txn) error {
+			for _, key := range keysForDelete {
+				if err := txn.Delete(key); err != nil {
+					return err
+				}
+			}
+			return nil
+		}); err != nil {
+			return err
+		}
+		return nil
+	}
+
+	collectSize := 100000
+	storage.db.View(func(txn *badger.Txn) error {
+		opts := badger.DefaultIteratorOptions
+		opts.AllVersions = false
+		opts.PrefetchValues = false
+		it := txn.NewIterator(opts)
+		defer it.Close()
+
+		keysForDelete := make([][]byte, 0, collectSize)
+		keysCollected := 0
+		for it.Seek(prefix); it.ValidForPrefix(prefix); it.Next() {
+			key := it.Item().KeyCopy(nil)
+			keysForDelete = append(keysForDelete, key)
+			keysCollected++
+			if keysCollected == collectSize {
+				if err := deleteKeys(keysForDelete); err != nil {
+					panic(err)
+				}
+				keysForDelete = make([][]byte, 0, collectSize)
+				keysCollected = 0
+			}
+		}
+		if keysCollected > 0 {
+			if err := deleteKeys(keysForDelete); err != nil {
+				panic(err)
+			}
+		}
+
 		return nil
 	})
 }
 
+// Iterate iterates over keys with prefix
+func (storage *Badger) IterateByPrefixFrom(prefix []byte, from []byte, limit uint64, fn func(key []byte, value []byte)) uint64 {
+	var totalIterated uint64
+	storage.db.View(func(txn *badger.Txn) error {
+		opts := badger.DefaultIteratorOptions
+		opts.AllVersions = false
+		it := txn.NewIterator(opts)
+		defer it.Close()
+
+		for it.Seek(from); it.ValidForPrefix(prefix) && ((limit > 0 && totalIterated < limit) || limit <= 0); it.Next() {
+			item := it.Item()
+			k := item.KeyCopy(nil)
+			v, err := item.ValueCopy(nil)
+			if err != nil {
+				return err
+			}
+			fn(k, v)
+			totalIterated++
+		}
+		return nil
+	})
+
+	return totalIterated
+}
+
 func (storage *Badger) runStorageGC() {
-	timer := time.Tick(30 * time.Minute)
+	timer := time.NewTicker(10 * time.Minute)
 	for {
 		select {
-		case <-timer:
-			storage.db.RunValueLogGC(0.7)
+		case <-timer.C:
+			storage.storageGC()
 		}
+	}
+}
+
+func (storage *Badger) storageGC() {
+again:
+	err := storage.db.RunValueLogGC(0.5)
+	if err == nil {
+		goto again
 	}
 }

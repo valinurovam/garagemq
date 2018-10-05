@@ -1,11 +1,15 @@
 package metrics
 
-import "time"
+import (
+	"sync"
+	"time"
+)
 
 var r *TrackRegistry
 
 // TrackRegistry is a registry of track counters or other track metrics
 type TrackRegistry struct {
+	cntLock     sync.Mutex
 	Counters    map[string]*TrackCounter
 	trackLength int
 	trackTick   *time.Ticker
@@ -36,6 +40,9 @@ func Destroy() {
 // AddCounter add counter into registry andd return it
 // TODO check if already exists
 func AddCounter(name string) *TrackCounter {
+	r.cntLock.Lock()
+	defer r.cntLock.Unlock()
+
 	c := NewTrackCounter(r.trackLength, r.isNil)
 	r.Counters[name] = c
 	return c

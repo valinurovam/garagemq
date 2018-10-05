@@ -67,7 +67,6 @@ var msgID = uint64(time.Now().UnixNano())
 // NewMessage returns new message instance
 func NewMessage(method *BasicPublish) *Message {
 	return &Message{
-		ID:            atomic.AddUint64(&msgID, 1),
 		Exchange:      method.Exchange,
 		RoutingKey:    method.RoutingKey,
 		Mandatory:     method.Mandatory,
@@ -81,6 +80,12 @@ func NewMessage(method *BasicPublish) *Message {
 func (message *Message) IsPersistent() bool {
 	deliveryMode := message.Header.PropertyList.DeliveryMode
 	return deliveryMode != nil && *deliveryMode == 2
+}
+
+func (message *Message) GenerateSeq() {
+	if message.ID == 0 {
+		message.ID = atomic.AddUint64(&msgID, 1)
+	}
 }
 
 // Append appends new body-frame into message and increase bodySize

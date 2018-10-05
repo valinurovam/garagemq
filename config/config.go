@@ -28,7 +28,8 @@ type TCPConfig struct {
 
 // Queue settings
 type Queue struct {
-	ShardSize int `yaml:"shardSize"`
+	ShardSize        int    `yaml:"shardSize"`
+	MaxMessagesInRam uint64 `yaml:"maxMessagesInRam"`
 }
 
 // Db settings, such as path to load/save and engine

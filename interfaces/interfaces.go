@@ -38,7 +38,10 @@ type DbStorage interface {
 	Del(key string) (err error)
 	Get(key string) (value []byte, err error)
 	Iterate(fn func(key []byte, value []byte))
-	IterateByPrefix(prefix []byte, fn func(key []byte, value []byte))
+	IterateByPrefix(prefix []byte, limit uint64, fn func(key []byte, value []byte)) uint64
+	IterateByPrefixFrom(prefix []byte, from []byte, limit uint64, fn func(key []byte, value []byte)) uint64
+	DeleteByPrefix(prefix []byte)
+	KeysByPrefixCount(prefix []byte) uint64
 	ProcessBatch(batch []*Operation) (err error)
 	Close() error
 }
@@ -48,4 +51,6 @@ type MsgStorage interface {
 	PurgeQueue(queue string)
 	Add(message *amqp.Message, queue string) error
 	Update(message *amqp.Message, queue string) error
+	IterateByQueueFromMsgID(queue string, msgId uint64, limit uint64, fn func(message *amqp.Message)) uint64
+	GetQueueLength(queue string) uint64
 }

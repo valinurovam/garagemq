@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"sync"
+	"time"
 
 	log "github.com/sirupsen/logrus"
 	"github.com/valinurovam/garagemq/amqp"
@@ -83,6 +84,7 @@ func NewVhost(name string, system bool, msgStorage *msgstorage.MsgStorage, srv *
 
 func (vhost *VirtualHost) handleAutoDeleteQueue() {
 	for queueName := range vhost.autoDeleteQueue {
+		time.Sleep(5 * time.Second)
 		vhost.DeleteQueue(queueName, false, false)
 	}
 }
@@ -187,7 +189,7 @@ func (vhost *VirtualHost) NewQueue(name string, connID uint64, exclusive bool, a
 		exclusive,
 		autoDelete,
 		durable,
-		shardSize,
+		vhost.srvConfig.Queue,
 		vhost.msgStorage,
 		vhost.autoDeleteQueue,
 	)
@@ -259,9 +261,7 @@ func (vhost *VirtualHost) loadMessagesIntoQueues() {
 	for queueName, q := range vhost.queues {
 		wg.Add(1)
 		go func(queueName string, queue *queue.Queue) {
-			vhost.msgStorage.IterateByQueue(queueName, func(message *amqp.Message) {
-				queue.Push(message, true)
-			})
+			queue.LoadFromMsgStorage()
 			wg.Done()
 		}(queueName, q)
 	}
@@ -303,6 +303,7 @@ func (vhost *VirtualHost) DeleteQueue(queueName string, ifUnused bool, ifEmpty b
 	if qu == nil {
 		return 0, errors.New("not found")
 	}
+	qu.Stop()
 
 	var length, err = qu.Delete(ifUnused, ifEmpty)
 	if err != nil {

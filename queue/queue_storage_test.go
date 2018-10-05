@@ -33,3 +33,11 @@ func (storage *MsgStorageMock) Del(message *amqp.Message, queue string) error {
 func (storage *MsgStorageMock) PurgeQueue(queue string) {
 	storage.purged = true
 }
+
+func (storage *MsgStorageMock) GetQueueLength(queue string) uint64 {
+	return 0
+}
+
+func (storage *MsgStorageMock) IterateByQueueFromMsgID(queue string, msgId uint64, limit uint64, fn func(message *amqp.Message)) uint64 {
+	return 0
+}
