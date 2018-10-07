@@ -527,7 +527,7 @@ func Test_Basic_AutoDelete(t *testing.T) {
 	ch.Cancel("tag1", false)
 
 	queues = sc.server.GetVhost("/").GetQueues()
-	time.Sleep(50 * time.Millisecond)
+	time.Sleep(time.Second)
 	if len(queues) != 0 {
 		t.Fatal("Expected empty queues")
 	}

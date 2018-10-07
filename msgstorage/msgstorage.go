@@ -1,7 +1,6 @@
 package msgstorage
 
 import (
-	"bytes"
 	"strconv"
 	"strings"
 	"sync"
@@ -189,17 +188,45 @@ func (storage *MsgStorage) Iterate(fn func(queue string, message *amqp.Message))
 	)
 }
 
-// PurgeQueue delete messages
-func (storage *MsgStorage) PurgeQueue(queue string) {
-	prefix := []byte("msg." + queue)
-	storage.db.Iterate(
+// Iterate with func fn over messages
+func (storage *MsgStorage) IterateByQueue(queue string, limit uint64, fn func(message *amqp.Message)) {
+	prefix := "msg." + queue + "."
+	storage.db.IterateByPrefix(
+		[]byte(prefix),
+		limit,
 		func(key []byte, value []byte) {
-			if !bytes.HasPrefix(key, prefix) {
-				return
-			}
-			storage.db.Del(string(key))
+			message := &amqp.Message{}
+			message.Unmarshal(value, storage.protoVersion)
+			fn(message)
 		},
 	)
+}
+
+// Iterate with func fn over messages
+func (storage *MsgStorage) IterateByQueueFromMsgID(queue string, msgId uint64, limit uint64, fn func(message *amqp.Message)) uint64 {
+	prefix := "msg." + queue + "."
+	from := makeKey(msgId, queue)
+	return storage.db.IterateByPrefixFrom(
+		[]byte(prefix),
+		[]byte(from),
+		limit,
+		func(key []byte, value []byte) {
+			message := &amqp.Message{}
+			message.Unmarshal(value, storage.protoVersion)
+			fn(message)
+		},
+	)
+}
+
+func (storage *MsgStorage) GetQueueLength(queue string) uint64 {
+	prefix := "msg." + queue + "."
+	return storage.db.KeysByPrefixCount([]byte(prefix))
+}
+
+// PurgeQueue delete messages
+func (storage *MsgStorage) PurgeQueue(queue string) {
+	prefix := []byte("msg." + queue + ".")
+	storage.db.DeleteByPrefix(prefix)
 }
 
 // Close properly "stop" message storage

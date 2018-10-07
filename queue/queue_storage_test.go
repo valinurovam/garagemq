@@ -9,11 +9,30 @@ type MsgStorageMock struct {
 	update bool
 	del    bool
 	purged bool
+
+	messages []*amqp.Message
+	index    map[uint64]int
+	pos      int
+}
+
+func NewStorageMock(msgCap int) *MsgStorageMock {
+	mock := &MsgStorageMock{}
+	mock.messages = make([]*amqp.Message, msgCap)
+	mock.index = make(map[uint64]int)
+
+	return mock
 }
 
 // Add append message into add-queue
 func (storage *MsgStorageMock) Add(message *amqp.Message, queue string) error {
 	storage.add = true
+
+	if storage.messages != nil {
+		storage.messages[storage.pos] = message
+		storage.index[message.ID] = storage.pos
+		storage.pos++
+	}
+
 	return nil
 }
 
@@ -32,4 +51,36 @@ func (storage *MsgStorageMock) Del(message *amqp.Message, queue string) error {
 // PurgeQueue delete messages
 func (storage *MsgStorageMock) PurgeQueue(queue string) {
 	storage.purged = true
+}
+
+func (storage *MsgStorageMock) GetQueueLength(queue string) uint64 {
+	return 0
+}
+
+func (storage *MsgStorageMock) IterateByQueueFromMsgID(queue string, msgId uint64, limit uint64, fn func(message *amqp.Message)) uint64 {
+	if storage.messages != nil {
+		var startPos int
+		var ok bool
+		if startPos, ok = storage.index[msgId]; !ok {
+			msgId++
+
+			if startPos, ok = storage.index[msgId]; !ok {
+				return 0
+			}
+		}
+
+		var iterated uint64
+		for i := startPos; i < len(storage.messages); i++ {
+			fn(storage.messages[i])
+			iterated++
+
+			if iterated == limit {
+				break
+			}
+		}
+
+		return iterated
+	}
+
+	return 0
 }

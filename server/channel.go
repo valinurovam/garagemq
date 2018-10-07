@@ -258,7 +258,19 @@ func (channel *Channel) handleContentBody(bodyFrame *amqp.Frame) *amqp.Error {
 
 	for queueName := range matchedQueues {
 		qu := channel.conn.GetVirtualHost().GetQueue(queueName)
-		qu.Push(message, false)
+		if qu == nil {
+			if message.Mandatory {
+				channel.SendContent(
+					&amqp.BasicReturn{ReplyCode: amqp.NoConsumers, ReplyText: "No route", Exchange: message.Exchange, RoutingKey: message.RoutingKey},
+					message,
+				)
+			} else {
+				channel.addConfirm(message.ConfirmMeta)
+			}
+			return nil
+		}
+
+		qu.Push(message)
 
 		ex.GetMetrics().MsgOut.Counter.Inc(1)
 
