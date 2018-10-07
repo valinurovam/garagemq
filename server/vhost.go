@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"sync"
-	"time"
 
 	log "github.com/sirupsen/logrus"
 	"github.com/valinurovam/garagemq/amqp"
@@ -26,9 +25,10 @@ type VirtualHost struct {
 	system          bool
 	exLock          sync.Mutex
 	exchanges       map[string]*exchange.Exchange
-	quLock          sync.Mutex
+	quLock          sync.RWMutex
 	queues          map[string]*queue.Queue
-	msgStorage      *msgstorage.MsgStorage
+	msgStorageP     *msgstorage.MsgStorage
+	msgStorageT     *msgstorage.MsgStorage
 	srv             *Server
 	srvStorage      *srvstorage.SrvStorage
 	srvConfig       *config.Config
@@ -42,14 +42,15 @@ type VirtualHost struct {
 // 2) load durable exchanges, queues and bindings from server storage
 // 3) load persisted messages from message store into all initiated queues
 // 4) run confirm loop
-// Only after that vhost is in state running
-func NewVhost(name string, system bool, msgStorage *msgstorage.MsgStorage, srv *Server) *VirtualHost {
+// Only after that vhost is in state running msgStoragePersistent, msgStorageTransient
+func NewVhost(name string, system bool, msgStoragePersistent *msgstorage.MsgStorage, msgStorageTransient *msgstorage.MsgStorage, srv *Server) *VirtualHost {
 	vhost := &VirtualHost{
 		name:            name,
 		system:          system,
 		exchanges:       make(map[string]*exchange.Exchange),
 		queues:          make(map[string]*queue.Queue),
-		msgStorage:      msgStorage,
+		msgStorageP:     msgStoragePersistent,
+		msgStorageT:     msgStorageTransient,
 		srvStorage:      srv.storage,
 		srvConfig:       srv.config,
 		srv:             srv,
@@ -84,13 +85,13 @@ func NewVhost(name string, system bool, msgStorage *msgstorage.MsgStorage, srv *
 
 func (vhost *VirtualHost) handleAutoDeleteQueue() {
 	for queueName := range vhost.autoDeleteQueue {
-		time.Sleep(5 * time.Second)
+		//time.Sleep(5 * time.Second)
 		vhost.DeleteQueue(queueName, false, false)
 	}
 }
 
 func (vhost *VirtualHost) handleConfirms() {
-	confirmsChan := vhost.msgStorage.ReceiveConfirms()
+	confirmsChan := vhost.msgStorageP.ReceiveConfirms()
 	for confirm := range confirmsChan {
 		if !confirm.ConfirmMeta.CanConfirm() {
 			continue
@@ -122,15 +123,15 @@ func (vhost *VirtualHost) initSystemExchanges() {
 
 // GetQueue returns queue by name or nil if not exists
 func (vhost *VirtualHost) GetQueue(name string) *queue.Queue {
-	vhost.quLock.Lock()
-	defer vhost.quLock.Unlock()
+	vhost.quLock.RLock()
+	defer vhost.quLock.RUnlock()
 	return vhost.getQueue(name)
 }
 
 // GetQueues return all vhost's queues
 func (vhost *VirtualHost) GetQueues() map[string]*queue.Queue {
-	vhost.quLock.Lock()
-	defer vhost.quLock.Unlock()
+	vhost.quLock.RLock()
+	defer vhost.quLock.RUnlock()
 	return vhost.queues
 }
 
@@ -190,7 +191,8 @@ func (vhost *VirtualHost) NewQueue(name string, connID uint64, exclusive bool, a
 		autoDelete,
 		durable,
 		vhost.srvConfig.Queue,
-		vhost.msgStorage,
+		vhost.msgStorageP,
+		vhost.msgStorageT,
 		vhost.autoDeleteQueue,
 	)
 }
@@ -334,7 +336,7 @@ func (vhost *VirtualHost) Stop() error {
 		}).Info("Queue stopped")
 	}
 
-	vhost.msgStorage.Close()
+	vhost.msgStorageP.Close()
 	vhost.logger.Info("Storage closed")
 	close(vhost.autoDeleteQueue)
 	return nil

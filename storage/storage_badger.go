@@ -170,6 +170,11 @@ func (storage *Badger) DeleteByPrefix(prefix []byte) {
 	}
 
 	collectSize := 100000
+	keysForDeleteBunches := make([][][]byte, 0)
+	keysForDelete := make([][]byte, 0, collectSize)
+	keysCollected := 0
+
+	// создать банчи и удалять банчами после итератора же ну
 	storage.db.View(func(txn *badger.Txn) error {
 		opts := badger.DefaultIteratorOptions
 		opts.AllVersions = false
@@ -177,28 +182,26 @@ func (storage *Badger) DeleteByPrefix(prefix []byte) {
 		it := txn.NewIterator(opts)
 		defer it.Close()
 
-		keysForDelete := make([][]byte, 0, collectSize)
-		keysCollected := 0
 		for it.Seek(prefix); it.ValidForPrefix(prefix); it.Next() {
 			key := it.Item().KeyCopy(nil)
 			keysForDelete = append(keysForDelete, key)
 			keysCollected++
 			if keysCollected == collectSize {
-				if err := deleteKeys(keysForDelete); err != nil {
-					panic(err)
-				}
+				keysForDeleteBunches = append(keysForDeleteBunches, keysForDelete)
 				keysForDelete = make([][]byte, 0, collectSize)
 				keysCollected = 0
 			}
 		}
 		if keysCollected > 0 {
-			if err := deleteKeys(keysForDelete); err != nil {
-				panic(err)
-			}
+			keysForDeleteBunches = append(keysForDeleteBunches, keysForDelete)
 		}
 
 		return nil
 	})
+
+	for _, keys := range keysForDeleteBunches {
+		deleteKeys(keys)
+	}
 }
 
 // Iterate iterates over keys with prefix

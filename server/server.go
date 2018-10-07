@@ -233,7 +233,7 @@ func (srv *Server) initUsers() {
 }
 
 func (srv *Server) initServerStorage() {
-	srv.storage = srvstorage.NewSrvStorage(srv.getStorageInstance("server"), srv.protoVersion)
+	srv.storage = srvstorage.NewSrvStorage(srv.getStorageInstance("server", true), srv.protoVersion)
 }
 
 func (srv *Server) initDefaultVirtualHosts() {
@@ -242,11 +242,12 @@ func (srv *Server) initDefaultVirtualHosts() {
 	}).Info("Initialize default vhost")
 
 	log.Info("Initialize host message msgStorage")
-	msgStorage := msgstorage.NewMsgStorage(srv.getStorageInstance("vhost_default"), srv.protoVersion)
+	msgStoragePersistent := msgstorage.NewMsgStorage(srv.getStorageInstance("vhost_default", true), srv.protoVersion)
+	msgStorageTransient := msgstorage.NewMsgStorage(srv.getStorageInstance("vhost_default", false), srv.protoVersion)
 
 	srv.vhostsLock.Lock()
 	defer srv.vhostsLock.Unlock()
-	srv.vhosts[srv.config.Vhost.DefaultPath] = NewVhost(srv.config.Vhost.DefaultPath, true, msgStorage, srv)
+	srv.vhosts[srv.config.Vhost.DefaultPath] = NewVhost(srv.config.Vhost.DefaultPath, true, msgStoragePersistent, msgStorageTransient, srv)
 	srv.storage.AddVhost(srv.config.Vhost.DefaultPath, true)
 }
 
@@ -265,15 +266,16 @@ func (srv *Server) initVirtualHostsFromStorage() {
 		} else {
 			storageName = host
 		}
-		msgStorage := msgstorage.NewMsgStorage(srv.getStorageInstance(storageName), srv.protoVersion)
-		srv.vhosts[host] = NewVhost(host, system, msgStorage, srv)
+		msgStoragePersistent := msgstorage.NewMsgStorage(srv.getStorageInstance(storageName, true), srv.protoVersion)
+		msgStorageTransient := msgstorage.NewMsgStorage(srv.getStorageInstance(storageName, false), srv.protoVersion)
+		srv.vhosts[host] = NewVhost(host, system, msgStoragePersistent, msgStorageTransient, srv)
 	}
 
 	srv.vhostsLock.Lock()
 	defer srv.vhostsLock.Unlock()
 }
 
-func (srv *Server) getStorageInstance(name string) interfaces.DbStorage {
+func (srv *Server) getStorageInstance(name string, isPersistent bool) interfaces.DbStorage {
 	// very ugly solution, but don't know how to deal with "/" vhost for example
 	// rabbitmq generate random uniq id for msgstore and touch .vhost file with vhost name into folder
 
@@ -282,6 +284,13 @@ func (srv *Server) getStorageInstance(name string) interfaces.DbStorage {
 	name = hex.EncodeToString(h.Sum(nil))
 
 	stPath := fmt.Sprintf("%s/%s/%s", srv.config.Db.DefaultPath, srv.config.Db.Engine, name)
+
+	if !isPersistent {
+		stPath += ".transient"
+		if err := os.RemoveAll(stPath); err != nil {
+			panic(err)
+		}
+	}
 
 	if err := os.MkdirAll(stPath, 0777); err != nil {
 		// TODO is here true way to handle error?

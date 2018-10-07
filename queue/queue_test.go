@@ -2,6 +2,7 @@ package queue
 
 import (
 	"testing"
+	"time"
 
 	"github.com/valinurovam/garagemq/amqp"
 	"github.com/valinurovam/garagemq/config"
@@ -13,7 +14,7 @@ const SIZE = 32
 var baseConfig = config.Queue{ShardSize: SIZE, MaxMessagesInRam: 10000}
 
 func TestQueue_Property(t *testing.T) {
-	queue := NewQueue("test", 0, false, false, false, baseConfig, nil, nil)
+	queue := NewQueue("test", 0, false, false, false, baseConfig, nil, nil, nil)
 	if queue.GetName() != "test" {
 		t.Fatalf("Expected GetName %s, actual %s", "test", queue.GetName())
 	}
@@ -46,7 +47,7 @@ func TestQueue_Property(t *testing.T) {
 }
 
 func TestQueue_PushPop(t *testing.T) {
-	queue := NewQueue("test", 0, false, false, false, baseConfig, nil, nil)
+	queue := NewQueue("test", 0, false, false, false, baseConfig, nil, nil, nil)
 	queue.Start()
 	queueLength := SIZE * 8
 	for item := 0; item < queueLength; item++ {
@@ -82,7 +83,7 @@ func TestQueue_PushPop(t *testing.T) {
 }
 
 func TestQueue_Requeue(t *testing.T) {
-	queue := NewQueue("test", 0, false, false, false, baseConfig, nil, nil)
+	queue := NewQueue("test", 0, false, false, false, baseConfig, nil, nil, nil)
 	queue.Start()
 	queueLength := SIZE * 8
 	for item := 0; item < queueLength; item++ {
@@ -114,7 +115,7 @@ func TestQueue_Requeue(t *testing.T) {
 }
 
 func TestQueue_PopQos_Empty(t *testing.T) {
-	queue := NewQueue("test", 0, false, false, false, baseConfig, nil, nil)
+	queue := NewQueue("test", 0, false, false, false, baseConfig, nil, nil, nil)
 	queue.Start()
 	queueLength := SIZE * 8
 	for item := 0; item < queueLength; item++ {
@@ -139,7 +140,7 @@ func TestQueue_PopQos_Single(t *testing.T) {
 	prefetchCount := 10
 	qosRule := qos.NewAmqpQos(uint16(prefetchCount), 0)
 
-	queue := NewQueue("test", 0, false, false, false, baseConfig, nil, nil)
+	queue := NewQueue("test", 0, false, false, false, baseConfig, nil, nil, nil)
 	queue.Start()
 
 	queueLength := SIZE * 8
@@ -175,7 +176,7 @@ func TestQueue_PopQos_Multiple(t *testing.T) {
 		qos.NewAmqpQos(uint16(prefetchCount*2), 0),
 	}
 
-	queue := NewQueue("test", 0, false, false, false, baseConfig, nil, nil)
+	queue := NewQueue("test", 0, false, false, false, baseConfig, nil, nil, nil)
 	queue.Start()
 	queueLength := SIZE * 8
 	for item := 0; item < queueLength; item++ {
@@ -203,7 +204,7 @@ func TestQueue_PopQos_Multiple(t *testing.T) {
 }
 
 func TestQueue_Purge(t *testing.T) {
-	queue := NewQueue("test", 0, false, false, false, baseConfig, nil, nil)
+	queue := NewQueue("test", 0, false, false, false, baseConfig, nil, nil, nil)
 	queue.Start()
 	queueLength := SIZE * 8
 	for item := 0; item < queueLength; item++ {
@@ -221,7 +222,7 @@ func TestQueue_Purge(t *testing.T) {
 }
 
 func TestQueue_AddConsumer(t *testing.T) {
-	queue := NewQueue("test", 0, false, false, false, baseConfig, nil, nil)
+	queue := NewQueue("test", 0, false, false, false, baseConfig, nil, nil, nil)
 	if queue.AddConsumer(&ConsumerMock{}, false) == nil {
 		t.Fatalf("Expected error on non-active queue")
 	}
@@ -245,7 +246,7 @@ func TestQueue_AddConsumer(t *testing.T) {
 }
 
 func TestQueue_RemoveConsumer(t *testing.T) {
-	queue := NewQueue("test", 0, false, false, false, baseConfig, nil, nil)
+	queue := NewQueue("test", 0, false, false, false, baseConfig, nil, nil, nil)
 	queue.Start()
 
 	queue.AddConsumer(&ConsumerMock{tag: "test"}, false)
@@ -264,8 +265,8 @@ func TestQueue_RemoveConsumer(t *testing.T) {
 }
 
 func TestQueue_EqualWithErr_Success(t *testing.T) {
-	queue1 := NewQueue("test", 0, false, false, false, baseConfig, nil, nil)
-	queue2 := NewQueue("test", 0, false, false, false, baseConfig, nil, nil)
+	queue1 := NewQueue("test", 0, false, false, false, baseConfig, nil, nil, nil)
+	queue2 := NewQueue("test", 0, false, false, false, baseConfig, nil, nil, nil)
 
 	if err := queue1.EqualWithErr(queue2); err != nil {
 		t.Fatal(err)
@@ -273,8 +274,8 @@ func TestQueue_EqualWithErr_Success(t *testing.T) {
 }
 
 func TestQueue_EqualWithErr_Failed_Durable(t *testing.T) {
-	queue1 := NewQueue("test", 0, false, false, false, baseConfig, nil, nil)
-	queue2 := NewQueue("test", 0, false, false, true, baseConfig, nil, nil)
+	queue1 := NewQueue("test", 0, false, false, false, baseConfig, nil, nil, nil)
+	queue2 := NewQueue("test", 0, false, false, true, baseConfig, nil, nil, nil)
 
 	if err := queue1.EqualWithErr(queue2); err == nil {
 		t.Fatal("Expected error about durable")
@@ -282,8 +283,8 @@ func TestQueue_EqualWithErr_Failed_Durable(t *testing.T) {
 }
 
 func TestQueue_EqualWithErr_Failed_Autodelete(t *testing.T) {
-	queue1 := NewQueue("test", 0, false, false, false, baseConfig, nil, nil)
-	queue2 := NewQueue("test", 0, false, true, false, baseConfig, nil, nil)
+	queue1 := NewQueue("test", 0, false, false, false, baseConfig, nil, nil, nil)
+	queue2 := NewQueue("test", 0, false, true, false, baseConfig, nil, nil, nil)
 
 	if err := queue1.EqualWithErr(queue2); err == nil {
 		t.Fatal("Expected error about autodelete")
@@ -291,8 +292,8 @@ func TestQueue_EqualWithErr_Failed_Autodelete(t *testing.T) {
 }
 
 func TestQueue_EqualWithErr_Failed_Exclusive(t *testing.T) {
-	queue1 := NewQueue("test", 0, false, false, false, baseConfig, nil, nil)
-	queue2 := NewQueue("test", 0, true, false, false, baseConfig, nil, nil)
+	queue1 := NewQueue("test", 0, false, false, false, baseConfig, nil, nil, nil)
+	queue2 := NewQueue("test", 0, true, false, false, baseConfig, nil, nil, nil)
 
 	if err := queue1.EqualWithErr(queue2); err == nil {
 		t.Fatal("Expected error about exclusive")
@@ -300,14 +301,14 @@ func TestQueue_EqualWithErr_Failed_Exclusive(t *testing.T) {
 }
 
 func TestQueue_Delete_Success(t *testing.T) {
-	queue := NewQueue("test", 0, false, false, false, baseConfig, nil, nil)
+	queue := NewQueue("test", 0, false, false, false, baseConfig, nil, nil, nil)
 	if _, err := queue.Delete(false, false); err != nil {
 		t.Fatal(err)
 	}
 }
 
 func TestQueue_Delete_Failed_IfEmpty(t *testing.T) {
-	queue := NewQueue("test", 0, false, false, false, baseConfig, nil, nil)
+	queue := NewQueue("test", 0, false, false, false, baseConfig, nil, nil, nil)
 	queue.Start()
 	if _, err := queue.Delete(false, true); err != nil {
 		t.Fatal(err)
@@ -323,7 +324,7 @@ func TestQueue_Delete_Failed_IfEmpty(t *testing.T) {
 }
 
 func TestQueue_Delete_Failed_IfUnused(t *testing.T) {
-	queue := NewQueue("test", 0, false, false, false, baseConfig, nil, nil)
+	queue := NewQueue("test", 0, false, false, false, baseConfig, nil, nil, nil)
 	message := &amqp.Message{}
 	queue.Push(message)
 	if _, err := queue.Delete(true, false); err != nil {
@@ -337,7 +338,7 @@ func TestQueue_Delete_Failed_IfUnused(t *testing.T) {
 }
 
 func TestQueue_Marshal(t *testing.T) {
-	queue := NewQueue("test", 0, false, false, false, baseConfig, nil, nil)
+	queue := NewQueue("test", 0, false, false, false, baseConfig, nil, nil, nil)
 	marshaled, err := queue.Marshal(amqp.ProtoRabbit)
 	if err != nil {
 		t.Fatal(err)
@@ -366,7 +367,7 @@ func TestQueue_Unmarshal_FailedNameOnly(t *testing.T) {
 }
 
 func TestQueue_Stop(t *testing.T) {
-	queue := NewQueue("test", 0, false, false, false, baseConfig, nil, nil)
+	queue := NewQueue("test", 0, false, false, false, baseConfig, nil, nil, nil)
 	queue.Start()
 
 	if !queue.IsActive() {
@@ -382,7 +383,7 @@ func TestQueue_Stop(t *testing.T) {
 
 func TestQueue_Push_Durable_Persistent(t *testing.T) {
 	storage := &MsgStorageMock{}
-	queue := NewQueue("test", 0, false, false, true, baseConfig, storage, nil)
+	queue := NewQueue("test", 0, false, false, true, baseConfig, storage, nil, nil)
 	queue.Start()
 	var dMode byte = 2
 	message := &amqp.Message{
@@ -402,7 +403,7 @@ func TestQueue_Push_Durable_Persistent(t *testing.T) {
 
 func TestQueue_Push_Durable_NonPersistent(t *testing.T) {
 	storage := &MsgStorageMock{}
-	queue := NewQueue("test", 0, false, false, true, baseConfig, storage, nil)
+	queue := NewQueue("test", 0, false, false, true, baseConfig, storage, nil, nil)
 	var dMode byte = 1
 	message := &amqp.Message{
 		ID: 1,
@@ -425,7 +426,7 @@ func TestQueue_Push_Durable_NonPersistent(t *testing.T) {
 
 func TestQueue_AckMsg_Persistent(t *testing.T) {
 	storage := &MsgStorageMock{}
-	queue := NewQueue("test", 0, false, false, true, baseConfig, storage, nil)
+	queue := NewQueue("test", 0, false, false, true, baseConfig, storage, nil, nil)
 	queue.Start()
 	var dMode byte = 2
 	message := &amqp.Message{
@@ -445,7 +446,7 @@ func TestQueue_AckMsg_Persistent(t *testing.T) {
 
 func TestQueue_AckMsg_NonPersistent(t *testing.T) {
 	storage := &MsgStorageMock{}
-	queue := NewQueue("test", 0, false, false, true, baseConfig, storage, nil)
+	queue := NewQueue("test", 0, false, false, true, baseConfig, storage, nil, nil)
 	var dMode byte = 1
 	message := &amqp.Message{
 		ID: 1,
@@ -464,7 +465,7 @@ func TestQueue_AckMsg_NonPersistent(t *testing.T) {
 
 func TestQueue_Purge_Durable(t *testing.T) {
 	storage := &MsgStorageMock{}
-	queue := NewQueue("test", 0, false, false, true, baseConfig, storage, nil)
+	queue := NewQueue("test", 0, false, false, true, baseConfig, storage, nil, nil)
 	queue.Purge()
 
 	if !storage.purged {
@@ -474,7 +475,7 @@ func TestQueue_Purge_Durable(t *testing.T) {
 
 func TestQueue_Delete_Durable(t *testing.T) {
 	storage := &MsgStorageMock{}
-	queue := NewQueue("test", 0, false, false, true, baseConfig, storage, nil)
+	queue := NewQueue("test", 0, false, false, true, baseConfig, storage, nil, nil)
 	queue.Delete(false, false)
 
 	if !storage.purged {
@@ -484,7 +485,7 @@ func TestQueue_Delete_Durable(t *testing.T) {
 
 func TestQueue_Requeue_Durable(t *testing.T) {
 	storage := &MsgStorageMock{}
-	queue := NewQueue("test", 0, false, false, true, baseConfig, storage, nil)
+	queue := NewQueue("test", 0, false, false, true, baseConfig, storage, nil, nil)
 	queue.Start()
 
 	initDeliveryCount := 1
@@ -511,9 +512,59 @@ func TestQueue_Requeue_Durable(t *testing.T) {
 
 // useless, for coverage only
 func TestQueue_SetMetrics(t *testing.T) {
-	queue := NewQueue("test", 0, false, false, false, baseConfig, nil, nil)
+	queue := NewQueue("test", 0, false, false, false, baseConfig, nil, nil, nil)
 	queue.SetMetrics(nil)
 	if queue.GetMetrics() != nil {
 		t.Fatal("Expected nil metrics")
+	}
+}
+
+func TestQueue_LoadFromStorage_Swap(t *testing.T) {
+	var baseConfig = config.Queue{ShardSize: SIZE, MaxMessagesInRam: 10}
+	count := baseConfig.MaxMessagesInRam * 5
+
+	storagePersisted := NewStorageMock(int(count))
+	storageTransient := NewStorageMock(int(count))
+	queue := NewQueue("test", 0, false, false, true, baseConfig, storagePersisted, storageTransient, nil)
+	queue.Start()
+
+	var dMode byte = 2
+
+	var idx uint64
+	for i := 0; i < int(count); i++ {
+		idx++
+		// persisted
+		messageP := &amqp.Message{
+			ID: idx,
+			Header: &amqp.ContentHeader{
+				PropertyList: &amqp.BasicPropertyList{
+					DeliveryMode: &dMode,
+				},
+			},
+		}
+		idx++
+		// transient
+		messageT := &amqp.Message{
+			ID: idx,
+			Header: &amqp.ContentHeader{
+				PropertyList: &amqp.BasicPropertyList{},
+			},
+		}
+		queue.Push(messageP)
+		queue.Push(messageT)
+	}
+
+	popCount := 0
+	for i := 0; i < int(count); i++ {
+		msg := queue.Pop()
+		if msg != nil {
+			popCount++
+		}
+		// give a little chance to end queue.mayBeLoadFromStorage()
+		time.Sleep(5 * time.Millisecond)
+	}
+
+	if int(count) != popCount {
+		t.Fatalf("Expected %d messages from queue, actual %d", count, popCount)
 	}
 }

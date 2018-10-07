@@ -55,9 +55,11 @@ func GetCounter(name string) *TrackCounter {
 
 func (r *TrackRegistry) trackMetrics() {
 	for range r.trackTick.C {
+		r.cntLock.Lock()
 		for _, counter := range r.Counters {
 			value := counter.Counter.Count()
 			counter.Track.Add(value)
 		}
+		r.cntLock.Unlock()
 	}
 }

@@ -34,51 +34,57 @@ type MetricsState struct {
 // Queue is an implementation of the AMQP-queue entity
 type Queue struct {
 	safequeue.SafeQueue
-	name            string
-	connID          uint64
-	exclusive       bool
-	autoDelete      bool
-	durable         bool
-	cmrLock         sync.RWMutex
-	consumers       []interfaces.Consumer
-	consumeExcl     bool
-	call            chan bool
-	wasConsumed     bool
-	shardSize       int
-	actLock         sync.RWMutex
-	active          bool
-	storage         interfaces.MsgStorage
+	name        string
+	connID      uint64
+	exclusive   bool
+	autoDelete  bool
+	durable     bool
+	cmrLock     sync.RWMutex
+	consumers   []interfaces.Consumer
+	consumeExcl bool
+	call        chan bool
+	wasConsumed bool
+	shardSize   int
+	actLock     sync.RWMutex
+	active      bool
+	// persistent storage
+	msgPStorage interfaces.MsgStorage
+	// transient storage
+	msgTStorage     interfaces.MsgStorage
 	currentConsumer int
 	metrics         *MetricsState
 	autoDeleteQueue chan string
 	queueLength     int64
 
 	// lock for sync load swapped-messages from disk
-	loadSwapLock     sync.Mutex
-	maxMessagesInRam uint64
-	lastStoredMsgId  uint64
-	lastMemMsgId     uint64
-	swappedToDisk    bool
+	loadSwapLock           sync.Mutex
+	maxMessagesInRam       uint64
+	lastStoredMsgId        uint64
+	lastMemMsgId           uint64
+	swappedToDisk          bool
+	maybeLoadFromStorageCh chan bool
 }
 
 // NewQueue returns new instance of Queue
-func NewQueue(name string, connID uint64, exclusive bool, autoDelete bool, durable bool, config config.Queue, storage interfaces.MsgStorage, autoDeleteQueue chan string) *Queue {
+func NewQueue(name string, connID uint64, exclusive bool, autoDelete bool, durable bool, config config.Queue, msgStorageP interfaces.MsgStorage, msgStorageT interfaces.MsgStorage, autoDeleteQueue chan string) *Queue {
 	return &Queue{
-		SafeQueue:        *safequeue.NewSafeQueue(config.ShardSize),
-		name:             name,
-		connID:           connID,
-		exclusive:        exclusive,
-		autoDelete:       autoDelete,
-		durable:          durable,
-		call:             make(chan bool, 1),
-		wasConsumed:      false,
-		active:           false,
-		shardSize:        config.ShardSize,
-		maxMessagesInRam: config.MaxMessagesInRam,
-		storage:          storage,
-		currentConsumer:  0,
-		autoDeleteQueue:  autoDeleteQueue,
-		swappedToDisk:    false,
+		SafeQueue:  *safequeue.NewSafeQueue(config.ShardSize),
+		name:       name,
+		connID:     connID,
+		exclusive:  exclusive,
+		autoDelete: autoDelete,
+		durable:    durable,
+		call:       make(chan bool, 1),
+		maybeLoadFromStorageCh: make(chan bool, 1),
+		wasConsumed:            false,
+		active:                 false,
+		shardSize:              config.ShardSize,
+		maxMessagesInRam:       config.MaxMessagesInRam,
+		msgPStorage:            msgStorageP,
+		msgTStorage:            msgStorageT,
+		currentConsumer:        0,
+		autoDeleteQueue:        autoDeleteQueue,
+		swappedToDisk:          false,
 		metrics: &MetricsState{
 			Ready:    metrics.NewTrackCounter(0, true),
 			Unacked:  metrics.NewTrackCounter(0, true),
@@ -121,6 +127,12 @@ func (queue *Queue) Start() {
 			}()
 		}
 	}()
+
+	go func() {
+		for range queue.maybeLoadFromStorageCh {
+			queue.mayBeLoadFromStorage()
+		}
+	}()
 }
 
 // Stop stops main queue loop
@@ -158,16 +170,24 @@ func (queue *Queue) Push(message *amqp.Message) {
 
 	message.GenerateSeq()
 
+	persisted := false
 	if queue.durable && message.IsPersistent() {
-		// TODO handle error
-		queue.storage.Add(message, queue.name)
-		if queue.SafeQueue.Length() > queue.maxMessagesInRam && !queue.swappedToDisk {
-			queue.swappedToDisk = true
-			queue.lastStoredMsgId = message.ID
+		queue.msgPStorage.Add(message, queue.name)
+		persisted = true
+	} else {
+		if queue.SafeQueue.Length() > queue.maxMessagesInRam {
+			queue.msgTStorage.Add(message, queue.name)
+			persisted = true
 		}
 
-	} else if message.ConfirmMeta != nil {
-		message.ConfirmMeta.ActualConfirms++
+		if message.ConfirmMeta != nil {
+			message.ConfirmMeta.ActualConfirms++
+		}
+	}
+
+	if persisted && !queue.swappedToDisk && queue.SafeQueue.Length() > queue.maxMessagesInRam {
+		queue.swappedToDisk = true
+		queue.lastStoredMsgId = message.ID
 	}
 
 	queue.metrics.Incoming.Counter.Inc(1)
@@ -194,7 +214,11 @@ func (queue *Queue) PopQos(qosList []*qos.AmqpQos) *amqp.Message {
 		return nil
 	}
 
-	queue.mayBeLoadFromStorage()
+	select {
+	case queue.maybeLoadFromStorageCh <- true:
+	default:
+
+	}
 
 	queue.SafeQueue.Lock()
 	defer queue.SafeQueue.Unlock()
@@ -222,31 +246,110 @@ func (queue *Queue) PopQos(qosList []*qos.AmqpQos) *amqp.Message {
 }
 
 func (queue *Queue) mayBeLoadFromStorage() {
-	queue.loadSwapLock.Lock()
-	defer queue.loadSwapLock.Unlock()
-	if queue.SafeQueue.Length() < queue.maxMessagesInRam/2 && queue.swappedToDisk {
-		var lastIteratedMsgId uint64
-		lastMemMsgId := queue.lastMemMsgId
-		iterated := queue.storage.IterateByQueueFromMsgID(queue.name, queue.lastStoredMsgId, queue.maxMessagesInRam-queue.SafeQueue.Length(), func(message *amqp.Message) {
-			lastIteratedMsgId = message.ID
-			if message.ID == queue.lastMemMsgId {
-				return
+	swappedToPersistent := true
+	swappedToTransient := true
+
+	currentLength := queue.SafeQueue.Length()
+	needle := queue.maxMessagesInRam - currentLength
+
+	if currentLength >= queue.maxMessagesInRam/2 || needle <= 0 || !queue.swappedToDisk {
+		return
+	}
+
+	pMessages := make([]*amqp.Message, 0, needle)
+	tMessages := make([]*amqp.Message, 0, needle)
+
+	var lastIteratedMsgId uint64
+	lastMemMsgId := queue.lastMemMsgId
+
+	var wg sync.WaitGroup
+	// 2 - search for transient and persistent
+	wg.Add(2)
+
+	go func() {
+		if currentLength < queue.maxMessagesInRam/2 && queue.swappedToDisk {
+			iterated := queue.msgPStorage.IterateByQueueFromMsgID(queue.name, queue.lastStoredMsgId, needle, func(message *amqp.Message) {
+				lastIteratedMsgId = message.ID
+				pMessages = append(pMessages, message)
+			})
+
+			if iterated == 0 || lastMemMsgId == lastIteratedMsgId {
+				swappedToPersistent = false
 			}
+		}
+		wg.Done()
+	}()
 
-			queue.SafeQueue.Push(message)
+	go func() {
+		if currentLength < queue.maxMessagesInRam/2 && queue.swappedToDisk {
+			iterated := queue.msgTStorage.IterateByQueueFromMsgID(queue.name, queue.lastStoredMsgId, needle, func(message *amqp.Message) {
+				lastIteratedMsgId = message.ID
+				tMessages = append(tMessages, message)
+			})
 
-			queue.lastMemMsgId = message.ID
-			queue.lastStoredMsgId = message.ID
-		})
+			if iterated == 0 || lastMemMsgId == lastIteratedMsgId {
+				swappedToTransient = false
+			}
+		}
+		wg.Done()
+	}()
 
-		if iterated == 0 || lastMemMsgId == lastIteratedMsgId {
-			queue.swappedToDisk = false
+	wg.Wait()
+
+	sortedMessages := queue.mergeSortedMessageSlices(pMessages, tMessages)
+	sortedMessageslength := uint64(len(sortedMessages))
+
+	var pos uint64
+	if sortedMessageslength <= needle {
+		pos = sortedMessageslength
+	} else {
+		pos = needle
+	}
+
+	for _, message := range sortedMessages[0:pos] {
+		if message.ID == lastMemMsgId {
+			continue
+		}
+		queue.SafeQueue.Push(message)
+		queue.lastMemMsgId = message.ID
+		queue.lastStoredMsgId = message.ID
+	}
+
+	queue.swappedToDisk = swappedToPersistent || swappedToTransient
+
+	queue.callConsumers()
+}
+
+func (queue *Queue) mergeSortedMessageSlices(A, B []*amqp.Message) []*amqp.Message {
+	result := make([]*amqp.Message, len(A)+len(B))
+
+	idxA, idxB := 0, 0
+
+	for i := 0; i < len(result); i++ {
+		if idxA >= len(A) {
+			result[i] = B[idxB]
+			idxB++
+			continue
+		} else if idxB >= len(B) {
+			result[i] = A[idxA]
+			idxA++
+			continue
+		}
+
+		if A[idxA].ID < B[idxB].ID {
+			result[i] = A[idxA]
+			idxA++
+		} else {
+			result[i] = B[idxB]
+			idxB++
 		}
 	}
+
+	return result
 }
 
 func (queue *Queue) LoadFromMsgStorage() {
-	iterated := queue.storage.IterateByQueueFromMsgID(queue.name, 0, queue.maxMessagesInRam, func(message *amqp.Message) {
+	iterated := queue.msgPStorage.IterateByQueueFromMsgID(queue.name, 0, queue.maxMessagesInRam, func(message *amqp.Message) {
 		queue.SafeQueue.Push(message)
 
 		queue.lastStoredMsgId = message.ID
@@ -258,7 +361,7 @@ func (queue *Queue) LoadFromMsgStorage() {
 	}
 
 	if iterated >= queue.maxMessagesInRam {
-		queue.queueLength = int64(queue.storage.GetQueueLength(queue.name))
+		queue.queueLength = int64(queue.msgPStorage.GetQueueLength(queue.name))
 	} else {
 		queue.queueLength = int64(iterated)
 	}
@@ -278,7 +381,7 @@ func (queue *Queue) AckMsg(message *amqp.Message) {
 	}
 	if queue.durable && message.IsPersistent() {
 		// TODO handle error
-		queue.storage.Del(message, queue.name)
+		queue.msgPStorage.Del(message, queue.name)
 	}
 
 	queue.metrics.Ack.Counter.Inc(1)
@@ -302,7 +405,7 @@ func (queue *Queue) Requeue(message *amqp.Message) {
 	queue.SafeQueue.PushHead(message)
 	if queue.durable && message.IsPersistent() {
 		// TODO handle error
-		queue.storage.Update(message, queue.name)
+		queue.msgPStorage.Update(message, queue.name)
 	}
 	queue.metrics.Ready.Counter.Inc(1)
 	queue.metrics.ServerReady.Counter.Inc(1)
@@ -323,7 +426,7 @@ func (queue *Queue) Purge() (length uint64) {
 	queue.SafeQueue.DirtyPurge()
 
 	if queue.durable {
-		queue.storage.PurgeQueue(queue.name)
+		queue.msgPStorage.PurgeQueue(queue.name)
 	}
 	queue.metrics.Total.Counter.Dec(int64(length))
 	queue.metrics.Ready.Counter.Dec(int64(length))
@@ -357,7 +460,7 @@ func (queue *Queue) Delete(ifUnused bool, ifEmpty bool) (uint64, error) {
 	length := uint64(atomic.LoadInt64(&queue.queueLength))
 
 	if queue.durable {
-		queue.storage.PurgeQueue(queue.name)
+		queue.msgPStorage.PurgeQueue(queue.name)
 	}
 
 	queue.metrics.Total.Counter.Dec(int64(length))
@@ -365,6 +468,10 @@ func (queue *Queue) Delete(ifUnused bool, ifEmpty bool) (uint64, error) {
 
 	queue.metrics.ServerTotal.Counter.Dec(int64(length))
 	queue.metrics.ServerReady.Counter.Dec(int64(length))
+
+	// TODO Proper close channels
+	//close(queue.maybeLoadFromStorageCh)
+	//close(queue.call)
 
 	return length, nil
 }
@@ -420,6 +527,9 @@ func (queue *Queue) RemoveConsumer(cTag string) {
 
 // Send event to call next consumer, that it can receive next message
 func (queue *Queue) callConsumers() {
+	if !queue.active {
+		return
+	}
 	select {
 	case queue.call <- true:
 	default:

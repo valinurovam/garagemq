@@ -232,7 +232,7 @@ func Test_BasicPublish_Persistent_Failed_QueueNonDurable(t *testing.T) {
 
 	found := false
 	vhost := sc.server.getVhost("/")
-	storage := vhost.msgStorage
+	storage := vhost.msgStorageP
 	storage.Iterate(func(queue string, message *amqp2.Message) {
 		found = true
 	})
