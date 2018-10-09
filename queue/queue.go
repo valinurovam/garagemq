@@ -175,7 +175,7 @@ func (queue *Queue) Push(message *amqp.Message) {
 		queue.msgPStorage.Add(message, queue.name)
 		persisted = true
 	} else {
-		if queue.SafeQueue.Length() > queue.maxMessagesInRam {
+		if queue.SafeQueue.Length() > queue.maxMessagesInRam || queue.swappedToDisk {
 			queue.msgTStorage.Add(message, queue.name)
 			persisted = true
 		}
@@ -313,11 +313,10 @@ func (queue *Queue) mayBeLoadFromStorage() {
 		queue.SafeQueue.Push(message)
 		queue.lastMemMsgId = message.ID
 		queue.lastStoredMsgId = message.ID
+		queue.callConsumers()
 	}
 
 	queue.swappedToDisk = swappedToPersistent || swappedToTransient
-
-	queue.callConsumers()
 }
 
 func (queue *Queue) mergeSortedMessageSlices(A, B []*amqp.Message) []*amqp.Message {
