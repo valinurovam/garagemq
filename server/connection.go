@@ -106,6 +106,8 @@ func (conn *Connection) close() {
 		return
 	}
 	conn.status = ConnClosed
+	conn.netConn.Close()
+	close(conn.outgoing)
 
 	// channel0 should we be closed at the end
 	channelIds := make([]int, 0)
@@ -115,11 +117,11 @@ func (conn *Connection) close() {
 	sort.Sort(sort.Reverse(sort.IntSlice(channelIds)))
 	for _, chID := range channelIds {
 		channel := conn.channels[uint16(chID)]
-		channel.close()
-		delete(conn.channels, uint16(chID))
+		channel.delete()
 	}
 	conn.clearQueues()
-	conn.netConn.Close()
+	//conn.netConn.Close()
+
 	conn.logger.WithFields(log.Fields{
 		"vhost": conn.vhostName,
 		"from":  conn.netConn.RemoteAddr(),
@@ -127,6 +129,13 @@ func (conn *Connection) close() {
 	conn.server.removeConnection(conn.id)
 
 	conn.closeCh <- true
+
+	// now we close incoming channel
+	for _, chID := range channelIds {
+		channel := conn.channels[uint16(chID)]
+		delete(conn.channels, uint16(chID))
+		close(channel.incoming)
+	}
 }
 
 func (conn *Connection) getChannel(id uint16) *Channel {
@@ -176,6 +185,9 @@ func (conn *Connection) setStatus(status int) {
 	conn.statusLock.Lock()
 	defer conn.statusLock.Unlock()
 
+	if conn.status == ConnClosed {
+		return
+	}
 	conn.status = status
 }
 
@@ -190,7 +202,7 @@ func (conn *Connection) handleConnection() {
 	_, err := conn.netConn.Read(buf)
 	if err != nil {
 		conn.logger.WithError(err).WithFields(log.Fields{
-			"readed buffer": buf,
+			"read buffer": buf,
 		}).Error("Error on read protocol header")
 		return
 	}
@@ -215,24 +227,23 @@ func (conn *Connection) handleConnection() {
 
 func (conn *Connection) handleOutgoing() {
 	buffer := bufio.NewWriter(conn.netConn)
-	for {
+	for frame := range conn.outgoing {
 		if conn.getStatus() >= ConnClosing {
-			break
+			continue
 		}
 
-		var frame = <-conn.outgoing
 		if err := amqp.WriteFrame(buffer, frame); err != nil {
 			conn.logger.WithError(err).Warn("writing frame")
 			conn.setStatus(ConnClosing)
 			conn.close()
-			return
+			continue
 		}
 
 		if frame.CloseAfter {
 			conn.setStatus(ConnClosing)
 			buffer.Flush()
 			conn.close()
-			break
+			continue
 		}
 
 		if frame.Sync {
@@ -266,7 +277,7 @@ func (conn *Connection) handleIncoming() {
 
 	for {
 		if conn.getStatus() >= ConnClosing {
-			break
+			return
 		}
 
 		frame, err := amqp.ReadFrame(buffer)
@@ -275,7 +286,7 @@ func (conn *Connection) handleIncoming() {
 				conn.logger.WithError(err).Warn("reading frame")
 			}
 			conn.close()
-			break
+			return
 		}
 
 		if frame.ChannelID != 0 && conn.getStatus() < ConnOpen {
