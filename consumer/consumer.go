@@ -66,52 +66,58 @@ func (consumer *Consumer) Start() {
 // startConsume waiting a signal from consume channel and try to pop message from queue
 // if not set noAck consumer pop message with qos rules and add message to unacked message queue
 func (consumer *Consumer) startConsume() {
-	var message *amqp.Message
 	for range consumer.consume {
-		if consumer.status == stopped {
-			break
-		}
-
-		if consumer.noAck {
-			message = consumer.queue.Pop()
-		} else {
-			message = consumer.queue.PopQos(consumer.qos)
-		}
-
-		if message == nil {
-			continue
-		}
-
-		dTag := consumer.channel.NextDeliveryTag()
-		if !consumer.noAck {
-			consumer.channel.AddUnackedMessage(dTag, consumer.ConsumerTag, consumer.queue.GetName(), message)
-		}
-
-		// handle metrics
-		if consumer.noAck {
-			consumer.queue.GetMetrics().Total.Counter.Dec(1)
-			consumer.queue.GetMetrics().ServerTotal.Counter.Dec(1)
-		} else {
-			consumer.queue.GetMetrics().Unacked.Counter.Inc(1)
-			consumer.queue.GetMetrics().ServerUnacked.Counter.Inc(1)
-		}
-
-		consumer.queue.GetMetrics().Ready.Counter.Dec(1)
-		consumer.queue.GetMetrics().ServerReady.Counter.Dec(1)
-
-		consumer.channel.SendContent(&amqp.BasicDeliver{
-			ConsumerTag: consumer.ConsumerTag,
-			DeliveryTag: dTag,
-			Redelivered: message.DeliveryCount > 1,
-			Exchange:    message.Exchange,
-			RoutingKey:  message.RoutingKey,
-		}, message)
-
-		consumer.queue.GetMetrics().Deliver.Counter.Inc(1)
-		consumer.queue.GetMetrics().ServerDeliver.Counter.Inc(1)
-
-		consumer.Consume()
+		consumer.retrieveAndSendMessage()
 	}
+}
+
+func (consumer *Consumer) retrieveAndSendMessage() {
+	var message *amqp.Message
+	consumer.stopLock.RLock()
+	defer consumer.stopLock.RUnlock()
+	if consumer.status == stopped {
+		return
+	}
+
+	if consumer.noAck {
+		message = consumer.queue.Pop()
+	} else {
+		message = consumer.queue.PopQos(consumer.qos)
+	}
+
+	if message == nil {
+		return
+	}
+
+	dTag := consumer.channel.NextDeliveryTag()
+	if !consumer.noAck {
+		consumer.channel.AddUnackedMessage(dTag, consumer.ConsumerTag, consumer.queue.GetName(), message)
+	}
+
+	// handle metrics
+	if consumer.noAck {
+		consumer.queue.GetMetrics().Total.Counter.Dec(1)
+		consumer.queue.GetMetrics().ServerTotal.Counter.Dec(1)
+	} else {
+		consumer.queue.GetMetrics().Unacked.Counter.Inc(1)
+		consumer.queue.GetMetrics().ServerUnacked.Counter.Inc(1)
+	}
+
+	consumer.queue.GetMetrics().Ready.Counter.Dec(1)
+	consumer.queue.GetMetrics().ServerReady.Counter.Dec(1)
+
+	consumer.channel.SendContent(&amqp.BasicDeliver{
+		ConsumerTag: consumer.ConsumerTag,
+		DeliveryTag: dTag,
+		Redelivered: message.DeliveryCount > 1,
+		Exchange:    message.Exchange,
+		RoutingKey:  message.RoutingKey,
+	}, message)
+
+	consumer.queue.GetMetrics().Deliver.Counter.Inc(1)
+	consumer.queue.GetMetrics().ServerDeliver.Counter.Inc(1)
+
+	consumer.Consume()
 }
 
 // Pause pause consumer, used by channel.flow change

@@ -23,6 +23,7 @@ const (
 	channelOpen
 	channelClosing
 	channelClosed
+	channelDelete
 )
 
 type ChannelMetricsState struct {
@@ -121,9 +122,7 @@ func (channel *Channel) start() {
 
 func (channel *Channel) handleIncoming() {
 	buffer := bytes.NewReader([]byte{})
-	for {
-		frame := <-channel.incoming
-
+	for frame := range channel.incoming {
 		switch frame.Type {
 		case amqp.FrameMethod:
 			buffer.Reset(frame.Payload)
@@ -161,13 +160,14 @@ func (channel *Channel) sendError(err *amqp.Error) {
 			MethodId:  err.MethodID,
 		})
 	case amqp.ErrorOnConnection:
-		channel.conn.status = ConnClosing
-		channel.conn.channels[0].SendMethod(&amqp.ConnectionClose{
-			ReplyCode: err.ReplyCode,
-			ReplyText: err.ReplyText,
-			ClassId:   err.ClassID,
-			MethodId:  err.MethodID,
-		})
+		if channel, ok := channel.conn.channels[0]; ok {
+			channel.SendMethod(&amqp.ConnectionClose{
+				ReplyCode: err.ReplyCode,
+				ReplyText: err.ReplyText,
+				ClassId:   err.ClassID,
+				MethodId:  err.MethodID,
+			})
+		}
 	}
 }
 
@@ -301,6 +301,16 @@ func (channel *Channel) SendMethod(method amqp.Method) {
 }
 
 func (channel *Channel) sendOutgoing(frame *amqp.Frame) {
+	defer func() {
+		if recover() != nil {
+			// it is possible to send close channel here, cause outgoing channel can be closed by conn.close
+			// looks like as bad design of frames flow, but at the moment is better to fix goroutine leaks
+		}
+	}()
+
+	if channel.status == channelDelete {
+		return
+	}
 	channel.outgoing <- frame
 }
 
@@ -416,6 +426,11 @@ func (channel *Channel) close() {
 		channel.handleReject(0, true, true, &amqp.BasicNack{})
 	}
 	channel.status = channelClosed
+}
+
+func (channel *Channel) delete() {
+	channel.close()
+	channel.status = channelDelete
 }
 
 func (channel *Channel) updateQos(prefetchCount uint16, prefetchSize uint32, global bool) {
