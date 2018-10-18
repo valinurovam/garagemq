@@ -3,7 +3,7 @@
 GarageMQ is a message broker that implement the Advanced Message Queuing Protocol (AMQP). Compatible with any AMQP or RabbitMQ clients (tested streadway/amqp and php-amqp lib)
 
 #### Table of Contents
-- [Goals of this project](#goals-of-this-project:)
+- [Goals of this project](#goals-of-this-project)
 - [Installation and Building](#installation-and-building)
   - [Docker](#docker)
   - [Go get](#go-get)
@@ -19,7 +19,7 @@ GarageMQ is a message broker that implement the Advanced Message Queuing Protoco
 - [TODO](#todo)
 - [Contribution](#contribution)
 
-#### Goals of this project:
+## Goals of this project
 
 - Have fun and learn a lon
 - Implement AMQP message broker in Go
