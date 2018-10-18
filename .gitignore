@@ -1,4 +1,4 @@
-cmd/server
+bin/garagemq
 db/
 node_modules
 .idea
