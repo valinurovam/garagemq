@@ -1,0 +1,5 @@
+cmd/server
+db/
+node_modules
+.idea
+.DS_Store

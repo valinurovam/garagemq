@@ -386,8 +386,8 @@ func (channel *Channel) addConsumer(method *amqp.BasicConsume) (cmr *consumer.Co
 	if channel.server.protoVersion == amqp.Proto091 {
 		consumerQos = []*qos.AmqpQos{channel.qos, channel.conn.qos}
 	} else {
-		cmrQos := *channel.consumerQos
-		consumerQos = []*qos.AmqpQos{channel.qos, &cmrQos}
+		cmrQos := channel.consumerQos.Copy()
+		consumerQos = []*qos.AmqpQos{channel.qos, cmrQos}
 	}
 
 	cmr = consumer.NewConsumer(method.Queue, method.ConsumerTag, method.NoAck, channel, qu, consumerQos)

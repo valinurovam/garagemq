@@ -48,6 +48,7 @@ func (sc *ServerClient) clean() {
 func getDefaultTestConfig() TestConfig {
 	return TestConfig{
 		srvConfig: config.Config{
+			Proto: "amqp-rabbit",
 			Users: []config.User{
 				{
 					Username: "test",

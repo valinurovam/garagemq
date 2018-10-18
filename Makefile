@@ -5,13 +5,13 @@ deps:
 	dep ensure && cd admin-frontend && yarn install
 
 build.all: deps
-	go build -o cmd/server cmd/server.go && cd admin-frontend && yarn build
+	go build -o bin/garagemq main.go && cd admin-frontend && yarn build
 
 build:
-	go build -o cmd/server cmd/server.go
+	go build -o bin/garagemq main.go
 
-run:
-	go build -o cmd/server cmd/server.go && cmd/server
+run: build
+	bin/garagemq
 
 vet:
 	go vet github.com/valinurovam/garagemq...

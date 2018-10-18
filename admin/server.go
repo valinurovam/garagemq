@@ -11,7 +11,7 @@ type AdminServer struct {
 	s *http.Server
 }
 
-func NewAdminServer(amqpServer *server.Server) *AdminServer {
+func NewAdminServer(amqpServer *server.Server, host string, port string) *AdminServer {
 	http.Handle("/", http.FileServer(http.Dir("admin-frontend/build")))
 	http.Handle("/overview", NewOverviewHandler(amqpServer))
 	http.Handle("/exchanges", NewExchangesHandler(amqpServer))
@@ -22,7 +22,7 @@ func NewAdminServer(amqpServer *server.Server) *AdminServer {
 
 	adminServer := &AdminServer{}
 	adminServer.s = &http.Server{
-		Addr: fmt.Sprintf(":%d", 15672),
+		Addr: fmt.Sprintf("%s:%s", host, port),
 	}
 
 	return adminServer

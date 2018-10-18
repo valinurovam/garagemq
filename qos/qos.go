@@ -87,3 +87,14 @@ func (qos *AmqpQos) Release() {
 	qos.currentCount = 0
 	qos.currentSize = 0
 }
+
+func (qos *AmqpQos) Copy() *AmqpQos {
+	qos.Lock()
+	defer qos.Unlock()
+	return &AmqpQos{
+		prefetchCount: qos.prefetchCount,
+		prefetchSize:  qos.prefetchSize,
+		currentCount:  qos.currentCount,
+		currentSize:   qos.currentSize,
+	}
+}

@@ -1,7 +1,14 @@
 package config
 
+import (
+	"io/ioutil"
+
+	"gopkg.in/yaml.v2"
+)
+
 // Config represents server changeable se
 type Config struct {
+	Proto      string
 	Users      []User
 	TCP        TCPConfig
 	Queue      Queue
@@ -9,6 +16,7 @@ type Config struct {
 	Vhost      Vhost
 	Security   Security
 	Connection Connection
+	Admin      AdminConfig
 }
 
 // User for auth check
@@ -24,6 +32,12 @@ type TCPConfig struct {
 	Nodelay      bool
 	ReadBufSize  int `yaml:"readBufSize"`
 	WriteBufSize int `yaml:"writeBufSize"`
+}
+
+// TCPConfig represents properties for tune network connections
+type AdminConfig struct {
+	IP   string `yaml:"ip"`
+	Port string
 }
 
 // Queue settings
@@ -52,4 +66,22 @@ type Security struct {
 type Connection struct {
 	ChannelsMax  uint16 `yaml:"channelsMax"`
 	FrameMaxSize uint32 `yaml:"frameMaxSize"`
+}
+
+func CreateFromFile(path string) (*Config, error) {
+	cfg := &Config{}
+	file, err := ioutil.ReadFile(path)
+	if err != nil {
+		return nil, err
+	}
+	err = yaml.Unmarshal(file, &cfg)
+	if err != nil {
+		return nil, err
+	}
+
+	return cfg, nil
+}
+
+func CreateDefault() (*Config, error) {
+	return defaultConfig(), nil
 }
