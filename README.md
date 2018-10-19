@@ -4,6 +4,7 @@ GarageMQ is a message broker that implement the Advanced Message Queuing Protoco
 
 #### Table of Contents
 - [Goals of this project](#goals-of-this-project)
+- [Demo](#demo)
 - [Installation and Building](#installation-and-building)
   - [Docker](#docker)
   - [Go get](#go-get)
@@ -24,6 +25,15 @@ GarageMQ is a message broker that implement the Advanced Message Queuing Protoco
 - Have fun and learn a lon
 - Implement AMQP message broker in Go
 - Make protocol compatible with RabbitMQ and standard AMQP 0-9-1.
+
+
+## Demo
+Simple demo server on Digital Ocean, ```2 GB Memory / 25 GB Disk / FRA1 - Ubuntu Docker 17.12.0~ce on 16.04```
+
+|     Server    | Port | Admin port | Login | Password | Virtual Host |
+|:-------------:|:----:|:----------:|:-----:|:--------:|:------------:|
+| 46.101.117.78 | 5672 |    5672    | guest |   guest  |       /      |
+
 
 ## Installation and Building
 ### Docker
