@@ -32,8 +32,10 @@ Simple demo server on Digital Ocean, ```2 GB Memory / 25 GB Disk / FRA1 - Ubuntu
 
 |     Server    | Port | Admin port | Login | Password | Virtual Host |
 |:-------------:|:----:|:----------:|:-----:|:--------:|:------------:|
-| 46.101.117.78 | 5672 |    5672    | guest |   guest  |       /      |
+| 46.101.117.78 | 5672 |    15672    | guest |   guest  |       /      |
 
+- [AdminServer - http://46.101.117.78:15672/](http://46.101.117.78:15672/)
+- Connect uri - ```amqp://guest:guest@46.101.117.78:5672```
 
 ## Installation and Building
 ### Docker
