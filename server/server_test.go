@@ -191,3 +191,28 @@ func TestServer_GetVhosts(t *testing.T) {
 		}
 	}
 }
+
+func TestServer_RealStart(t *testing.T) {
+	defer (&ServerClient{}).clean()
+	cfg := getDefaultTestConfig()
+	metrics.NewTrackRegistry(15, time.Second, true)
+	server := NewServer("localhost", "55672", proto, &cfg.srvConfig)
+	go server.Start()
+	time.Sleep(2 * time.Second)
+	defer server.Stop()
+
+	conn, err := amqpclient.Dial("amqp://guest:guest@localhost:55672/")
+	if err != nil {
+		t.Fatal("Could not connect to real server", err)
+		return
+	}
+
+	if len(server.connections) == 0 {
+		t.Fatal("Expected connected client")
+	}
+
+	if len(server.connections[1].channels) == 0 {
+		t.Fatal("Expected channels on connections")
+	}
+	defer conn.Close()
+}

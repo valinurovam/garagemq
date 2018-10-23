@@ -73,7 +73,7 @@ func NewServer(host string, port string, protoVersion string, config *config.Con
 		config:       config,
 		users:        make(map[string]string),
 		vhosts:       make(map[string]*VirtualHost),
-		connSeq:      1,
+		connSeq:      0,
 	}
 	server.initMetrics()
 
@@ -135,6 +135,7 @@ func (srv *Server) Stop() {
 		go conn.safeClose(&wg)
 	}
 	wg.Wait()
+	log.Info("All connections safe closed")
 
 	// stop exchanges and queues
 	for _, virtualHost := range srv.vhosts {
@@ -318,6 +319,14 @@ func (srv *Server) onSignal(sig os.Signal) {
 	case syscall.SIGTERM, syscall.SIGINT:
 		srv.Stop()
 		os.Exit(0)
+	}
+}
+
+// Special method for calling in tests without os.Exit(0)
+func (srv *Server) testOnSignal(sig os.Signal) {
+	switch sig {
+	case syscall.SIGTERM, syscall.SIGINT:
+		srv.Stop()
 	}
 }
 

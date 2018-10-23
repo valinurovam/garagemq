@@ -122,27 +122,38 @@ func (channel *Channel) start() {
 
 func (channel *Channel) handleIncoming() {
 	buffer := bytes.NewReader([]byte{})
-	for frame := range channel.incoming {
-		switch frame.Type {
-		case amqp.FrameMethod:
-			buffer.Reset(frame.Payload)
-			method, err := amqp.ReadMethod(buffer, channel.protoVersion)
-			channel.logger.Debug("Incoming method <- " + method.Name())
-			if err != nil {
-				channel.logger.WithError(err).Error("Error on handling frame")
-				channel.sendError(amqp.NewConnectionError(amqp.FrameError, err.Error(), 0, 0))
+
+	for {
+		select {
+		case <-channel.conn.ctx.Done():
+			return
+		case frame := <-channel.incoming:
+			if frame == nil {
+				// channel.incoming closed by connection
+				return
 			}
 
-			if err := channel.handleMethod(method); err != nil {
-				channel.sendError(err)
-			}
-		case amqp.FrameHeader:
-			if err := channel.handleContentHeader(frame); err != nil {
-				channel.sendError(err)
-			}
-		case amqp.FrameBody:
-			if err := channel.handleContentBody(frame); err != nil {
-				channel.sendError(err)
+			switch frame.Type {
+			case amqp.FrameMethod:
+				buffer.Reset(frame.Payload)
+				method, err := amqp.ReadMethod(buffer, channel.protoVersion)
+				channel.logger.Debug("Incoming method <- " + method.Name())
+				if err != nil {
+					channel.logger.WithError(err).Error("Error on handling frame")
+					channel.sendError(amqp.NewConnectionError(amqp.FrameError, err.Error(), 0, 0))
+				}
+
+				if err := channel.handleMethod(method); err != nil {
+					channel.sendError(err)
+				}
+			case amqp.FrameHeader:
+				if err := channel.handleContentHeader(frame); err != nil {
+					channel.sendError(err)
+				}
+			case amqp.FrameBody:
+				if err := channel.handleContentBody(frame); err != nil {
+					channel.sendError(err)
+				}
 			}
 		}
 	}
@@ -160,8 +171,9 @@ func (channel *Channel) sendError(err *amqp.Error) {
 			MethodId:  err.MethodID,
 		})
 	case amqp.ErrorOnConnection:
-		if channel, ok := channel.conn.channels[0]; ok {
-			channel.SendMethod(&amqp.ConnectionClose{
+		ch := channel.conn.getChannel(0)
+		if ch != nil {
+			ch.SendMethod(&amqp.ConnectionClose{
 				ReplyCode: err.ReplyCode,
 				ReplyText: err.ReplyText,
 				ClassId:   err.ClassID,
@@ -301,17 +313,14 @@ func (channel *Channel) SendMethod(method amqp.Method) {
 }
 
 func (channel *Channel) sendOutgoing(frame *amqp.Frame) {
-	defer func() {
-		if recover() != nil {
-			// it is possible to send close channel here, cause outgoing channel can be closed by conn.close
-			// looks like as bad design of frames flow, but at the moment is better to fix goroutine leaks
+	select {
+	case <-channel.conn.ctx.Done():
+		if channel.id == 0 {
+			close(channel.outgoing)
 		}
-	}()
-
-	if channel.status == channelDelete {
 		return
+	case channel.outgoing <- frame:
 	}
-	channel.outgoing <- frame
 }
 
 // SendContent send message to consumers or returns to publishers

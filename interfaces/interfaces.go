@@ -14,7 +14,7 @@ type Channel interface {
 
 // Consumer represents base consumer public interface
 type Consumer interface {
-	Consume()
+	Consume() bool
 	Tag() string
 	Cancel()
 }

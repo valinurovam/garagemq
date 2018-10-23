@@ -54,7 +54,7 @@ func (storage *MsgStorageMock) PurgeQueue(queue string) {
 }
 
 func (storage *MsgStorageMock) GetQueueLength(queue string) uint64 {
-	return 0
+	return uint64(len(storage.messages))
 }
 
 func (storage *MsgStorageMock) IterateByQueueFromMsgID(queue string, msgId uint64, limit uint64, fn func(message *amqp.Message)) uint64 {
