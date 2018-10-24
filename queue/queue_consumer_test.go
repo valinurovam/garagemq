@@ -6,12 +6,13 @@ import (
 
 // ConsumerMock implements AMQP consumer mock
 type ConsumerMock struct {
-	tag string
+	tag    string
+	cancel bool
 }
 
 // Consume send signal into consumer channel, than consumer can try to pop message from queue
-func (consumer *ConsumerMock) Consume() {
-
+func (consumer *ConsumerMock) Consume() bool {
+	return true
 }
 
 // Stop stops consumer and remove it from queue consumers list
@@ -21,7 +22,7 @@ func (consumer *ConsumerMock) Stop() {
 
 // Cancel stops consumer and send basic.cancel method to the client
 func (consumer *ConsumerMock) Cancel() {
-
+	consumer.cancel = true
 }
 
 // Tag returns consumer tag

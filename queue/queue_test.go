@@ -46,6 +46,21 @@ func TestQueue_Property(t *testing.T) {
 	}
 }
 
+func TestQueue_PushPop_Inactive(t *testing.T) {
+	queue := NewQueue("test", 0, false, false, false, baseConfig, nil, nil, nil)
+	queue.Start()
+	queueLength := SIZE * 8
+	for item := 0; item < queueLength; item++ {
+		message := &amqp.Message{ID: uint64(item + 1)}
+		queue.Push(message)
+	}
+	queue.Stop()
+
+	if queue.Pop() != nil {
+		t.Fatal("Expected nil from non-active queue")
+	}
+}
+
 func TestQueue_PushPop(t *testing.T) {
 	queue := NewQueue("test", 0, false, false, false, baseConfig, nil, nil, nil)
 	queue.Start()
@@ -54,12 +69,6 @@ func TestQueue_PushPop(t *testing.T) {
 		message := &amqp.Message{ID: uint64(item + 1)}
 		queue.Push(message)
 	}
-
-	queue.Stop()
-	if queue.Pop() != nil {
-		t.Fatal("Expected nil from non-active queue")
-	}
-	queue.Start()
 
 	if queue.Length() != uint64(queueLength) {
 		t.Fatalf("expected %d elements, have %d", queueLength, queue.Length())
@@ -136,7 +145,7 @@ func TestQueue_PopQos_Empty(t *testing.T) {
 	}
 }
 
-func TestQueue_PopQos_Single(t *testing.T) {
+func TestQueue_PopQos_Single_Inactive(t *testing.T) {
 	prefetchCount := 10
 	qosRule := qos.NewAmqpQos(uint16(prefetchCount), 0)
 
@@ -153,7 +162,20 @@ func TestQueue_PopQos_Single(t *testing.T) {
 	if queue.PopQos([]*qos.AmqpQos{qosRule}) != nil {
 		t.Fatal("Expected nil from non-active queue")
 	}
+}
+
+func TestQueue_PopQos_Single(t *testing.T) {
+	prefetchCount := 10
+	qosRule := qos.NewAmqpQos(uint16(prefetchCount), 0)
+
+	queue := NewQueue("test", 0, false, false, false, baseConfig, nil, nil, nil)
 	queue.Start()
+
+	queueLength := SIZE * 8
+	for item := 0; item < queueLength; item++ {
+		message := &amqp.Message{ID: uint64(item)}
+		queue.Push(message)
+	}
 
 	rcvCount := 0
 	for item := 0; item < queueLength; item++ {
@@ -168,7 +190,7 @@ func TestQueue_PopQos_Single(t *testing.T) {
 	}
 }
 
-func TestQueue_PopQos_Multiple(t *testing.T) {
+func TestQueue_PopQos_Multiple_Inactive(t *testing.T) {
 	prefetchCount := 28
 	qosRules := []*qos.AmqpQos{
 		qos.NewAmqpQos(0, 0),
@@ -188,7 +210,23 @@ func TestQueue_PopQos_Multiple(t *testing.T) {
 	if queue.PopQos(qosRules) != nil {
 		t.Fatal("Expected nil from non-active queue")
 	}
+}
+
+func TestQueue_PopQos_Multiple(t *testing.T) {
+	prefetchCount := 28
+	qosRules := []*qos.AmqpQos{
+		qos.NewAmqpQos(0, 0),
+		qos.NewAmqpQos(uint16(prefetchCount), 0),
+		qos.NewAmqpQos(uint16(prefetchCount*2), 0),
+	}
+
+	queue := NewQueue("test", 0, false, false, false, baseConfig, nil, nil, nil)
 	queue.Start()
+	queueLength := SIZE * 8
+	for item := 0; item < queueLength; item++ {
+		message := &amqp.Message{ID: uint64(item)}
+		queue.Push(message)
+	}
 
 	rcvCount := 0
 	for item := 0; item < queueLength; item++ {
@@ -241,6 +279,27 @@ func TestQueue_AddConsumer(t *testing.T) {
 	}
 
 	if queue.AddConsumer(&ConsumerMock{}, true) == nil {
+		t.Fatalf("Expected error, queue is busy")
+	}
+}
+
+func TestQueue_AddConsumer_Exclusive(t *testing.T) {
+	queue := NewQueue("test", 0, false, false, false, baseConfig, nil, nil, nil)
+	queue.Start()
+
+	if err := queue.AddConsumer(&ConsumerMock{}, true); err != nil {
+		t.Fatal(err)
+	}
+
+	if queue.wasConsumed == false {
+		t.Fatalf("Expected wasConsumed true")
+	}
+
+	if queue.ConsumersCount() != 1 {
+		t.Fatalf("Expected %d consumers, actual %d", 1, queue.ConsumersCount())
+	}
+
+	if queue.AddConsumer(&ConsumerMock{}, false) == nil {
 		t.Fatalf("Expected error, queue is busy")
 	}
 }
@@ -566,5 +625,126 @@ func TestQueue_LoadFromStorage_Swap(t *testing.T) {
 
 	if int(count) != popCount {
 		t.Fatalf("Expected %d messages from queue, actual %d", count, popCount)
+	}
+}
+
+func TestQueue_LoadFromMsgStorage_LessMaxMessages(t *testing.T) {
+	var baseConfig = config.Queue{ShardSize: SIZE, MaxMessagesInRam: 1000}
+	count := baseConfig.MaxMessagesInRam / 5
+
+	storagePersisted := NewStorageMock(int(count))
+	storageTransient := NewStorageMock(int(count))
+	queue := NewQueue("test", 0, false, false, true, baseConfig, storagePersisted, storageTransient, nil)
+
+	var dMode byte = 2
+
+	var idx uint64
+	for i := 0; i < int(count); i++ {
+		idx++
+		// persisted
+		messageP := &amqp.Message{
+			ID: idx,
+			Header: &amqp.ContentHeader{
+				PropertyList: &amqp.BasicPropertyList{
+					DeliveryMode: &dMode,
+				},
+			},
+		}
+		idx++
+		// transient
+		messageT := &amqp.Message{
+			ID: idx,
+			Header: &amqp.ContentHeader{
+				PropertyList: &amqp.BasicPropertyList{},
+			},
+		}
+		storagePersisted.Add(messageP, "test")
+		storageTransient.Add(messageT, "test")
+	}
+	queue.LoadFromMsgStorage()
+
+	if queue.Length() != count {
+		t.Fatalf("Expected %d messages into the queue, actual %d", count, queue.Length())
+	}
+}
+
+func TestQueue_LoadFromMsgStorage_OverMaxMessages(t *testing.T) {
+	var baseConfig = config.Queue{ShardSize: SIZE, MaxMessagesInRam: 10}
+	count := baseConfig.MaxMessagesInRam * 5
+
+	storagePersisted := NewStorageMock(int(count))
+	storageTransient := NewStorageMock(int(count))
+	queue := NewQueue("test", 0, false, false, true, baseConfig, storagePersisted, storageTransient, nil)
+
+	var dMode byte = 2
+
+	var idx uint64
+	for i := 0; i < int(count); i++ {
+		idx++
+		// persisted
+		messageP := &amqp.Message{
+			ID: idx,
+			Header: &amqp.ContentHeader{
+				PropertyList: &amqp.BasicPropertyList{
+					DeliveryMode: &dMode,
+				},
+			},
+		}
+		idx++
+		// transient
+		messageT := &amqp.Message{
+			ID: idx,
+			Header: &amqp.ContentHeader{
+				PropertyList: &amqp.BasicPropertyList{},
+			},
+		}
+		storagePersisted.Add(messageP, "test")
+		storageTransient.Add(messageT, "test")
+	}
+	queue.LoadFromMsgStorage()
+
+	if queue.Length() != count {
+		t.Fatalf("Expected %d messages into the queue, actual %d", count, queue.Length())
+	}
+}
+
+func TestQueue_AutoDelete(t *testing.T) {
+	autoDeleteCh := make(chan string, 1)
+
+	queue := NewQueue("test", 0, false, true, false, baseConfig, nil, nil, autoDeleteCh)
+	queue.Start()
+
+	cmr := &ConsumerMock{}
+	if err := queue.AddConsumer(cmr, false); err != nil {
+		t.Fatal(err)
+	}
+
+	queue.RemoveConsumer(cmr.Tag())
+
+	tick := time.After(100 * time.Millisecond)
+
+	select {
+	case <-tick:
+		t.Fatalf("Expected message to remove queue")
+	case q := <-autoDeleteCh:
+		if q != queue.GetName() {
+			t.Fatalf("Expected %s, actual %s", queue.GetName(), q)
+		}
+	}
+}
+
+func TestQueue_CancelConsumers(t *testing.T) {
+	queue := NewQueue("test", 0, false, false, false, baseConfig, nil, nil, nil)
+	queue.Start()
+
+	cmr := &ConsumerMock{}
+	if err := queue.AddConsumer(cmr, false); err != nil {
+		t.Fatal(err)
+	}
+
+	queue.Delete(false, false)
+
+	if !cmr.cancel {
+		t.Fatalf("Expected call consumer.Cancel()")
 	}
 }

@@ -95,3 +95,19 @@ func TestAmqpQos_Release(t *testing.T) {
 		t.Fatalf("Release: Expected currentSize %d, actual %d", 0, q.currentCount)
 	}
 }
+
+func TestAmqpQos_Copy(t *testing.T) {
+	q := NewAmqpQos(5, 10)
+	q.Inc(1, 6)
+
+	q2 := q.Copy()
+	q.Release()
+
+	if q2.currentCount != 1 {
+		t.Fatalf("Expected currentCount %d, actual %d", 0, q.currentCount)
+	}
+
+	if q2.currentSize != 6 {
+		t.Fatalf("Expected currentSize %d, actual %d", 0, q.currentCount)
+	}
+}

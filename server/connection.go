@@ -3,9 +3,11 @@ package server
 import (
 	"bufio"
 	"bytes"
+	"context"
 	"fmt"
 	"net"
 	"sort"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -27,7 +29,6 @@ const (
 	ConnOpen
 	ConnOpenOK
 	ConnCloseOK
-	ConnClosing
 	ConnClosed
 )
 
@@ -52,6 +53,7 @@ type Connection struct {
 	server           *Server
 	netConn          *net.TCPConn
 	logger           *log.Entry
+	channelsLock     sync.RWMutex
 	channels         map[uint16]*Channel
 	outgoing         chan *amqp.Frame
 	clientProperties *amqp.Table
@@ -66,6 +68,10 @@ type Connection struct {
 	srvMetrics       *SrvMetricsState
 	metrics          *ConnMetricsState
 	userName         string
+
+	wg        *sync.WaitGroup
+	ctx       context.Context
+	cancelCtx context.CancelFunc
 }
 
 // NewConnection returns new instance of amqp Connection
@@ -79,8 +85,9 @@ func NewConnection(server *Server, netConn *net.TCPConn) (connection *Connection
 		maxChannels:  server.config.Connection.ChannelsMax,
 		maxFrameSize: server.config.Connection.FrameMaxSize,
 		qos:          qos.NewAmqpQos(0, 0),
-		closeCh:      make(chan bool, 1),
+		closeCh:      make(chan bool, 2),
 		srvMetrics:   server.metrics,
+		wg:           &sync.WaitGroup{},
 	}
 
 	connection.logger = log.WithFields(log.Fields{
@@ -101,16 +108,22 @@ func (conn *Connection) initMetrics() {
 
 func (conn *Connection) close() {
 	conn.statusLock.Lock()
-	defer conn.statusLock.Unlock()
 	if conn.status == ConnClosed {
+		conn.statusLock.Unlock()
 		return
 	}
 	conn.status = ConnClosed
+	conn.statusLock.Unlock()
+
+	conn.netConn.SetLinger(0)
 	conn.netConn.Close()
-	close(conn.outgoing)
+
+	conn.cancelCtx()
+	conn.wg.Wait()
 
 	// channel0 should we be closed at the end
 	channelIds := make([]int, 0)
+	conn.channelsLock.Lock()
 	for chID := range conn.channels {
 		channelIds = append(channelIds, int(chID))
 	}
@@ -118,9 +131,10 @@ func (conn *Connection) close() {
 	for _, chID := range channelIds {
 		channel := conn.channels[uint16(chID)]
 		channel.delete()
+		delete(conn.channels, uint16(chID))
 	}
+	conn.channelsLock.Unlock()
 	conn.clearQueues()
-	//conn.netConn.Close()
 
 	conn.logger.WithFields(log.Fields{
 		"vhost": conn.vhostName,
@@ -129,13 +143,6 @@ func (conn *Connection) close() {
 	conn.server.removeConnection(conn.id)
 
 	conn.closeCh <- true
-
-	// now we close incoming channel
-	for _, chID := range channelIds {
-		channel := conn.channels[uint16(chID)]
-		delete(conn.channels, uint16(chID))
-		close(channel.incoming)
-	}
 }
 
 func (conn *Connection) getChannel(id uint16) *Channel {
@@ -181,22 +188,6 @@ func (conn *Connection) clearQueues() {
 	}
 }
 
-func (conn *Connection) setStatus(status int) {
-	conn.statusLock.Lock()
-	defer conn.statusLock.Unlock()
-
-	if conn.status == ConnClosed {
-		return
-	}
-	conn.status = status
-}
-
-func (conn *Connection) getStatus() int {
-	conn.statusLock.RLock()
-	defer conn.statusLock.RUnlock()
-	return conn.status
-}
-
 func (conn *Connection) handleConnection() {
 	buf := make([]byte, 8)
 	_, err := conn.netConn.Read(buf)
@@ -207,6 +198,9 @@ func (conn *Connection) handleConnection() {
 		return
 	}
 
+	// @spec-note
+	// If the server cannot support the protocol specified in the protocol header,
+	// it MUST respond with a valid protocol header and then close the socket connection.
 	// The client MUST start a new connection by sending a protocol header
 	var supported = []byte{'A', 'M', 'Q', 'P', 0, 0, 9, 1}
 	if !bytes.Equal(buf, supported) {
@@ -219,39 +213,52 @@ func (conn *Connection) handleConnection() {
 		return
 	}
 
-	conn.channels[0] = NewChannel(0, conn)
-	conn.channels[0].start()
+	conn.ctx, conn.cancelCtx = context.WithCancel(context.Background())
+
+	channel := NewChannel(0, conn)
+	conn.channelsLock.Lock()
+	conn.channels[channel.id] = channel
+	conn.channelsLock.Unlock()
+
+	channel.start()
+	conn.wg.Add(1)
 	go conn.handleOutgoing()
+	conn.wg.Add(1)
 	go conn.handleIncoming()
 }
 
 func (conn *Connection) handleOutgoing() {
+	defer func() {
+		conn.wg.Done()
+		conn.close()
+	}()
+
 	buffer := bufio.NewWriter(conn.netConn)
-	for frame := range conn.outgoing {
-		if conn.getStatus() >= ConnClosing {
-			continue
-		}
+	for {
+		select {
+		case <-conn.ctx.Done():
+			return
+		case frame := <-conn.outgoing:
+			if frame == nil {
+				return
+			}
+			if err := amqp.WriteFrame(buffer, frame); err != nil && !conn.isClosedError(err) {
+				conn.logger.WithError(err).Warn("writing frame")
+				return
+			}
 
-		if err := amqp.WriteFrame(buffer, frame); err != nil {
-			conn.logger.WithError(err).Warn("writing frame")
-			conn.setStatus(ConnClosing)
-			conn.close()
-			continue
-		}
+			if frame.CloseAfter {
+				buffer.Flush()
+				return
+			}
 
-		if frame.CloseAfter {
-			conn.setStatus(ConnClosing)
-			buffer.Flush()
-			conn.close()
-			continue
-		}
-
-		if frame.Sync {
-			conn.srvMetrics.TrafficOut.Counter.Inc(int64(buffer.Buffered()))
-			conn.metrics.TrafficOut.Counter.Inc(int64(buffer.Buffered()))
-			buffer.Flush()
-		} else {
-			conn.mayBeFlushBuffer(buffer)
+			if frame.Sync {
+				conn.srvMetrics.TrafficOut.Counter.Inc(int64(buffer.Buffered()))
+				conn.metrics.TrafficOut.Counter.Inc(int64(buffer.Buffered()))
+				buffer.Flush()
+			} else {
+				conn.mayBeFlushBuffer(buffer)
+			}
 		}
 	}
 }
@@ -273,39 +280,59 @@ func (conn *Connection) mayBeFlushBuffer(buffer *bufio.Writer) {
 }
 
 func (conn *Connection) handleIncoming() {
+	defer func() {
+		conn.wg.Done()
+		conn.close()
+	}()
+
 	buffer := bufio.NewReader(conn.netConn)
 
 	for {
-		if conn.getStatus() >= ConnClosing {
-			return
-		}
-
+		// TODO
+		// @spec-note
+		// After sending connection.close , any received methods except Close and Close­OK MUST be discarded.
+		// The response to receiving a Close after sending Close must be to send Close­Ok.
 		frame, err := amqp.ReadFrame(buffer)
 		if err != nil {
-			if err.Error() != "EOF" && conn.getStatus() < ConnClosing {
+			if err.Error() != "EOF" && !conn.isClosedError(err) {
 				conn.logger.WithError(err).Warn("reading frame")
 			}
-			conn.close()
 			return
 		}
 
-		if frame.ChannelID != 0 && conn.getStatus() < ConnOpen {
+		if conn.status < ConnOpen && frame.ChannelID != 0 {
 			conn.logger.WithError(err).Error("Frame not allowed for unopened connection")
-			conn.close()
 			return
 		}
 		conn.srvMetrics.TrafficIn.Counter.Inc(int64(len(frame.Payload)))
 		conn.metrics.TrafficIn.Counter.Inc(int64(len(frame.Payload)))
 
+		conn.channelsLock.RLock()
 		channel, ok := conn.channels[frame.ChannelID]
+		conn.channelsLock.RUnlock()
+
 		if !ok {
 			channel = NewChannel(frame.ChannelID, conn)
+
+			conn.channelsLock.Lock()
 			conn.channels[frame.ChannelID] = channel
-			conn.channels[frame.ChannelID].start()
+			conn.channelsLock.Unlock()
+
+			channel.start()
 		}
 
-		channel.incoming <- frame
+		select {
+		case <-conn.ctx.Done():
+			close(channel.incoming)
+			return
+		case channel.incoming <- frame:
+		}
 	}
+}
+
+func (conn *Connection) isClosedError(err error) bool {
+	// See: https://github.com/golang/go/issues/4373
+	return err != nil && strings.Contains(err.Error(), "use of closed network connection")
 }
 
 func (conn *Connection) GetVirtualHost() *VirtualHost {

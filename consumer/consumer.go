@@ -28,10 +28,10 @@ type Consumer struct {
 	noAck       bool
 	channel     interfaces.Channel
 	queue       *queue.Queue
+	statusLock  sync.RWMutex
 	status      int
 	qos         []*qos.AmqpQos
 	consume     chan bool
-	stopLock    sync.RWMutex
 }
 
 // NewConsumer returns new instance of Consumer
@@ -73,8 +73,8 @@ func (consumer *Consumer) startConsume() {
 
 func (consumer *Consumer) retrieveAndSendMessage() {
 	var message *amqp.Message
-	consumer.stopLock.RLock()
-	defer consumer.stopLock.RUnlock()
+	consumer.statusLock.RLock()
+	defer consumer.statusLock.RUnlock()
 	if consumer.status == stopped {
 		return
 	}
@@ -117,39 +117,55 @@ func (consumer *Consumer) retrieveAndSendMessage() {
 	consumer.queue.GetMetrics().Deliver.Counter.Inc(1)
 	consumer.queue.GetMetrics().ServerDeliver.Counter.Inc(1)
 
-	consumer.Consume()
+	consumer.consumeMsg()
+
+	return
 }
 
 // Pause pause consumer, used by channel.flow change
 func (consumer *Consumer) Pause() {
+	consumer.statusLock.Lock()
+	defer consumer.statusLock.Unlock()
 	consumer.status = paused
 }
 
 // UnPause unpause consumer, used by channel.flow change
 func (consumer *Consumer) UnPause() {
+	consumer.statusLock.Lock()
+	defer consumer.statusLock.Unlock()
 	consumer.status = started
 }
 
 // Consume send signal into consumer channel, than consumer can try to pop message from queue
-func (consumer *Consumer) Consume() {
+func (consumer *Consumer) Consume() bool {
+	consumer.statusLock.RLock()
+	defer consumer.statusLock.RUnlock()
+
+	return consumer.consumeMsg()
+}
+
+func (consumer *Consumer) consumeMsg() bool {
 	if consumer.status == stopped || consumer.status == paused {
-		return
+		return false
 	}
 
 	select {
 	case consumer.consume <- true:
+		return true
 	default:
+		return false
 	}
 }
 
 // Stop stops consumer and remove it from queue consumers list
 func (consumer *Consumer) Stop() {
-	consumer.stopLock.Lock()
-	defer consumer.stopLock.Unlock()
+	consumer.statusLock.Lock()
 	if consumer.status == stopped {
+		consumer.statusLock.Unlock()
 		return
 	}
 	consumer.status = stopped
+	consumer.statusLock.Unlock()
 	consumer.queue.RemoveConsumer(consumer.ConsumerTag)
 	close(consumer.consume)
 }

@@ -20,7 +20,8 @@ func (channel *Channel) channelRoute(method amqp.Method) *amqp.Error {
 }
 
 func (channel *Channel) channelOpen(method *amqp.ChannelOpen) (err *amqp.Error) {
-	// The client MUST NOT use this method on an already­opened channel
+	// @spec-note
+	// The client MUST NOT use this method on an already­opened channel.
 	if channel.status == channelOpen {
 		return amqp.NewConnectionError(amqp.ChannelError, "channel already open", method.ClassIdentifier(), method.MethodIdentifier())
 	}

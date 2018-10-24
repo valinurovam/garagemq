@@ -88,6 +88,7 @@ func (qos *AmqpQos) Release() {
 	qos.currentSize = 0
 }
 
+// Copy safe copy current qos instance to new one
 func (qos *AmqpQos) Copy() *AmqpQos {
 	qos.Lock()
 	defer qos.Unlock()

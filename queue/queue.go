@@ -63,6 +63,7 @@ type Queue struct {
 	lastMemMsgId           uint64
 	swappedToDisk          bool
 	maybeLoadFromStorageCh chan bool
+	wg                     *sync.WaitGroup
 }
 
 // NewQueue returns new instance of Queue
@@ -85,6 +86,7 @@ func NewQueue(name string, connID uint64, exclusive bool, autoDelete bool, durab
 		currentConsumer:        0,
 		autoDeleteQueue:        autoDeleteQueue,
 		swappedToDisk:          false,
+		wg:                     &sync.WaitGroup{},
 		metrics: &MetricsState{
 			Ready:    metrics.NewTrackCounter(0, true),
 			Unacked:  metrics.NewTrackCounter(0, true),
@@ -110,7 +112,9 @@ func (queue *Queue) Start() {
 	defer queue.actLock.Unlock()
 
 	queue.active = true
+	queue.wg.Add(1)
 	go func() {
+		defer queue.wg.Done()
 		for range queue.call {
 			func() {
 				queue.cmrLock.RLock()
@@ -122,13 +126,17 @@ func (queue *Queue) Start() {
 					}
 					queue.currentConsumer = (queue.currentConsumer + 1) % cmrCount
 					cmr := queue.consumers[queue.currentConsumer]
-					cmr.Consume()
+					if cmr.Consume() {
+						return
+					}
 				}
 			}()
 		}
 	}()
 
+	queue.wg.Add(1)
 	go func() {
+		defer queue.wg.Done()
 		for range queue.maybeLoadFromStorageCh {
 			queue.mayBeLoadFromStorage()
 		}
@@ -142,6 +150,9 @@ func (queue *Queue) Stop() error {
 	defer queue.actLock.Unlock()
 
 	queue.active = false
+	close(queue.maybeLoadFromStorageCh)
+	close(queue.call)
+	queue.wg.Wait()
 	return nil
 }
 
@@ -467,10 +478,6 @@ func (queue *Queue) Delete(ifUnused bool, ifEmpty bool) (uint64, error) {
 
 	queue.metrics.ServerTotal.Counter.Dec(int64(length))
 	queue.metrics.ServerReady.Counter.Dec(int64(length))
-
-	// TODO Proper close channels
-	//close(queue.maybeLoadFromStorageCh)
-	//close(queue.call)
 
 	return length, nil
 }

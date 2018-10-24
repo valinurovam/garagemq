@@ -92,9 +92,9 @@ func (channel *Channel) connectionTuneOk(method *amqp.ConnectionTuneOk) *amqp.Er
 	channel.conn.maxChannels = method.ChannelMax
 	channel.conn.maxFrameSize = method.FrameMax
 
-	if method.Heartbeat > 0 {
-		channel.conn.close()
-	}
+	//if method.Heartbeat > 0 {
+	//	channel.conn.close()
+	//}
 
 	return nil
 }
@@ -121,6 +121,6 @@ func (channel *Channel) connectionClose(method *amqp.ConnectionClose) *amqp.Erro
 }
 
 func (channel *Channel) connectionCloseOk(method *amqp.ConnectionCloseOk) *amqp.Error {
-	channel.conn.close()
+	go channel.conn.close()
 	return nil
 }
