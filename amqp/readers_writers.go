@@ -22,8 +22,27 @@ const (
 	ProtoRabbit = "amqp-rabbit"
 )
 
-// ReadFrame read and parse raw frame from conn reader
+/*
+ReadFrame reads and parses raw data from conn reader and returns amqp frame
+
+@spec-note
+All frames consist of a header (7 octets), a payload of arbitrary size, and a
+'frame-end' octet that detects malformed frames:
+
+  0      1         3             7                  size+7 size+8
+  +------+---------+-------------+  +------------+  +-----------+
+  | type | channel |     size    |  |  payload   |  | frame-end |
+  +------+---------+-------------+  +------------+  +-----------+
+   octet   short         long         size octets       octet
+
+To read a frame, we:
+ 1. Read the header and check the frame type and channel.
+ 2. Depending on the frame size, we read the payload
+ 3. Read the frame-end octet.
+*/
 func ReadFrame(r io.Reader) (frame *Frame, err error) {
+	// It does not matter that we call read methods 3 time
+	// Because net.TCPConn connection buffered by bufio.NewReader
 	frame = &Frame{}
 	if frame.Type, err = ReadOctet(r); err != nil {
 		return nil, err
@@ -45,7 +64,7 @@ func ReadFrame(r io.Reader) (frame *Frame, err error) {
 	// check frame end
 	if payload[payloadSize] != FrameEnd {
 		return nil, fmt.Errorf(
-			"The frame-end octet MUST always be the hexadecimal value 'xCE', %x given",
+			"the frame-end octet MUST always be the hexadecimal value 'xCE', %x given",
 			payload[payloadSize])
 	}
 
@@ -756,7 +775,21 @@ func readArray(r io.Reader, protoVersion string) (data []interface{}, err error)
 	return data, nil
 }
 
-// ReadContentHeader reads amqp content header
+/*
+ReadContentHeader reads amqp content header
+
+Certain methods (such as Basic.Publish, Basic.Deliver, etc.) are formally
+defined as carrying content.  When a peer sends such a method frame, it always
+follows it with a content header and zero or more content body frames.
+
+A content header frame has this format:
+
+    0          2        4           12               14
+    +----------+--------+-----------+----------------+------------- - -
+    | class-id | weight | body size | property flags | property list...
+    +----------+--------+-----------+----------------+------------- - -
+      short     short    long long       short        remainder...
+*/
 func ReadContentHeader(r io.Reader, protoVersion string) (*ContentHeader, error) {
 	var err error
 	// 14 bytes for class-id | weight | body size | property flags

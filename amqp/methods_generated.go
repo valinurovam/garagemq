@@ -4448,7 +4448,19 @@ func (method *ConfirmSelectOk) Write(writer io.Writer, protoVersion string) (err
 	return
 }
 
-// ReadMethod reads method from frame's payload
+/*
+ReadMethod reads method from frame's payload
+
+Method frames carry the high-level protocol commands (which we call "methods").
+One method frame carries one command.  The method frame payload has this format:
+
+  0          2           4
+  +----------+-----------+-------------- - -
+  | class-id | method-id | arguments...
+  +----------+-----------+-------------- - -
+     short      short    ...
+
+*/
 func ReadMethod(reader io.Reader, protoVersion string) (Method, error) {
 	classId, err := ReadShort(reader)
 	if err != nil {
