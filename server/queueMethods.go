@@ -121,9 +121,14 @@ func (channel *Channel) queueBind(method *amqp.QueueBind) *amqp.Error {
 		return err
 	}
 
+	// TODO
+	// @spec-note
+	// The server MUST NOT allow clients to access the default exchange except by specifying an empty exchange name in the Queue.Bind and content Publish methods.
 	bind := binding.NewBinding(method.Queue, method.Exchange, method.RoutingKey, method.Arguments, ex.ExType() == exchange.ExTypeTopic)
 	ex.AppendBinding(bind)
 
+	// @spec-note
+	// Bindings of durable queues to durable exchanges are automatically durable and the server MUST restore such bindings after a server restart.
 	if ex.IsDurable() && qu.IsDurable() {
 		channel.conn.GetVirtualHost().PersistBinding(bind)
 	}

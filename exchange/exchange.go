@@ -94,6 +94,10 @@ func (ex *Exchange) GetTypeAlias() string {
 func (ex *Exchange) AppendBinding(newBind *binding.Binding) {
 	ex.bindLock.Lock()
 	defer ex.bindLock.Unlock()
+
+	// @spec-note
+	// A server MUST allow ignore duplicate bindings ­ that is, two or more bind methods for a specific queue,
+	// with identical arguments ­ without treating these as an error.
 	for _, bind := range ex.bindings {
 		if bind.Equal(newBind) {
 			return
@@ -134,6 +138,11 @@ func (ex *Exchange) RemoveQueueBindings(queueName string) []*binding.Binding {
 
 // GetMatchedQueues returns queues matched for message routing key
 func (ex *Exchange) GetMatchedQueues(message *amqp.Message) (matchedQueues map[string]bool) {
+	// @spec-note
+	// The server MUST implement these standard exchange types: fanout, direct.
+	// The server SHOULD implement these standard exchange types: topic, headers.
+
+	// TODO implement "headers" exchange
 	matchedQueues = make(map[string]bool)
 	switch ex.exType {
 	case ExTypeDirect:

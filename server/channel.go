@@ -123,6 +123,10 @@ func (channel *Channel) start() {
 func (channel *Channel) handleIncoming() {
 	buffer := bytes.NewReader([]byte{})
 
+	// TODO
+	// @spec-note
+	// After sending channel.close, any received methods except Close and Close­OK MUST be discarded.
+	// The response to receiving a Close after sending Close must be to send Close­Ok.
 	for {
 		select {
 		case <-channel.conn.ctx.Done():

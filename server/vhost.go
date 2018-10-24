@@ -105,6 +105,15 @@ func (vhost *VirtualHost) handleConfirms() {
 }
 
 func (vhost *VirtualHost) initSystemExchanges() {
+	// @spec-note
+	// The server MUST, in each virtual host, pre­declare an exchange instance for each standard exchange type that it
+	// implements, where the name of the exchange instance, if defined, is "amq." followed by the exchange type name.
+
+	// The server MUST, in each virtual host, pre­declare at least two direct exchange instances: one named "amq.direct",
+	// the other with no public name that serves as a default exchange for Publish methods.
+
+	// The server MUST pre­declare a direct exchange with no public name to act as the default exchange for content Publish methods and for default queue bindings.
+
 	vhost.logger.Info("Initialize host default exchanges...")
 	for _, exType := range []byte{
 		exchange.ExTypeDirect,
@@ -208,6 +217,9 @@ func (vhost *VirtualHost) AppendQueue(qu *queue.Queue) {
 
 	vhost.queues[qu.GetName()] = qu
 
+	// @spec-note
+	// The server MUST create a default binding for a newly­declared queue to the default exchange,
+	// which is an exchange of type 'direct' and use the queue name as the routing key.
 	ex := vhost.GetDefaultExchange()
 	bind := binding.NewBinding(qu.GetName(), exDefaultName, qu.GetName(), &amqp.Table{}, false)
 	ex.AppendBinding(bind)

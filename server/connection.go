@@ -198,6 +198,9 @@ func (conn *Connection) handleConnection() {
 		return
 	}
 
+	// @spec-note
+	// If the server cannot support the protocol specified in the protocol header,
+	// it MUST respond with a valid protocol header and then close the socket connection.
 	// The client MUST start a new connection by sending a protocol header
 	var supported = []byte{'A', 'M', 'Q', 'P', 0, 0, 9, 1}
 	if !bytes.Equal(buf, supported) {
@@ -285,6 +288,10 @@ func (conn *Connection) handleIncoming() {
 	buffer := bufio.NewReader(conn.netConn)
 
 	for {
+		// TODO
+		// @spec-note
+		// After sending connection.close , any received methods except Close and Close­OK MUST be discarded.
+		// The response to receiving a Close after sending Close must be to send Close­Ok.
 		frame, err := amqp.ReadFrame(buffer)
 		if err != nil {
 			if err.Error() != "EOF" && !conn.isClosedError(err) {
