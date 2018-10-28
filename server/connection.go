@@ -72,22 +72,29 @@ type Connection struct {
 	wg        *sync.WaitGroup
 	ctx       context.Context
 	cancelCtx context.CancelFunc
+
+	heartbeatInterval uint16
+	heartbeatTimeout  uint16
+
+	lastOutgoingTS chan time.Time
 }
 
 // NewConnection returns new instance of amqp Connection
 func NewConnection(server *Server, netConn *net.TCPConn) (connection *Connection) {
 	connection = &Connection{
-		id:           atomic.AddUint64(&server.connSeq, 1),
-		server:       server,
-		netConn:      netConn,
-		channels:     make(map[uint16]*Channel),
-		outgoing:     make(chan *amqp.Frame, 100),
-		maxChannels:  server.config.Connection.ChannelsMax,
-		maxFrameSize: server.config.Connection.FrameMaxSize,
-		qos:          qos.NewAmqpQos(0, 0),
-		closeCh:      make(chan bool, 2),
-		srvMetrics:   server.metrics,
-		wg:           &sync.WaitGroup{},
+		id:                atomic.AddUint64(&server.connSeq, 1),
+		server:            server,
+		netConn:           netConn,
+		channels:          make(map[uint16]*Channel),
+		outgoing:          make(chan *amqp.Frame, 100),
+		maxChannels:       server.config.Connection.ChannelsMax,
+		maxFrameSize:      server.config.Connection.FrameMaxSize,
+		qos:               qos.NewAmqpQos(0, 0),
+		closeCh:           make(chan bool, 2),
+		srvMetrics:        server.metrics,
+		wg:                &sync.WaitGroup{},
+		lastOutgoingTS:    make(chan time.Time),
+		heartbeatInterval: 10,
 	}
 
 	connection.logger = log.WithFields(log.Fields{
@@ -229,6 +236,7 @@ func (conn *Connection) handleConnection() {
 
 func (conn *Connection) handleOutgoing() {
 	defer func() {
+		close(conn.lastOutgoingTS)
 		conn.wg.Done()
 		conn.close()
 	}()
@@ -258,6 +266,11 @@ func (conn *Connection) handleOutgoing() {
 				buffer.Flush()
 			} else {
 				conn.mayBeFlushBuffer(buffer)
+			}
+
+			select {
+			case conn.lastOutgoingTS <- time.Now():
+			default:
 			}
 		}
 	}
@@ -321,11 +334,53 @@ func (conn *Connection) handleIncoming() {
 			channel.start()
 		}
 
+		if conn.heartbeatTimeout > 0 {
+			conn.netConn.SetReadDeadline(time.Now().Add(time.Duration(conn.heartbeatTimeout) * time.Second))
+		}
+
+		if frame.Type == amqp.FrameHeartbeat && frame.ChannelID != 0 {
+			return
+		}
+
 		select {
 		case <-conn.ctx.Done():
 			close(channel.incoming)
 			return
 		case channel.incoming <- frame:
+		}
+	}
+}
+
+func (conn *Connection) heartBeater() {
+	interval := time.Duration(conn.heartbeatInterval) * time.Second
+	ticker := time.NewTicker(interval)
+	defer ticker.Stop()
+
+	var (
+		ok       bool
+		lastTs   = time.Now()
+		tickTime time.Time
+	)
+
+	heartbeatFrame := &amqp.Frame{Type: byte(amqp.FrameHeartbeat), ChannelID: 0, Payload: []byte{}, CloseAfter: false, Sync: true}
+
+	go func() {
+		for {
+			select {
+			case lastTs, ok = <-conn.lastOutgoingTS:
+				if !ok {
+					return
+				}
+			}
+		}
+	}()
+
+	for {
+		select {
+		case tickTime = <-ticker.C:
+			if tickTime.Sub(lastTs) >= interval-time.Second {
+				conn.outgoing <- heartbeatFrame
+			}
 		}
 	}
 }
