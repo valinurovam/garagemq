@@ -75,7 +75,11 @@ func (channel *Channel) connectionStartOk(method *amqp.ConnectionStartOk) *amqp.
 	channel.conn.clientProperties = method.ClientProperties
 
 	// @todo Send HeartBeat 0 cause not supported yet
-	channel.SendMethod(&amqp.ConnectionTune{ChannelMax: channel.conn.maxChannels, FrameMax: channel.conn.maxFrameSize, Heartbeat: 0})
+	channel.SendMethod(&amqp.ConnectionTune{
+		ChannelMax: channel.conn.maxChannels,
+		FrameMax:   channel.conn.maxFrameSize,
+		Heartbeat:  channel.conn.heartbeatInterval,
+	})
 	channel.conn.status = ConnTune
 
 	return nil
@@ -92,9 +96,13 @@ func (channel *Channel) connectionTuneOk(method *amqp.ConnectionTuneOk) *amqp.Er
 	channel.conn.maxChannels = method.ChannelMax
 	channel.conn.maxFrameSize = method.FrameMax
 
-	//if method.Heartbeat > 0 {
-	//	channel.conn.close()
-	//}
+	if method.Heartbeat > 0 {
+		if method.Heartbeat < channel.conn.heartbeatInterval {
+			channel.conn.heartbeatInterval = method.Heartbeat
+		}
+		channel.conn.heartbeatTimeout = channel.conn.heartbeatInterval * 3
+		go channel.conn.heartBeater()
+	}
 
 	return nil
 }
@@ -116,6 +124,7 @@ func (channel *Channel) connectionOpen(method *amqp.ConnectionOpen) *amqp.Error 
 }
 
 func (channel *Channel) connectionClose(method *amqp.ConnectionClose) *amqp.Error {
+	channel.logger.Infof("Connection closed by client, reason - [%d] %s", method.ReplyCode, method.ReplyText)
 	channel.SendMethod(&amqp.ConnectionCloseOk{})
 	return nil
 }

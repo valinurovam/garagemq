@@ -1,6 +1,8 @@
 package server
 
 import (
+	"fmt"
+
 	"github.com/valinurovam/garagemq/amqp"
 	"github.com/valinurovam/garagemq/binding"
 	"github.com/valinurovam/garagemq/exchange"
@@ -113,6 +115,17 @@ func (channel *Channel) queueBind(method *amqp.QueueBind) *amqp.Error {
 		return err
 	}
 
+	// @spec-note
+	// The server MUST NOT allow clients to access the default exchange except by specifying an empty exchange name in the Queue.Bind and content Publish methods.
+	if ex.GetName() == exDefaultName {
+		return amqp.NewChannelError(
+			amqp.AccessRefused,
+			fmt.Sprintf("operation not permitted on the default exchange"),
+			method.ClassIdentifier(),
+			method.MethodIdentifier(),
+		)
+	}
+
 	if qu, err = channel.getQueueWithError(method.Queue, method); err != nil {
 		return err
 	}
@@ -121,9 +134,6 @@ func (channel *Channel) queueBind(method *amqp.QueueBind) *amqp.Error {
 		return err
 	}
 
-	// TODO
-	// @spec-note
-	// The server MUST NOT allow clients to access the default exchange except by specifying an empty exchange name in the Queue.Bind and content Publish methods.
 	bind := binding.NewBinding(method.Queue, method.Exchange, method.RoutingKey, method.Arguments, ex.ExType() == exchange.ExTypeTopic)
 	ex.AppendBinding(bind)
 
