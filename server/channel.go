@@ -244,7 +244,7 @@ func (channel *Channel) handleContentBody(bodyFrame *amqp.Frame) *amqp.Error {
 	ex := vhost.GetExchange(message.Exchange)
 	if ex == nil {
 		channel.SendContent(
-			&amqp.BasicReturn{ReplyCode: amqp.NoConsumers, ReplyText: "No route", Exchange: message.Exchange, RoutingKey: message.RoutingKey},
+			&amqp.BasicReturn{ReplyCode: amqp.NoRoute, ReplyText: "No route", Exchange: message.Exchange, RoutingKey: message.RoutingKey},
 			message,
 		)
 		return nil
@@ -255,7 +255,7 @@ func (channel *Channel) handleContentBody(bodyFrame *amqp.Frame) *amqp.Error {
 	if len(matchedQueues) == 0 {
 		if message.Mandatory {
 			channel.SendContent(
-				&amqp.BasicReturn{ReplyCode: amqp.NoConsumers, ReplyText: "No route", Exchange: message.Exchange, RoutingKey: message.RoutingKey},
+				&amqp.BasicReturn{ReplyCode: amqp.NoRoute, ReplyText: "No route", Exchange: message.Exchange, RoutingKey: message.RoutingKey},
 				message,
 			)
 		} else {
@@ -277,7 +277,7 @@ func (channel *Channel) handleContentBody(bodyFrame *amqp.Frame) *amqp.Error {
 		if qu == nil {
 			if message.Mandatory {
 				channel.SendContent(
-					&amqp.BasicReturn{ReplyCode: amqp.NoConsumers, ReplyText: "No route", Exchange: message.Exchange, RoutingKey: message.RoutingKey},
+					&amqp.BasicReturn{ReplyCode: amqp.NoRoute, ReplyText: "No route", Exchange: message.Exchange, RoutingKey: message.RoutingKey},
 					message,
 				)
 			} else {
