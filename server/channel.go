@@ -247,6 +247,9 @@ func (channel *Channel) handleContentBody(bodyFrame *amqp.Frame) *amqp.Error {
 			&amqp.BasicReturn{ReplyCode: amqp.NoRoute, ReplyText: "No route", Exchange: message.Exchange, RoutingKey: message.RoutingKey},
 			message,
 		)
+
+		channel.addConfirm(message.ConfirmMeta)
+
 		return nil
 	}
 	ex.GetMetrics().MsgIn.Counter.Inc(1)
@@ -258,9 +261,9 @@ func (channel *Channel) handleContentBody(bodyFrame *amqp.Frame) *amqp.Error {
 				&amqp.BasicReturn{ReplyCode: amqp.NoRoute, ReplyText: "No route", Exchange: message.Exchange, RoutingKey: message.RoutingKey},
 				message,
 			)
-		} else {
-			channel.addConfirm(message.ConfirmMeta)
 		}
+
+		channel.addConfirm(message.ConfirmMeta)
 
 		return nil
 	}
@@ -280,9 +283,10 @@ func (channel *Channel) handleContentBody(bodyFrame *amqp.Frame) *amqp.Error {
 					&amqp.BasicReturn{ReplyCode: amqp.NoRoute, ReplyText: "No route", Exchange: message.Exchange, RoutingKey: message.RoutingKey},
 					message,
 				)
-			} else {
-				channel.addConfirm(message.ConfirmMeta)
 			}
+
+			channel.addConfirm(message.ConfirmMeta)
+
 			return nil
 		}
 
