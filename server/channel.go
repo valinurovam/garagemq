@@ -247,20 +247,21 @@ func (channel *Channel) handleContentBody(bodyFrame *amqp.Frame) *amqp.Error {
 			&amqp.BasicReturn{ReplyCode: amqp.NoRoute, ReplyText: "No route", Exchange: message.Exchange, RoutingKey: message.RoutingKey},
 			message,
 		)
+
+		channel.addConfirm(message.ConfirmMeta)
+
 		return nil
 	}
 	ex.GetMetrics().MsgIn.Counter.Inc(1)
 	matchedQueues := ex.GetMatchedQueues(message)
 
-	if len(matchedQueues) == 0 {
-		if message.Mandatory {
-			channel.SendContent(
-				&amqp.BasicReturn{ReplyCode: amqp.NoRoute, ReplyText: "No route", Exchange: message.Exchange, RoutingKey: message.RoutingKey},
-				message,
-			)
-		} else {
-			channel.addConfirm(message.ConfirmMeta)
-		}
+	if len(matchedQueues) == 0 && message.Mandatory {
+		channel.SendContent(
+			&amqp.BasicReturn{ReplyCode: amqp.NoRoute, ReplyText: "No route", Exchange: message.Exchange, RoutingKey: message.RoutingKey},
+			message,
+		)
+
+		channel.addConfirm(message.ConfirmMeta)
 
 		return nil
 	}
@@ -274,15 +275,14 @@ func (channel *Channel) handleContentBody(bodyFrame *amqp.Frame) *amqp.Error {
 
 	for queueName := range matchedQueues {
 		qu := channel.conn.GetVirtualHost().GetQueue(queueName)
-		if qu == nil {
-			if message.Mandatory {
-				channel.SendContent(
-					&amqp.BasicReturn{ReplyCode: amqp.NoRoute, ReplyText: "No route", Exchange: message.Exchange, RoutingKey: message.RoutingKey},
-					message,
-				)
-			} else {
-				channel.addConfirm(message.ConfirmMeta)
-			}
+		if qu == nil && message.Mandatory {
+			channel.SendContent(
+				&amqp.BasicReturn{ReplyCode: amqp.NoRoute, ReplyText: "No route", Exchange: message.Exchange, RoutingKey: message.RoutingKey},
+				message,
+			)
+
+			channel.addConfirm(message.ConfirmMeta)
+
 			return nil
 		}
 
