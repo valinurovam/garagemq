@@ -122,7 +122,6 @@ func (conn *Connection) close() {
 	conn.status = ConnClosed
 	conn.statusLock.Unlock()
 
-	conn.netConn.SetLinger(0)
 	conn.netConn.Close()
 
 	conn.cancelCtx()
