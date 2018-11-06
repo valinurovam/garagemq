@@ -24,9 +24,12 @@ import (
 
 var emptyBufferPool = pool.NewBufferPool(0)
 
+type ServerState int
+
 // server state statuses
 const (
-	Started = iota
+	Stopped ServerState = iota
+	Running
 	Stopping
 )
 
@@ -58,7 +61,7 @@ type Server struct {
 	users        map[string]string
 	vhostsLock   sync.Mutex
 	vhosts       map[string]*VirtualHost
-	status       int
+	status       ServerState
 	storage      *srvstorage.SrvStorage
 	metrics      *SrvMetricsState
 }
@@ -116,7 +119,7 @@ func (srv *Server) Start() {
 	go srv.listen()
 
 	srv.storage.UpdateLastStart()
-	srv.status = Started
+	srv.status = Running
 	select {}
 }
 
@@ -145,6 +148,8 @@ func (srv *Server) Stop() {
 	if srv.storage != nil {
 		srv.storage.Close()
 	}
+
+	srv.status = Stopped
 }
 
 func (srv *Server) getVhost(name string) *VirtualHost {
@@ -172,7 +177,7 @@ func (srv *Server) listen() {
 	for {
 		conn, err := srv.listener.AcceptTCP()
 		if err != nil {
-			if srv.status == Stopping {
+			if srv.status != Running {
 				return
 			}
 			srv.stopWithError(err, "accepting connection")
@@ -370,4 +375,8 @@ func (srv *Server) GetProtoVersion() string {
 
 func (srv *Server) GetMetrics() *SrvMetricsState {
 	return srv.metrics
+}
+
+func (srv *Server) GetStatus() ServerState {
+	return srv.status
 }
