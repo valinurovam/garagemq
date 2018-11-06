@@ -16,6 +16,8 @@ var emptyBufferPool = pool.NewBufferPool(0)
 // 14 bytes for class-id | weight | body size | property flags
 var headerBufferPool = pool.NewBufferPool(14)
 
+var AmqpHeader = []byte{'A', 'M', 'Q', 'P', 0, 0, 9, 1}
+
 // supported protocol identifiers
 const (
 	Proto091    = "amqp-0-9-1"
