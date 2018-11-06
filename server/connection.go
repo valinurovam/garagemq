@@ -124,7 +124,10 @@ func (conn *Connection) close() {
 
 	conn.netConn.Close()
 
-	conn.cancelCtx()
+	if conn.cancelCtx != nil {
+		conn.cancelCtx()
+	}
+
 	conn.wg.Wait()
 
 	// channel0 should we be closed at the end
@@ -201,6 +204,7 @@ func (conn *Connection) handleConnection() {
 		conn.logger.WithError(err).WithFields(log.Fields{
 			"read buffer": buf,
 		}).Error("Error on read protocol header")
+		conn.close()
 		return
 	}
 
@@ -208,13 +212,12 @@ func (conn *Connection) handleConnection() {
 	// If the server cannot support the protocol specified in the protocol header,
 	// it MUST respond with a valid protocol header and then close the socket connection.
 	// The client MUST start a new connection by sending a protocol header
-	var supported = []byte{'A', 'M', 'Q', 'P', 0, 0, 9, 1}
-	if !bytes.Equal(buf, supported) {
+	if !bytes.Equal(buf, amqp.AmqpHeader) {
 		conn.logger.WithFields(log.Fields{
 			"given":     buf,
-			"supported": supported,
+			"supported": amqp.AmqpHeader,
 		}).Warn("Unsupported protocol")
-		conn.netConn.Write(supported)
+		conn.netConn.Write(amqp.AmqpHeader)
 		conn.close()
 		return
 	}

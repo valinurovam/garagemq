@@ -1,6 +1,7 @@
 package server
 
 import (
+	"bytes"
 	"io/ioutil"
 	"net"
 	"os"
@@ -215,4 +216,36 @@ func TestServer_RealStart(t *testing.T) {
 		t.Fatal("Expected channels on connections")
 	}
 	defer conn.Close()
+}
+
+func TestServer_WrongProtocol(t *testing.T) {
+	defer (&ServerClient{}).clean()
+	cfg := getDefaultTestConfig()
+	metrics.NewTrackRegistry(15, time.Second, true)
+	server := NewServer("localhost", "55672", proto, &cfg.srvConfig)
+	go server.Start()
+	time.Sleep(2 * time.Second)
+	defer server.Stop()
+
+	amqpAddr, err := net.ResolveTCPAddr("tcp", "localhost:55672")
+	connDial, err := net.DialTCP("tcp", nil, amqpAddr)
+	if err != nil {
+		t.Fatal("AMQP Dial failed:", err.Error())
+	}
+
+	_, err = connDial.Write([]byte{'A', 'M', 'Q', 'P', 0, 0, 0, 0})
+	if err != nil {
+		t.Fatal("Failed to send AMQP header", err.Error())
+	}
+
+	supported := make([]byte, 8)
+
+	_, err = connDial.Read(supported)
+	if err != nil {
+		t.Fatal("Failed to read response from server")
+	}
+
+	if !bytes.Equal(supported, amqp.AmqpHeader) {
+		t.Fatalf("Expected %v, actual %v", amqp.AmqpHeader, supported)
+	}
 }
