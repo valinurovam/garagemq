@@ -8,6 +8,16 @@ import (
 	"github.com/valinurovam/garagemq/amqp"
 )
 
+// MatchType is the x-match attribute in a binding argument table
+type MatchType int
+
+const (
+	// MatchAll requires all registered arguments to match for routing
+	MatchAll MatchType = iota
+	// MatchAny requires any registered arguments to match for routing
+	MatchAny
+)
+
 // Binding represents AMQP-binding
 type Binding struct {
 	Queue      string
