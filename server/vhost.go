@@ -208,7 +208,7 @@ func (vhost *VirtualHost) NewQueue(name string, connID uint64, exclusive bool, a
 
 // AppendQueue append new queue and persist if it is durable and
 // bindings into default exchange
-func (vhost *VirtualHost) AppendQueue(qu *queue.Queue) {
+func (vhost *VirtualHost) AppendQueue(qu *queue.Queue) error {
 	vhost.quLock.Lock()
 	defer vhost.quLock.Unlock()
 	vhost.logger.WithFields(log.Fields{
@@ -221,7 +221,14 @@ func (vhost *VirtualHost) AppendQueue(qu *queue.Queue) {
 	// The server MUST create a default binding for a newly­declared queue to the default exchange,
 	// which is an exchange of type 'direct' and use the queue name as the routing key.
 	ex := vhost.GetDefaultExchange()
-	bind := binding.NewBinding(qu.GetName(), exDefaultName, qu.GetName(), &amqp.Table{}, false)
+	bind, bindErr := binding.NewBinding(qu.GetName(), exDefaultName,
+		qu.GetName(), &amqp.Table{}, false)
+	if bindErr != nil {
+		// Should not happen since the only error paths are on `topic` and
+		// `headers`
+		return bindErr
+	}
+
 	ex.AppendBinding(bind)
 
 	if qu.IsDurable() {
@@ -243,6 +250,8 @@ func (vhost *VirtualHost) AppendQueue(qu *queue.Queue) {
 		ServerDeliver: vhost.srv.metrics.Deliver,
 		ServerAck:     vhost.srv.metrics.Ack,
 	})
+
+	return nil
 }
 
 // PersistBinding store binding into server storage

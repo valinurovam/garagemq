@@ -42,7 +42,12 @@ func bindingsProviderData(topic bool) []*binding.Binding {
 	result := []*binding.Binding{}
 
 	for queue, key := range bindData {
-		result = append(result, binding.NewBinding(queue, "", key, &amqp.Table{}, topic))
+		bind, err := binding.NewBinding(queue, "", key, &amqp.Table{}, topic)
+		if err != nil {
+			// TODO: return maybe error
+			panic(err)
+		}
+		result = append(result, bind)
 	}
 
 	return result
@@ -127,29 +132,69 @@ func TestBinding_MatchFanout(t *testing.T) {
 }
 
 func TestBinding_Equal(t *testing.T) {
-	b1 := binding.NewBinding("test_q", "test_ex", "test_key", &amqp.Table{}, true)
-	b2 := binding.NewBinding("test_q", "test_ex", "test_key", &amqp.Table{}, true)
+	b1, err1 := binding.NewBinding("test_q", "test_ex", "test_key", &amqp.Table{}, true)
+	b2, err2 := binding.NewBinding("test_q", "test_ex", "test_key", &amqp.Table{}, true)
+
+	if err1 != nil {
+		t.Errorf("Cannot create binding: %s", err1.Error())
+		return
+	}
+
+	if err2 != nil {
+		t.Errorf("Cannot create binding: %s", err2.Error())
+		return
+	}
 
 	if !b1.Equal(b2) {
 		t.Fatalf("Excpected equal bindings")
 	}
 
-	b1 = binding.NewBinding("test_q1", "test_ex", "test_key", &amqp.Table{}, true)
-	b2 = binding.NewBinding("test_q", "test_ex", "test_key", &amqp.Table{}, true)
+	b1, err1 = binding.NewBinding("test_q1", "test_ex", "test_key", &amqp.Table{}, true)
+	b2, err2 = binding.NewBinding("test_q", "test_ex", "test_key", &amqp.Table{}, true)
+
+	if err1 != nil {
+		t.Errorf("Cannot create binding: %s", err1.Error())
+		return
+	}
+
+	if err2 != nil {
+		t.Errorf("Cannot create binding: %s", err2.Error())
+		return
+	}
 
 	if b1.Equal(b2) {
 		t.Fatalf("Excpected not equal bindings")
 	}
 
-	b1 = binding.NewBinding("test_q", "test_ex2", "test_key", &amqp.Table{}, true)
-	b2 = binding.NewBinding("test_q", "test_ex", "test_key", &amqp.Table{}, true)
+	b1, err1 = binding.NewBinding("test_q", "test_ex2", "test_key", &amqp.Table{}, true)
+	b2, err2 = binding.NewBinding("test_q", "test_ex", "test_key", &amqp.Table{}, true)
+
+	if err1 != nil {
+		t.Errorf("Cannot create binding: %s", err1.Error())
+		return
+	}
+
+	if err2 != nil {
+		t.Errorf("Cannot create binding: %s", err2.Error())
+		return
+	}
 
 	if b1.Equal(b2) {
 		t.Fatalf("Excpected not equal bindings")
 	}
 
-	b1 = binding.NewBinding("test_q", "test_ex", "test_key3", &amqp.Table{}, true)
-	b2 = binding.NewBinding("test_q", "test_ex", "test_key", &amqp.Table{}, true)
+	b1, err1 = binding.NewBinding("test_q", "test_ex", "test_key3", &amqp.Table{}, true)
+	b2, err2 = binding.NewBinding("test_q", "test_ex", "test_key", &amqp.Table{}, true)
+
+	if err1 != nil {
+		t.Errorf("Cannot create binding: %s", err1.Error())
+		return
+	}
+
+	if err2 != nil {
+		t.Errorf("Cannot create binding: %s", err2.Error())
+		return
+	}
 
 	if b1.Equal(b2) {
 		t.Fatalf("Excpected not equal bindings")
@@ -181,7 +226,12 @@ func testEq(a, b []string) bool {
 }
 
 func TestBinding_GetName(t *testing.T) {
-	b := binding.NewBinding("test_q", "test_ex", "test_key", &amqp.Table{}, true)
+	b, err := binding.NewBinding("test_q", "test_ex", "test_key", &amqp.Table{}, true)
+	if err != nil {
+		t.Errorf("Unable to create binding: %s", err.Error())
+		return
+	}
+
 	name := strings.Join(
 		[]string{b.Queue, b.Exchange, b.RoutingKey},
 		"_",
@@ -193,16 +243,32 @@ func TestBinding_GetName(t *testing.T) {
 }
 
 func TestBinding_Marshal(t *testing.T) {
-	b := binding.NewBinding("test_q", "test_ex", "test_key", &amqp.Table{}, true)
-	data, err := b.Marshal()
+	b, bindErr := binding.NewBinding("test_q", "test_ex", "test_key", &amqp.Table{
+		"arg1": "value1",
+	}, true)
+	if bindErr != nil {
+		t.Errorf(bindErr.Error())
+		return
+	}
+
+	data, err := b.Marshal(amqp.ProtoRabbit)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	bUm := &binding.Binding{}
-	bUm.Unmarshal(data)
+	bUm.Unmarshal(data, amqp.ProtoRabbit)
 
 	if !b.Equal(bUm) {
 		t.Fatal("Unmarshaled binding does not equal marshaled")
+	}
+}
+
+func TestBinding_NewBindingPanicOnBadXMatch(t *testing.T) {
+	_, err := binding.NewBinding("sample1", "", "", &amqp.Table{
+		"x-match": "invalid_value",
+	}, false)
+	if err == nil {
+		t.Errorf("Expected panic when init binding with bad x-match value.")
 	}
 }

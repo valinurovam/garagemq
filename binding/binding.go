@@ -2,6 +2,8 @@ package binding
 
 import (
 	"bytes"
+	"fmt"
+	"reflect"
 	"regexp"
 	"strings"
 
@@ -26,10 +28,11 @@ type Binding struct {
 	Arguments  *amqp.Table
 	regexp     *regexp.Regexp
 	topic      bool
+	MatchType  MatchType
 }
 
 // NewBinding returns new instance of Binding
-func NewBinding(queue string, exchange string, routingKey string, arguments *amqp.Table, topic bool) *Binding {
+func NewBinding(queue string, exchange string, routingKey string, arguments *amqp.Table, topic bool) (*Binding, error) {
 	binding := &Binding{
 		Queue:      queue,
 		Exchange:   exchange,
@@ -41,12 +44,44 @@ func NewBinding(queue string, exchange string, routingKey string, arguments *amq
 	if topic {
 		var err error
 		if binding.regexp, err = buildRegexp(routingKey); err != nil {
-			// TODO handle that error
-			panic(err)
+			return nil, fmt.Errorf("Bad topic routing key %s -- %s",
+				routingKey,
+				err.Error())
 		}
 	}
 
-	return binding
+	if arguments == nil {
+		return binding, nil
+	}
+
+	// @spec-note AMQP 0.9.1
+	//
+	// Any field starting with 'x-' other than 'x-match' is
+	// reserved for future use and will be ignored.
+	//
+	// * 'all' implies that all the other pairs must match the headers
+	// property of a message for that message to be routed (i.e. and AND match)
+	// * 'any' implies that the message should be routed if any of the
+	// fields in the headers property match one of the fields in the
+	// arguments table (i.e. an OR match)
+	//
+	// We arbitrarily choose `all` as the default if none was provided
+	// at binding time.
+	xmatch, ok := (*arguments)["x-match"]
+	if ok {
+		if xmatch == "all" {
+			binding.MatchType = MatchAll
+		} else if xmatch == "any" {
+			binding.MatchType = MatchAny
+		} else {
+			return nil, fmt.Errorf("Invalid x-match field value %s, expected all or any",
+				xmatch)
+		}
+	} else {
+		binding.MatchType = MatchAll
+	}
+
+	return binding, nil
 }
 
 // @todo may be better will be trie or dfa than regexp
@@ -131,7 +166,8 @@ func (b *Binding) GetQueue() string {
 func (b *Binding) Equal(bind *Binding) bool {
 	return b.Exchange == bind.GetExchange() &&
 		b.Queue == bind.GetQueue() &&
-		b.RoutingKey == bind.GetRoutingKey()
+		b.RoutingKey == bind.GetRoutingKey() &&
+		reflect.DeepEqual(b.Arguments, bind.Arguments)
 }
 
 // GetName generate binding name by concatenating its params
@@ -143,7 +179,7 @@ func (b *Binding) GetName() string {
 }
 
 // Marshal returns raw representation of binding to store into storage
-func (b *Binding) Marshal() (data []byte, err error) {
+func (b *Binding) Marshal(protoVersion string) (data []byte, err error) {
 	buf := bytes.NewBuffer(make([]byte, 0))
 	if err = amqp.WriteShortstr(buf, b.Queue); err != nil {
 		return nil, err
@@ -152,6 +188,12 @@ func (b *Binding) Marshal() (data []byte, err error) {
 		return nil, err
 	}
 	if err = amqp.WriteShortstr(buf, b.RoutingKey); err != nil {
+		return nil, err
+	}
+	// Since marshalling is used for storage only, we can
+	// simplify the Marshal/Unmarshal of arguments by
+	// writing them in Rabbit format, and reading them as such
+	if err = amqp.WriteTable(buf, b.Arguments, protoVersion); err != nil {
 		return nil, err
 	}
 	var topic byte
@@ -165,7 +207,7 @@ func (b *Binding) Marshal() (data []byte, err error) {
 }
 
 // Unmarshal returns binding from storage raw bytes data
-func (b *Binding) Unmarshal(data []byte) (err error) {
+func (b *Binding) Unmarshal(data []byte, protoVersion string) (err error) {
 	buf := bytes.NewReader(data)
 	if b.Queue, err = amqp.ReadShortstr(buf); err != nil {
 		return err
@@ -174,6 +216,9 @@ func (b *Binding) Unmarshal(data []byte) (err error) {
 		return err
 	}
 	if b.RoutingKey, err = amqp.ReadShortstr(buf); err != nil {
+		return err
+	}
+	if b.Arguments, err = amqp.ReadTable(buf, protoVersion); err != nil {
 		return err
 	}
 	var topic byte

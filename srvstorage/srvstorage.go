@@ -81,7 +81,7 @@ func (storage *SrvStorage) GetVhosts() map[string]bool {
 // AddBinding add binding into storage
 func (storage *SrvStorage) AddBinding(vhost string, bind *binding.Binding) error {
 	key := fmt.Sprintf("%s.%s.%s", bindingPrefix, vhost, bind.GetName())
-	data, err := bind.Marshal()
+	data, err := bind.Marshal(storage.protoVersion)
 	if err != nil {
 		return err
 	}
@@ -169,7 +169,7 @@ func (storage *SrvStorage) GetVhostBindings(vhost string) []*binding.Binding {
 				return
 			}
 			bind := &binding.Binding{}
-			bind.Unmarshal(value)
+			bind.Unmarshal(value, storage.protoVersion)
 			bindings = append(bindings, bind)
 		},
 	)
