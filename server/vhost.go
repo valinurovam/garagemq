@@ -118,13 +118,28 @@ func (vhost *VirtualHost) initSystemExchanges() {
 	for _, exType := range []byte{
 		exchange.ExTypeDirect,
 		exchange.ExTypeFanout,
-		exchange.ExTypeHeaders,
 		exchange.ExTypeTopic,
 	} {
 		exTypeAlias, _ := exchange.GetExchangeTypeAlias(exType)
 		exName := "amq." + exTypeAlias
 		vhost.AppendExchange(exchange.NewExchange(exName, exType, true, false, false, true))
 	}
+
+	// Special case for exchange.ExTypeHeaders
+	//
+	// AMQP specifies that the default exchange for headers shall be called
+	// amq.match, but RabbitMQ declares it as amq.header
+	//
+	// To be compatible, we change its name depending on protoVersion
+	protoVer := vhost.srv.protoVersion
+
+	exTypeAlias, _ := exchange.GetExchangeTypeAlias(exchange.ExTypeHeaders)
+	exName := "amq." + exTypeAlias
+
+	if protoVer == amqp.ProtoRabbit {
+		exName = "amq.header"
+	}
+	vhost.AppendExchange(exchange.NewExchange(exName, exchange.ExTypeHeaders, true, false, false, true))
 
 	systemExchange := exchange.NewExchange(exDefaultName, exchange.ExTypeDirect, true, false, false, true)
 	vhost.AppendExchange(systemExchange)

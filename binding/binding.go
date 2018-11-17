@@ -146,6 +146,81 @@ func (b *Binding) MatchTopic(exchange string, routingKey string) bool {
 	return b.Exchange == exchange && b.regexp.MatchString(routingKey)
 }
 
+// MatchHeader checks whether the message can be routed on `b` for a
+// header exchange type.
+func (b *Binding) MatchHeader(exchange string, headers *amqp.Table) bool {
+	if b.Exchange != exchange {
+		return false
+	}
+
+	// If no arguments were declared by the exchange,
+	// consider it is an always true route.
+	if b.Arguments == nil {
+		return true
+	}
+
+	if headers == nil {
+		return false
+	}
+
+	bindingArgTable := *b.Arguments
+	cliHeaders := *headers
+
+	matchType := b.MatchType
+
+	// Fallback solution for the x-match any case, and no other
+	// argument in the table
+	//
+	// If no match is found in the loop, and arguments other than
+	// x-match were specified, it should not return a positive
+	// value in the end.
+	hasNonXArgs := false
+
+	for key, value := range bindingArgTable {
+		// Any field starting with 'x-' shall be ignored
+		if strings.HasPrefix(key, "x-") {
+			continue
+		}
+
+		hasNonXArgs = true
+
+		val, ok := cliHeaders[key]
+
+		if !ok {
+			if matchType == MatchAll {
+				return false
+			}
+			continue
+		}
+
+		// @spec-note AMQP 0.9.1
+		//
+		// A message queue is bound to the exchange with a table of
+		// arguments containing the headers to be matched for that
+		// binding and optionally the values they should hold
+		if value == nil {
+			if matchType == MatchAny {
+				return true
+			}
+			continue
+		}
+
+		if value == val {
+			if matchType == MatchAny {
+				return true
+			}
+			continue
+		}
+
+		if matchType == MatchAll {
+			return false
+		}
+	}
+
+	return matchType == MatchAll ||
+		!hasNonXArgs && matchType == MatchAny
+}
+
 // GetExchange returns binding's exchange
 func (b *Binding) GetExchange() string {
 	return b.Exchange

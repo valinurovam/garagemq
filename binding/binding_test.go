@@ -85,6 +85,72 @@ func matchesProviderDataTopic() map[string][]string {
 	}
 }
 
+func bindingsProviderDataHeader() []*binding.Binding {
+	data := map[string]*amqp.Table{
+		"t1": &amqp.Table{
+			"x-match": "all",
+			"c1":      "a.b.c",
+		},
+		"t2": &amqp.Table{
+			"x-match": "all",
+			"c1":      "a.b.c",
+			"c2":      "a.b.c.d",
+		},
+		"t3": &amqp.Table{
+			"x-match": "any",
+			"c1":      "a",
+			"c2":      "a.b.c.d",
+		},
+		"t4": &amqp.Table{
+			"x-match": "any",
+		},
+		"t5": &amqp.Table{
+			"x-match": "all",
+		},
+		"t6": &amqp.Table{
+			"c1": nil,
+			"c2": nil,
+			"c3": "kk",
+		},
+		"t7": &amqp.Table{
+			"x-match": "any",
+			"c3":      nil,
+		},
+		"t8": nil,
+	}
+
+	outBinds := []*binding.Binding{}
+	for queueName, data := range data {
+		bind, err := binding.NewBinding(queueName, "", "", data, false)
+		if err != nil {
+			// TODO return maybe error
+			panic(err)
+		}
+
+		outBinds = append(outBinds, bind)
+	}
+
+	return outBinds
+}
+
+func matchProviderDataHeader() map[*amqp.Table][]string {
+	return map[*amqp.Table][]string{
+		&amqp.Table{
+			"c1": "a.b.c",
+		}: {"t1", "t4", "t5", "t8"},
+		&amqp.Table{
+			"c2": "a.b.c.d",
+			"c3": "k",
+		}: {"t3", "t4", "t5", "t7", "t8"},
+		&amqp.Table{
+			"c1": "a.b.c",
+			"c2": "b.c.d",
+			"c3": "kk",
+		}: {"t1", "t4", "t5", "t6", "t7", "t8"},
+		nil: {"t8"},
+	}
+}
+
 func TestBinding_MatchTopic(t *testing.T) {
 	bindings := bindingsProviderData(true)
 	matchesExpected := matchesProviderDataTopic()
@@ -128,6 +194,34 @@ func TestBinding_MatchFanout(t *testing.T) {
 	}
 	if !matched {
 		t.Fatalf("Error on matching fanout binding")
+	}
+}
+
+func TestBinding_MatchHeader(t *testing.T) {
+	bindings := bindingsProviderDataHeader()
+	matchesExpected := matchProviderDataHeader()
+	for key, matches := range matchesExpected {
+		bindMatches := []string{}
+		for _, bind := range bindings {
+			if bind.MatchHeader("", key) {
+				bindMatches = append(bindMatches, bind.GetQueue())
+			}
+		}
+		if !testEq(matches, bindMatches) {
+			t.Errorf("Error on matching args '%v'", key)
+			t.Errorf("Expected '%v'; got '%v'", matches, bindMatches)
+		}
+	}
+
+	outBadExch := []string{}
+	for _, bind := range bindings {
+		if bind.MatchHeader("no_exchange", &amqp.Table{}) {
+			outBadExch = append(outBadExch, bind.GetQueue())
+		}
+	}
+	if !testEq(outBadExch, []string{}) {
+		t.Errorf("Error: invalid exchange 'no_exchange' provided results")
+		t.Errorf("Expected ''; got '%v'", outBadExch)
 	}
 }
 

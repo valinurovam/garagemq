@@ -164,6 +164,20 @@ func (ex *Exchange) GetMatchedQueues(message *amqp.Message) (matchedQueues map[s
 				matchedQueues[bind.GetQueue()] = true
 			}
 		}
+	case ExTypeHeaders:
+		if message.Header == nil {
+			return
+		}
+		props := message.Header.PropertyList
+		if props == nil {
+			return
+		}
+		header := props.Headers
+		for _, bind := range ex.bindings {
+			if bind.MatchHeader(message.Exchange, header) {
+				matchedQueues[bind.GetQueue()] = true
+			}
+		}
 	}
 	return
 }
