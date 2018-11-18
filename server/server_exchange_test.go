@@ -3,6 +3,7 @@ package server
 import (
 	"testing"
 
+	"github.com/valinurovam/garagemq/amqp"
 	"github.com/valinurovam/garagemq/exchange"
 )
 
@@ -11,7 +12,13 @@ func Test_DefaultExchanges(t *testing.T) {
 	defer sc.clean()
 	vhost := sc.server.getVhost("/")
 
-	exchanges := []string{"direct", "fanout", "headers", "topic"}
+	exchanges := []string{"direct", "fanout", "topic"}
+	if vhost.srv.protoVersion == amqp.ProtoRabbit {
+		exchanges = append(exchanges, "header")
+	} else {
+		exchanges = append(exchanges, "match")
+	}
+
 	for _, name := range exchanges {
 		name = "amq." + name
 		if vhost.GetExchange(name) == nil {

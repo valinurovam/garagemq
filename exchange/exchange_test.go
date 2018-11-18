@@ -29,7 +29,13 @@ func TestNew(t *testing.T) {
 
 func TestExchange_AppendBinding(t *testing.T) {
 	e := getTestEx()
-	b := binding.NewBinding("test", "test", "test", &amqp.Table{}, false)
+	b, err := binding.NewBinding("test", "test", "test", &amqp.Table{}, false)
+
+	if err != nil {
+		t.Errorf(err.Error())
+		return
+	}
+
 	e.AppendBinding(b)
 	e.AppendBinding(b)
 	l := len(e.GetBindings())
@@ -51,7 +57,13 @@ func TestExchange_AppendBinding(t *testing.T) {
 
 func TestExchange_RemoveBinding(t *testing.T) {
 	e := getTestEx()
-	b := binding.NewBinding("test", "test", "test", &amqp.Table{}, false)
+	b, err := binding.NewBinding("test", "test", "test", &amqp.Table{}, false)
+
+	if err != nil {
+		t.Errorf(err.Error())
+		return
+	}
+
 	e.AppendBinding(b)
 	e.RemoveBinding(b)
 
@@ -69,7 +81,13 @@ func TestExchange_RemoveBinding(t *testing.T) {
 
 func TestExchange_GetBindings(t *testing.T) {
 	e := getTestEx()
-	b := binding.NewBinding("test", "test", "test", &amqp.Table{}, false)
+	b, err := binding.NewBinding("test", "test", "test", &amqp.Table{}, false)
+
+	if err != nil {
+		t.Errorf(err.Error())
+		return
+	}
+
 	e.AppendBinding(b)
 	l := len(e.GetBindings())
 	if l != 1 {
@@ -80,9 +98,30 @@ func TestExchange_GetBindings(t *testing.T) {
 func TestExchange_RemoveQueueBindings(t *testing.T) {
 	e := getTestEx()
 
-	e.AppendBinding(binding.NewBinding("test", "test", "test1", &amqp.Table{}, false))
-	e.AppendBinding(binding.NewBinding("test2", "test", "test2", &amqp.Table{}, false))
-	e.AppendBinding(binding.NewBinding("test", "test", "test3", &amqp.Table{}, false))
+	b1, err := binding.NewBinding("test", "test", "test1", &amqp.Table{}, false)
+
+	if err != nil {
+		t.Errorf(err.Error())
+		return
+	}
+
+	b2, err := binding.NewBinding("test2", "test", "test2", &amqp.Table{}, false)
+
+	if err != nil {
+		t.Errorf(err.Error())
+		return
+	}
+
+	b3, err := binding.NewBinding("test", "test", "test3", &amqp.Table{}, false)
+
+	if err != nil {
+		t.Errorf(err.Error())
+		return
+	}
+
+	e.AppendBinding(b1)
+	e.AppendBinding(b2)
+	e.AppendBinding(b3)
 	e.RemoveQueueBindings("test")
 
 	if len(e.GetBindings()) != 1 {
@@ -110,7 +149,15 @@ func TestExchange_GetMatchedQueues_Direct(t *testing.T) {
 		internal:   false,
 		system:     false,
 	}
-	e.AppendBinding(binding.NewBinding("test_q", "test", "test_rk", &amqp.Table{}, false))
+
+	bind, err := binding.NewBinding("test_q", "test", "test_rk", &amqp.Table{}, false)
+
+	if err != nil {
+		t.Errorf(err.Error())
+		return
+	}
+
+	e.AppendBinding(bind)
 
 	matched := e.GetMatchedQueues(&amqp.Message{
 		Exchange:   "test",
@@ -131,8 +178,23 @@ func TestExchange_GetMatchedQueues_Fanout(t *testing.T) {
 		internal:   false,
 		system:     false,
 	}
-	e.AppendBinding(binding.NewBinding("test_q1", "test", "test_rk", &amqp.Table{}, false))
-	e.AppendBinding(binding.NewBinding("test_q2", "test", "test_rk", &amqp.Table{}, false))
+
+	b1, err := binding.NewBinding("test_q1", "test", "test_rk", &amqp.Table{}, false)
+
+	if err != nil {
+		t.Errorf(err.Error())
+		return
+	}
+
+	b2, err := binding.NewBinding("test_q2", "test", "test_rk", &amqp.Table{}, false)
+
+	if err != nil {
+		t.Errorf(err.Error())
+		return
+	}
+
+	e.AppendBinding(b1)
+	e.AppendBinding(b2)
 
 	matched := e.GetMatchedQueues(&amqp.Message{
 		Exchange: "test",
@@ -155,9 +217,31 @@ func TestExchange_GetMatchedQueues_Topic(t *testing.T) {
 		internal:   false,
 		system:     false,
 	}
-	e.AppendBinding(binding.NewBinding("test_q1", "test", "test_rk.#", &amqp.Table{}, true))
-	e.AppendBinding(binding.NewBinding("test_q2", "test", "test_rk", &amqp.Table{}, true))
-	e.AppendBinding(binding.NewBinding("test_q3", "test", "test", &amqp.Table{}, true))
+
+	b1, err := binding.NewBinding("test_q1", "test", "test_rk.#", &amqp.Table{}, true)
+
+	if err != nil {
+		t.Errorf(err.Error())
+		return
+	}
+
+	b2, err := binding.NewBinding("test_q2", "test", "test_rk", &amqp.Table{}, true)
+
+	if err != nil {
+		t.Errorf(err.Error())
+		return
+	}
+
+	b3, err := binding.NewBinding("test_q3", "test", "test", &amqp.Table{}, true)
+
+	if err != nil {
+		t.Errorf(err.Error())
+		return
+	}
+
+	e.AppendBinding(b1)
+	e.AppendBinding(b2)
+	e.AppendBinding(b3)
 
 	matched := e.GetMatchedQueues(&amqp.Message{
 		Exchange:   "test",

@@ -96,7 +96,15 @@ func (channel *Channel) queueDeclare(method *amqp.QueueDeclare) *amqp.Error {
 	}
 
 	newQueue.Start()
-	channel.conn.GetVirtualHost().AppendQueue(newQueue)
+	err := channel.conn.GetVirtualHost().AppendQueue(newQueue)
+	if err != nil {
+		return amqp.NewChannelError(
+			amqp.PreconditionFailed,
+			err.Error(),
+			method.ClassIdentifier(),
+			method.MethodIdentifier(),
+		)
+	}
 	channel.SendMethod(&amqp.QueueDeclareOk{
 		Queue:         method.Queue,
 		MessageCount:  0,
@@ -134,7 +142,18 @@ func (channel *Channel) queueBind(method *amqp.QueueBind) *amqp.Error {
 		return err
 	}
 
-	bind := binding.NewBinding(method.Queue, method.Exchange, method.RoutingKey, method.Arguments, ex.ExType() == exchange.ExTypeTopic)
+	bind, bindErr := binding.NewBinding(method.Queue, method.Exchange,
+		method.RoutingKey, method.Arguments, ex.ExType() == exchange.ExTypeTopic)
+	if bindErr != nil {
+		return amqp.NewChannelError(
+			amqp.PreconditionFailed,
+			bindErr.Error(),
+			method.ClassIdentifier(),
+			method.MethodIdentifier(),
+		)
+
+	}
+
 	ex.AppendBinding(bind)
 
 	// @spec-note
@@ -167,7 +186,17 @@ func (channel *Channel) queueUnbind(method *amqp.QueueUnbind) *amqp.Error {
 		return err
 	}
 
-	bind := binding.NewBinding(method.Queue, method.Exchange, method.RoutingKey, method.Arguments, ex.ExType() == exchange.ExTypeTopic)
+	bind, bindErr := binding.NewBinding(method.Queue, method.Exchange, method.RoutingKey, method.Arguments, ex.ExType() == exchange.ExTypeTopic)
+
+	if bindErr != nil {
+		return amqp.NewConnectionError(
+			amqp.PreconditionFailed,
+			bindErr.Error(),
+			method.ClassIdentifier(),
+			method.MethodIdentifier(),
+		)
+	}
+
 	ex.RemoveBinding(bind)
 	channel.conn.GetVirtualHost().RemoveBindings([]*binding.Binding{bind})
 	channel.SendMethod(&amqp.QueueUnbindOk{})
