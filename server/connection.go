@@ -75,6 +75,7 @@ type Connection struct {
 
 	heartbeatInterval uint16
 	heartbeatTimeout  uint16
+	heartbeatTimer    *time.Ticker
 
 	lastOutgoingTS chan time.Time
 }
@@ -119,6 +120,11 @@ func (conn *Connection) close() {
 		conn.statusLock.Unlock()
 		return
 	}
+
+	if conn.heartbeatTimer != nil {
+		conn.heartbeatTimer.Stop()
+	}
+
 	conn.status = ConnClosed
 	conn.statusLock.Unlock()
 
@@ -355,13 +361,11 @@ func (conn *Connection) handleIncoming() {
 
 func (conn *Connection) heartBeater() {
 	interval := time.Duration(conn.heartbeatInterval) * time.Second
-	ticker := time.NewTicker(interval)
-	defer ticker.Stop()
+	conn.heartbeatTimer = time.NewTicker(interval)
 
 	var (
-		ok       bool
-		lastTs   = time.Now()
-		tickTime time.Time
+		ok     bool
+		lastTs = time.Now()
 	)
 
 	heartbeatFrame := &amqp.Frame{Type: byte(amqp.FrameHeartbeat), ChannelID: 0, Payload: []byte{}, CloseAfter: false, Sync: true}
@@ -377,12 +381,9 @@ func (conn *Connection) heartBeater() {
 		}
 	}()
 
-	for {
-		select {
-		case tickTime = <-ticker.C:
-			if tickTime.Sub(lastTs) >= interval-time.Second {
-				conn.outgoing <- heartbeatFrame
-			}
+	for tickTime := range conn.heartbeatTimer.C {
+		if tickTime.Sub(lastTs) >= interval-time.Second {
+			conn.outgoing <- heartbeatFrame
 		}
 	}
 }
