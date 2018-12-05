@@ -4,7 +4,11 @@ import (
 	"bytes"
 	"sync/atomic"
 	"time"
+
+	"github.com/valinurovam/garagemq/pool"
 )
+
+var emptyMessageBufferPool = pool.NewBufferPool(0)
 
 // Table - simple amqp-table implementation
 type Table map[string]interface{}
@@ -96,7 +100,11 @@ func (message *Message) Append(body *Frame) {
 
 // Marshal converts message into bytes to store into db
 func (message *Message) Marshal(protoVersion string) (data []byte, err error) {
-	buffer := bytes.NewBuffer([]byte{})
+	buffer := emptyMessageBufferPool.Get()
+	defer emptyMessageBufferPool.Put(buffer)
+	body := emptyMessageBufferPool.Get()
+	defer emptyMessageBufferPool.Put(body)
+
 	if err = WriteLonglong(buffer, message.ID); err != nil {
 		return nil, err
 	}
@@ -114,7 +122,6 @@ func (message *Message) Marshal(protoVersion string) (data []byte, err error) {
 		return nil, err
 	}
 
-	body := bytes.NewBuffer([]byte{})
 	for _, frame := range message.Body {
 		if err = WriteFrame(body, frame); err != nil {
 			return nil, err
@@ -128,7 +135,9 @@ func (message *Message) Marshal(protoVersion string) (data []byte, err error) {
 		return nil, err
 	}
 
-	return buffer.Bytes(), nil
+	data = make([]byte, buffer.Len())
+	copy(data, buffer.Bytes())
+	return
 }
 
 // Unmarshal restore message entity from bytes

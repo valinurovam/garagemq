@@ -233,8 +233,7 @@ func (queue *Queue) PopQos(qosList []*qos.AmqpQos) *amqp.Message {
 
 	queue.SafeQueue.Lock()
 	defer queue.SafeQueue.Unlock()
-	if headItem := queue.SafeQueue.HeadItem(); headItem != nil {
-		message := headItem.(*amqp.Message)
+	if message := queue.SafeQueue.HeadItem(); message != nil {
 		allowed := true
 		for _, q := range qosList {
 			if !q.IsActive() {

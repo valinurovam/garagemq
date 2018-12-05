@@ -21,7 +21,7 @@ func defaultConfig() *Config {
 			Port: "15672",
 		},
 		Queue: Queue{
-			ShardSize:        8192,
+			ShardSize:        65536,
 			MaxMessagesInRam: 131072,
 		},
 		Db: Db{
