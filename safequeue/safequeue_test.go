@@ -2,29 +2,18 @@ package safequeue
 
 import (
 	"testing"
+
+	"github.com/valinurovam/garagemq/amqp"
 )
 
 const SIZE = 32
-
-var safeQueueTest = NewSafeQueue(SIZE)
-
-func BenchmarkSafeQueue_Push(b *testing.B) {
-	for n := 0; n < b.N; n++ {
-		safeQueueTest.Push(n)
-	}
-}
-
-func BenchmarkSafeQueue_Pop(b *testing.B) {
-	for n := 0; n < b.N; n++ {
-		safeQueueTest.Pop()
-	}
-}
 
 func TestSafeQueue(t *testing.T) {
 	queue := NewSafeQueue(SIZE)
 	queueLength := SIZE * 8
 	for item := 0; item < queueLength; item++ {
-		queue.Push(item)
+		message := &amqp.Message{ID: uint64(item)}
+		queue.Push(message)
 	}
 
 	if queue.Length() != uint64(queueLength) {
@@ -33,8 +22,8 @@ func TestSafeQueue(t *testing.T) {
 
 	for item := 0; item < queueLength; item++ {
 		pop := queue.Pop()
-		if item != pop {
-			t.Fatalf("Pop: expected %d, actual %d", item, pop)
+		if uint64(item) != pop.ID {
+			t.Fatalf("Pop: expected %d, actual %d", item, pop.ID)
 		}
 	}
 
@@ -47,8 +36,9 @@ func TestSafeQueue_PushHead(t *testing.T) {
 	queue := NewSafeQueue(SIZE)
 	queueLength := SIZE * 8
 	for item := 0; item < queueLength; item++ {
-		queue.Push(item)
-		queue.PushHead(item)
+		message := &amqp.Message{ID: uint64(item)}
+		queue.Push(message)
+		queue.PushHead(message)
 	}
 
 	if queue.Length() != uint64(queueLength*2) {
@@ -63,8 +53,8 @@ func TestSafeQueue_PushHead(t *testing.T) {
 		} else {
 			expected = item - queueLength
 		}
-		if expected != pop {
-			t.Fatalf("Pop: expected %d, actual %d", expected, pop)
+		if uint64(expected) != pop.ID {
+			t.Fatalf("Pop: expected %d, actual %d", expected, pop.ID)
 		}
 	}
 
@@ -77,10 +67,11 @@ func TestSafeQueue_HeadItem(t *testing.T) {
 	queue := NewSafeQueue(SIZE)
 	queueLength := SIZE
 	for item := 0; item < queueLength; item++ {
-		queue.Push(item)
+		message := &amqp.Message{ID: uint64(item)}
+		queue.Push(message)
 	}
 
-	if h := queue.HeadItem(); h != 0 {
+	if h := queue.HeadItem(); h.ID != 0 {
 		t.Fatalf("expected head %v, actual %v", 0, h)
 	}
 }
@@ -89,7 +80,8 @@ func TestSafeQueue_DirtyLength(t *testing.T) {
 	queue := NewSafeQueue(SIZE)
 	queueLength := SIZE
 	for item := 0; item < queueLength; item++ {
-		queue.Push(item)
+		message := &amqp.Message{ID: uint64(item)}
+		queue.Push(message)
 	}
 
 	if queue.Length() != queue.DirtyLength() {
@@ -101,7 +93,8 @@ func TestSafeQueue_Purge(t *testing.T) {
 	queue := NewSafeQueue(SIZE)
 	queueLength := SIZE
 	for item := 0; item < queueLength; item++ {
-		queue.Push(item)
+		message := &amqp.Message{ID: uint64(item)}
+		queue.Push(message)
 	}
 
 	queue.Purge()

@@ -132,6 +132,7 @@ func (srv *Server) Stop() {
 	// stop accept new connections
 	srv.listener.Close()
 
+	// TODO fatal error: concurrent map iteration and map write
 	var wg sync.WaitGroup
 	for _, conn := range srv.connections {
 		wg.Add(1)

@@ -58,7 +58,7 @@ func ReadFrame(r io.Reader) (frame *Frame, err error) {
 	}
 
 	var payload = make([]byte, payloadSize+1)
-	if err := binary.Read(r, binary.BigEndian, payload); err != nil {
+	if _, err := io.ReadFull(r, payload); err != nil {
 		return nil, err
 	}
 	frame.Payload = payload[0:payloadSize]
@@ -92,19 +92,27 @@ func WriteFrame(wr io.Writer, frame *Frame) (err error) {
 	}
 
 	return nil
-
-	//return binary.Write(wr, binary.BigEndian, frameBuffer.Bytes())
 }
 
 // ReadOctet reads octet (byte)
 func ReadOctet(r io.Reader) (data byte, err error) {
-	err = binary.Read(r, binary.BigEndian, &data)
+	var b [1]byte
+	if _, err = io.ReadFull(r, b[:]); err != nil {
+		return
+	}
+	data = b[0]
 	return
 }
 
 // WriteOctet writes octet (byte)
 func WriteOctet(wr io.Writer, data byte) error {
-	return binary.Write(wr, binary.BigEndian, data)
+	var b [1]byte
+	b[0] = data
+	_, err := wr.Write(b[:])
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 // ReadShort reads 2 bytes
@@ -166,7 +174,7 @@ func ReadShortstr(r io.Reader) (data string, err error) {
 
 	strBytes := make([]byte, length)
 
-	err = binary.Read(r, binary.BigEndian, &strBytes)
+	_, err = io.ReadFull(r, strBytes)
 	if err != nil {
 		return "", err
 	}
@@ -176,11 +184,14 @@ func ReadShortstr(r io.Reader) (data string, err error) {
 
 // WriteShortstr writes string
 func WriteShortstr(wr io.Writer, data string) error {
-	err := binary.Write(wr, binary.BigEndian, byte(len(data)))
-	if err != nil {
+	if err := WriteOctet(wr, byte(len(data))); err != nil {
 		return err
 	}
-	return binary.Write(wr, binary.BigEndian, []byte(data))
+	if _, err := wr.Write([]byte(data)); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 // ReadLongstr reads long string
@@ -195,7 +206,7 @@ func ReadLongstr(r io.Reader) (data []byte, err error) {
 
 	data = make([]byte, length)
 
-	err = binary.Read(r, binary.BigEndian, &data)
+	_, err = io.ReadFull(r, data)
 	if err != nil {
 		return nil, err
 	}
@@ -208,7 +219,11 @@ func WriteLongstr(wr io.Writer, data []byte) error {
 	if err != nil {
 		return err
 	}
-	return binary.Write(wr, binary.BigEndian, data)
+	_, err = wr.Write([]byte(data))
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 // ReadTable reads amqp table
@@ -247,7 +262,7 @@ func readV(r io.Reader, protoVersion string) (data interface{}, err error) {
 		return readValueRabbit(r)
 	}
 
-	return nil, fmt.Errorf("Unknown proto version [%s]", protoVersion)
+	return nil, fmt.Errorf("unknown proto version [%s]", protoVersion)
 }
 
 /*
@@ -510,7 +525,6 @@ func readValueRabbit(r io.Reader) (data interface{}, err error) {
 // Standard amqp table and rabbitmq table are little different
 // So we have second argument protoVersion to handle that issue
 func WriteTable(writer io.Writer, table *Table, protoVersion string) (err error) {
-	//var buf = bytes.NewBuffer(make([]byte, 0))
 	var buf = emptyBufferPool.Get()
 	defer emptyBufferPool.Put(buf)
 	for key, v := range *table {
@@ -798,11 +812,11 @@ func ReadContentHeader(r io.Reader, protoVersion string) (*ContentHeader, error)
 	headerBuf := headerBufferPool.Get()
 	defer headerBufferPool.Put(headerBuf)
 
-	var header = make([]byte, 14)
-	if err = binary.Read(r, binary.BigEndian, header); err != nil {
+	var header [14]byte
+	if _, err = io.ReadFull(r, header[:]); err != nil {
 		return nil, err
 	}
-	headerBuf.Write(header)
+	headerBuf.Write(header[:])
 
 	contentHeader := &ContentHeader{}
 
@@ -842,7 +856,6 @@ func WriteContentHeader(writer io.Writer, header *ContentHeader, protoVersion st
 	var propertyBuf = emptyBufferPool.Get()
 	defer emptyBufferPool.Put(propertyBuf)
 
-	//var propertyBuf = bytes.NewBuffer(make([]byte, 0))
 	properyFlags, err := header.PropertyList.Write(propertyBuf, protoVersion)
 	if err != nil {
 		return err
