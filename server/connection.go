@@ -161,7 +161,10 @@ func (conn *Connection) close() {
 }
 
 func (conn *Connection) getChannel(id uint16) *Channel {
-	return conn.channels[id]
+	conn.channelsLock.Lock()
+	channel := conn.channels[id]
+	conn.channelsLock.Unlock()
+	return channel
 }
 
 func (conn *Connection) safeClose(wg *sync.WaitGroup) {
