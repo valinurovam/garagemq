@@ -177,8 +177,8 @@ func (conn *Connection) safeClose(wg *sync.WaitGroup) {
 	ch.SendMethod(&amqp.ConnectionClose{
 		ReplyCode: amqp.ConnectionForced,
 		ReplyText: "Server shutdown",
-		ClassId:   0,
-		MethodId:  0,
+		ClassID:   0,
+		MethodID:  0,
 	})
 
 	// let clients proper handle connection closing in 10 sec

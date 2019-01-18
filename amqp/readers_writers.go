@@ -16,6 +16,7 @@ var emptyBufferPool = pool.NewBufferPool(0)
 // 14 bytes for class-id | weight | body size | property flags
 var headerBufferPool = pool.NewBufferPool(14)
 
+// AmqpHeader standard AMQP header
 var AmqpHeader = []byte{'A', 'M', 'Q', 'P', 0, 0, 9, 1}
 
 // supported protocol identifiers
@@ -546,7 +547,7 @@ func writeV(writer io.Writer, v interface{}, protoVersion string) (err error) {
 		return writeValueRabbit(writer, v)
 	}
 
-	return fmt.Errorf("Unknown proto version [%s]", protoVersion)
+	return fmt.Errorf("unknown proto version [%s]", protoVersion)
 }
 
 /*
@@ -816,7 +817,9 @@ func ReadContentHeader(r io.Reader, protoVersion string) (*ContentHeader, error)
 	if _, err = io.ReadFull(r, header[:]); err != nil {
 		return nil, err
 	}
-	headerBuf.Write(header[:])
+	if _, err = headerBuf.Write(header[:]); err != nil {
+		return nil, err
+	}
 
 	contentHeader := &ContentHeader{}
 

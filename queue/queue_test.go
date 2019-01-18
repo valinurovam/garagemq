@@ -11,7 +11,7 @@ import (
 
 const SIZE = 32
 
-var baseConfig = config.Queue{ShardSize: SIZE, MaxMessagesInRam: 10000}
+var baseConfig = config.Queue{ShardSize: SIZE, MaxMessagesInRAM: 10000}
 
 func TestQueue_Property(t *testing.T) {
 	queue := NewQueue("test", 0, false, false, false, baseConfig, nil, nil, nil)
@@ -579,8 +579,8 @@ func TestQueue_SetMetrics(t *testing.T) {
 }
 
 func TestQueue_LoadFromStorage_Swap(t *testing.T) {
-	var baseConfig = config.Queue{ShardSize: SIZE, MaxMessagesInRam: 10}
-	count := baseConfig.MaxMessagesInRam * 5
+	var baseConfig = config.Queue{ShardSize: SIZE, MaxMessagesInRAM: 10}
+	count := baseConfig.MaxMessagesInRAM * 5
 
 	storagePersisted := NewStorageMock(int(count))
 	storageTransient := NewStorageMock(int(count))
@@ -629,8 +629,8 @@ func TestQueue_LoadFromStorage_Swap(t *testing.T) {
 }
 
 func TestQueue_LoadFromMsgStorage_LessMaxMessages(t *testing.T) {
-	var baseConfig = config.Queue{ShardSize: SIZE, MaxMessagesInRam: 1000}
-	count := baseConfig.MaxMessagesInRam / 5
+	var baseConfig = config.Queue{ShardSize: SIZE, MaxMessagesInRAM: 1000}
+	count := baseConfig.MaxMessagesInRAM / 5
 
 	storagePersisted := NewStorageMock(int(count))
 	storageTransient := NewStorageMock(int(count))
@@ -669,8 +669,8 @@ func TestQueue_LoadFromMsgStorage_LessMaxMessages(t *testing.T) {
 }
 
 func TestQueue_LoadFromMsgStorage_OverMaxMessages(t *testing.T) {
-	var baseConfig = config.Queue{ShardSize: SIZE, MaxMessagesInRam: 10}
-	count := baseConfig.MaxMessagesInRam * 5
+	var baseConfig = config.Queue{ShardSize: SIZE, MaxMessagesInRAM: 10}
+	count := baseConfig.MaxMessagesInRAM * 5
 
 	storagePersisted := NewStorageMock(int(count))
 	storageTransient := NewStorageMock(int(count))

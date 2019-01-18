@@ -46,11 +46,12 @@ type DbStorage interface {
 	Close() error
 }
 
+// MsgStorage represent interface for messages storage
 type MsgStorage interface {
 	Del(message *amqp.Message, queue string) error
 	PurgeQueue(queue string)
 	Add(message *amqp.Message, queue string) error
 	Update(message *amqp.Message, queue string) error
-	IterateByQueueFromMsgID(queue string, msgId uint64, limit uint64, fn func(message *amqp.Message)) uint64
+	IterateByQueueFromMsgID(queue string, msgID uint64, limit uint64, fn func(message *amqp.Message)) uint64
 	GetQueueLength(queue string) uint64
 }

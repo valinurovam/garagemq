@@ -584,8 +584,8 @@ func (method *ConnectionOpenOk) Write(writer io.Writer, protoVersion string) (er
 type ConnectionClose struct {
 	ReplyCode uint16
 	ReplyText string
-	ClassId   uint16
-	MethodId  uint16
+	ClassID   uint16
+	MethodID  uint16
 }
 
 // Name returns method name as string, usefully for logging
@@ -626,12 +626,12 @@ func (method *ConnectionClose) Read(reader io.Reader, protoVersion string) (err 
 		return err
 	}
 
-	method.ClassId, err = ReadShort(reader)
+	method.ClassID, err = ReadShort(reader)
 	if err != nil {
 		return err
 	}
 
-	method.MethodId, err = ReadShort(reader)
+	method.MethodID, err = ReadShort(reader)
 	if err != nil {
 		return err
 	}
@@ -650,11 +650,11 @@ func (method *ConnectionClose) Write(writer io.Writer, protoVersion string) (err
 		return err
 	}
 
-	if err = WriteShort(writer, method.ClassId); err != nil {
+	if err = WriteShort(writer, method.ClassID); err != nil {
 		return err
 	}
 
-	if err = WriteShort(writer, method.MethodId); err != nil {
+	if err = WriteShort(writer, method.MethodID); err != nil {
 		return err
 	}
 
@@ -1030,8 +1030,8 @@ func (method *ChannelFlowOk) Write(writer io.Writer, protoVersion string) (err e
 type ChannelClose struct {
 	ReplyCode uint16
 	ReplyText string
-	ClassId   uint16
-	MethodId  uint16
+	ClassID   uint16
+	MethodID  uint16
 }
 
 // Name returns method name as string, usefully for logging
@@ -1072,12 +1072,12 @@ func (method *ChannelClose) Read(reader io.Reader, protoVersion string) (err err
 		return err
 	}
 
-	method.ClassId, err = ReadShort(reader)
+	method.ClassID, err = ReadShort(reader)
 	if err != nil {
 		return err
 	}
 
-	method.MethodId, err = ReadShort(reader)
+	method.MethodID, err = ReadShort(reader)
 	if err != nil {
 		return err
 	}
@@ -1096,11 +1096,11 @@ func (method *ChannelClose) Write(writer io.Writer, protoVersion string) (err er
 		return err
 	}
 
-	if err = WriteShort(writer, method.ClassId); err != nil {
+	if err = WriteShort(writer, method.ClassID); err != nil {
 		return err
 	}
 
-	if err = WriteShort(writer, method.MethodId); err != nil {
+	if err = WriteShort(writer, method.MethodID); err != nil {
 		return err
 	}
 
@@ -2506,23 +2506,25 @@ func (method *QueueDeleteOk) Write(writer io.Writer, protoVersion string) (err e
 
 // Basic methods
 
+// BasicPropertyList represents properties for Basic method
 type BasicPropertyList struct {
 	ContentType     *string
 	ContentEncoding *string
 	Headers         *Table
 	DeliveryMode    *byte
 	Priority        *byte
-	CorrelationId   *string
+	CorrelationID   *string
 	ReplyTo         *string
 	Expiration      *string
-	MessageId       *string
+	MessageID       *string
 	Timestamp       *time.Time
 	Type            *string
-	UserId          *string
-	AppId           *string
+	UserID          *string
+	AppID           *string
 	Reserved        *string
 }
 
+// BasicPropertyList reads properties from io reader
 func (pList *BasicPropertyList) Read(reader io.Reader, propertyFlags uint16, protoVersion string) (err error) {
 
 	if propertyFlags&(1<<15) != 0 {
@@ -2570,7 +2572,7 @@ func (pList *BasicPropertyList) Read(reader io.Reader, propertyFlags uint16, pro
 		if err != nil {
 			return err
 		}
-		pList.CorrelationId = &value
+		pList.CorrelationID = &value
 	}
 
 	if propertyFlags&(1<<9) != 0 {
@@ -2594,7 +2596,7 @@ func (pList *BasicPropertyList) Read(reader io.Reader, propertyFlags uint16, pro
 		if err != nil {
 			return err
 		}
-		pList.MessageId = &value
+		pList.MessageID = &value
 	}
 
 	if propertyFlags&(1<<6) != 0 {
@@ -2618,7 +2620,7 @@ func (pList *BasicPropertyList) Read(reader io.Reader, propertyFlags uint16, pro
 		if err != nil {
 			return err
 		}
-		pList.UserId = &value
+		pList.UserID = &value
 	}
 
 	if propertyFlags&(1<<3) != 0 {
@@ -2626,7 +2628,7 @@ func (pList *BasicPropertyList) Read(reader io.Reader, propertyFlags uint16, pro
 		if err != nil {
 			return err
 		}
-		pList.AppId = &value
+		pList.AppID = &value
 	}
 
 	if propertyFlags&(1<<2) != 0 {
@@ -2639,6 +2641,8 @@ func (pList *BasicPropertyList) Read(reader io.Reader, propertyFlags uint16, pro
 
 	return
 }
+
+// BasicPropertyList wiretes properties into io writer
 func (pList *BasicPropertyList) Write(writer io.Writer, protoVersion string) (propertyFlags uint16, err error) {
 
 	if pList.ContentType != nil {
@@ -2676,9 +2680,9 @@ func (pList *BasicPropertyList) Write(writer io.Writer, protoVersion string) (pr
 		}
 	}
 
-	if pList.CorrelationId != nil {
+	if pList.CorrelationID != nil {
 		propertyFlags |= 1 << 10
-		if err = WriteShortstr(writer, *pList.CorrelationId); err != nil {
+		if err = WriteShortstr(writer, *pList.CorrelationID); err != nil {
 			return
 		}
 	}
@@ -2697,9 +2701,9 @@ func (pList *BasicPropertyList) Write(writer io.Writer, protoVersion string) (pr
 		}
 	}
 
-	if pList.MessageId != nil {
+	if pList.MessageID != nil {
 		propertyFlags |= 1 << 7
-		if err = WriteShortstr(writer, *pList.MessageId); err != nil {
+		if err = WriteShortstr(writer, *pList.MessageID); err != nil {
 			return
 		}
 	}
@@ -2718,16 +2722,16 @@ func (pList *BasicPropertyList) Write(writer io.Writer, protoVersion string) (pr
 		}
 	}
 
-	if pList.UserId != nil {
+	if pList.UserID != nil {
 		propertyFlags |= 1 << 4
-		if err = WriteShortstr(writer, *pList.UserId); err != nil {
+		if err = WriteShortstr(writer, *pList.UserID); err != nil {
 			return
 		}
 	}
 
-	if pList.AppId != nil {
+	if pList.AppID != nil {
 		propertyFlags |= 1 << 3
-		if err = WriteShortstr(writer, *pList.AppId); err != nil {
+		if err = WriteShortstr(writer, *pList.AppID); err != nil {
 			return
 		}
 	}
@@ -4462,19 +4466,19 @@ One method frame carries one command.  The method frame payload has this format:
 
 */
 func ReadMethod(reader io.Reader, protoVersion string) (Method, error) {
-	classId, err := ReadShort(reader)
+	classID, err := ReadShort(reader)
 	if err != nil {
 		return nil, err
 	}
 
-	methodId, err := ReadShort(reader)
+	methodID, err := ReadShort(reader)
 	if err != nil {
 		return nil, err
 	}
-	switch classId {
+	switch classID {
 
 	case 10:
-		switch methodId {
+		switch methodID {
 
 		case 10:
 			var method = &ConnectionStart{}
@@ -4550,7 +4554,7 @@ func ReadMethod(reader io.Reader, protoVersion string) (Method, error) {
 			return method, nil
 		}
 	case 20:
-		switch methodId {
+		switch methodID {
 
 		case 10:
 			var method = &ChannelOpen{}
@@ -4590,7 +4594,7 @@ func ReadMethod(reader io.Reader, protoVersion string) (Method, error) {
 			return method, nil
 		}
 	case 40:
-		switch methodId {
+		switch methodID {
 
 		case 10:
 			var method = &ExchangeDeclare{}
@@ -4642,7 +4646,7 @@ func ReadMethod(reader io.Reader, protoVersion string) (Method, error) {
 			return method, nil
 		}
 	case 50:
-		switch methodId {
+		switch methodID {
 
 		case 10:
 			var method = &QueueDeclare{}
@@ -4706,7 +4710,7 @@ func ReadMethod(reader io.Reader, protoVersion string) (Method, error) {
 			return method, nil
 		}
 	case 60:
-		switch methodId {
+		switch methodID {
 
 		case 10:
 			var method = &BasicQos{}
@@ -4818,7 +4822,7 @@ func ReadMethod(reader io.Reader, protoVersion string) (Method, error) {
 			return method, nil
 		}
 	case 90:
-		switch methodId {
+		switch methodID {
 
 		case 10:
 			var method = &TxSelect{}
@@ -4858,7 +4862,7 @@ func ReadMethod(reader io.Reader, protoVersion string) (Method, error) {
 			return method, nil
 		}
 	case 85:
-		switch methodId {
+		switch methodID {
 
 		case 10:
 			var method = &ConfirmSelect{}
@@ -4875,7 +4879,7 @@ func ReadMethod(reader io.Reader, protoVersion string) (Method, error) {
 		}
 	}
 
-	return nil, fmt.Errorf("Unknown classId and methodId: [%d. %d]", classId, methodId)
+	return nil, fmt.Errorf("unknown classID and methodID: [%d. %d]", classID, methodID)
 }
 
 // WriteMethod writes method into frame's payload

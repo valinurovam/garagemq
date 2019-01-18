@@ -7,8 +7,9 @@ import (
 )
 
 // We change item's type from {}interface to *amqp.Message, cause we know that we use safequeue only in AMQP context
-// TODO Move safe queue into amqp pacakge
+// TODO Move safe queue into amqp package
 
+// SafeQueue represents simple FIFO queue
 // TODO Is that implementation faster? test simple slice queue
 type SafeQueue struct {
 	sync.Mutex
@@ -23,6 +24,7 @@ type SafeQueue struct {
 	length    uint64
 }
 
+// NewSafeQueue returns new instance of queue
 func NewSafeQueue(shardSize int) *SafeQueue {
 	queue := &SafeQueue{
 		shardSize: shardSize,
@@ -36,6 +38,7 @@ func NewSafeQueue(shardSize int) *SafeQueue {
 	return queue
 }
 
+// Push adds message into queue tail
 func (queue *SafeQueue) Push(item *amqp.Message) {
 	queue.Lock()
 	defer queue.Unlock()
@@ -57,6 +60,7 @@ func (queue *SafeQueue) Push(item *amqp.Message) {
 	}
 }
 
+// PushHead adds message into queue head
 func (queue *SafeQueue) PushHead(item *amqp.Message) {
 	queue.Lock()
 	defer queue.Unlock()
@@ -77,6 +81,7 @@ func (queue *SafeQueue) PushHead(item *amqp.Message) {
 	queue.head[queue.headPos] = item
 }
 
+// Pop retrieves message from head
 func (queue *SafeQueue) Pop() (item *amqp.Message) {
 	queue.Lock()
 	item = queue.DirtyPop()
@@ -84,6 +89,8 @@ func (queue *SafeQueue) Pop() (item *amqp.Message) {
 	return
 }
 
+// DirtyPop retrieves message from head
+// This method is not thread safe
 func (queue *SafeQueue) DirtyPop() (item *amqp.Message) {
 	item, queue.head[queue.headPos] = queue.head[queue.headPos], nil
 	if item == nil {
@@ -104,20 +111,27 @@ func (queue *SafeQueue) DirtyPop() (item *amqp.Message) {
 	return
 }
 
+// Length returns queue length
 func (queue *SafeQueue) Length() uint64 {
 	queue.Lock()
 	defer queue.Unlock()
 	return queue.length
 }
 
+// DirtyLength returns queue length
+// This method is not thread safe
 func (queue *SafeQueue) DirtyLength() uint64 {
 	return queue.length
 }
 
+// HeadItem returns current head message
+// This method is not thread safe
 func (queue *SafeQueue) HeadItem() (res *amqp.Message) {
 	return queue.head[queue.headPos]
 }
 
+// DirtyPurge clear queue
+// This method is not thread safe
 func (queue *SafeQueue) DirtyPurge() {
 	queue.shards = [][]*amqp.Message{make([]*amqp.Message, queue.shardSize)}
 	queue.tailIdx = 0
@@ -127,6 +141,7 @@ func (queue *SafeQueue) DirtyPurge() {
 	queue.length = 0
 }
 
+// Purge clear queue
 func (queue *SafeQueue) Purge() {
 	queue.Lock()
 	defer queue.Unlock()
