@@ -72,7 +72,7 @@ func (t *TrackBuffer) GetTrack() []*TrackItem {
 	return track
 }
 
-// GetTrack returns current recorded diff-track
+// GetDiffTrack returns current recorded diff-track
 func (t *TrackBuffer) GetDiffTrack() []*TrackItem {
 	t.lock.RLock()
 	defer t.lock.RUnlock()

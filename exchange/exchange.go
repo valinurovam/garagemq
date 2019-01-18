@@ -83,6 +83,7 @@ func GetExchangeTypeID(alias string) (id byte, err error) {
 	return 0, fmt.Errorf("undefined exchange alias '%s'", alias)
 }
 
+// GetTypeAlias returns exchange type alias by id
 func (ex *Exchange) GetTypeAlias() string {
 	alias, _ := GetExchangeTypeAlias(ex.exType)
 

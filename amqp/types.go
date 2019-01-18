@@ -86,6 +86,7 @@ func (message *Message) IsPersistent() bool {
 	return deliveryMode != nil && *deliveryMode == 2
 }
 
+// GenerateSeq returns next message ID
 func (message *Message) GenerateSeq() {
 	if message.ID == 0 {
 		message.ID = atomic.AddUint64(&msgID, 1)

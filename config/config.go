@@ -34,7 +34,7 @@ type TCPConfig struct {
 	WriteBufSize int `yaml:"writeBufSize"`
 }
 
-// TCPConfig represents properties for tune network connections
+// AdminConfig represents properties for admin server
 type AdminConfig struct {
 	IP   string `yaml:"ip"`
 	Port string
@@ -43,7 +43,7 @@ type AdminConfig struct {
 // Queue settings
 type Queue struct {
 	ShardSize        int    `yaml:"shardSize"`
-	MaxMessagesInRam uint64 `yaml:"maxMessagesInRam"`
+	MaxMessagesInRAM uint64 `yaml:"maxMessagesInRam"`
 }
 
 // Db settings, such as path to load/save and engine
@@ -68,6 +68,7 @@ type Connection struct {
 	FrameMaxSize uint32 `yaml:"frameMaxSize"`
 }
 
+// CreateFromFile creates config from file
 func CreateFromFile(path string) (*Config, error) {
 	cfg := &Config{}
 	file, err := ioutil.ReadFile(path)
@@ -82,6 +83,7 @@ func CreateFromFile(path string) (*Config, error) {
 	return cfg, nil
 }
 
+// CreateDefault creates config from default values
 func CreateDefault() (*Config, error) {
 	return defaultConfig(), nil
 }

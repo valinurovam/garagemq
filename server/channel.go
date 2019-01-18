@@ -171,8 +171,8 @@ func (channel *Channel) sendError(err *amqp.Error) {
 		channel.SendMethod(&amqp.ChannelClose{
 			ReplyCode: err.ReplyCode,
 			ReplyText: err.ReplyText,
-			ClassId:   err.ClassID,
-			MethodId:  err.MethodID,
+			ClassID:   err.ClassID,
+			MethodID:  err.MethodID,
 		})
 	case amqp.ErrorOnConnection:
 		ch := channel.conn.getChannel(0)
@@ -180,8 +180,8 @@ func (channel *Channel) sendError(err *amqp.Error) {
 			ch.SendMethod(&amqp.ConnectionClose{
 				ReplyCode: err.ReplyCode,
 				ReplyText: err.ReplyText,
-				ClassId:   err.ClassID,
-				MethodId:  err.MethodID,
+				ClassID:   err.ClassID,
+				MethodID:  err.MethodID,
 			})
 		}
 	}

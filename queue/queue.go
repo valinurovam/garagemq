@@ -15,6 +15,7 @@ import (
 	"github.com/valinurovam/garagemq/safequeue"
 )
 
+// MetricsState represents current metrics states for queue
 type MetricsState struct {
 	Ready    *metrics.TrackCounter
 	Unacked  *metrics.TrackCounter
@@ -58,9 +59,9 @@ type Queue struct {
 
 	// lock for sync load swapped-messages from disk
 	loadSwapLock           sync.Mutex
-	maxMessagesInRam       uint64
-	lastStoredMsgId        uint64
-	lastMemMsgId           uint64
+	maxMessagesInRAM       uint64
+	lastStoredMsgID        uint64
+	lastMemMsgID           uint64
 	swappedToDisk          bool
 	maybeLoadFromStorageCh chan bool
 	wg                     *sync.WaitGroup
@@ -80,7 +81,7 @@ func NewQueue(name string, connID uint64, exclusive bool, autoDelete bool, durab
 		wasConsumed:            false,
 		active:                 false,
 		shardSize:              config.ShardSize,
-		maxMessagesInRam:       config.MaxMessagesInRam,
+		maxMessagesInRAM:       config.MaxMessagesInRAM,
 		msgPStorage:            msgStorageP,
 		msgTStorage:            msgStorageT,
 		currentConsumer:        0,
@@ -186,7 +187,7 @@ func (queue *Queue) Push(message *amqp.Message) {
 		queue.msgPStorage.Add(message, queue.name)
 		persisted = true
 	} else {
-		if queue.SafeQueue.Length() > queue.maxMessagesInRam || queue.swappedToDisk {
+		if queue.SafeQueue.Length() > queue.maxMessagesInRAM || queue.swappedToDisk {
 			queue.msgTStorage.Add(message, queue.name)
 			persisted = true
 		}
@@ -196,16 +197,16 @@ func (queue *Queue) Push(message *amqp.Message) {
 		}
 	}
 
-	if persisted && !queue.swappedToDisk && queue.SafeQueue.Length() > queue.maxMessagesInRam {
+	if persisted && !queue.swappedToDisk && queue.SafeQueue.Length() > queue.maxMessagesInRAM {
 		queue.swappedToDisk = true
-		queue.lastStoredMsgId = message.ID
+		queue.lastStoredMsgID = message.ID
 	}
 
 	queue.metrics.Incoming.Counter.Inc(1)
 
-	if queue.SafeQueue.Length() <= queue.maxMessagesInRam && !queue.swappedToDisk {
+	if queue.SafeQueue.Length() <= queue.maxMessagesInRAM && !queue.swappedToDisk {
 		queue.SafeQueue.Push(message)
-		queue.lastMemMsgId = message.ID
+		queue.lastMemMsgID = message.ID
 	}
 
 	queue.callConsumers()
@@ -260,30 +261,30 @@ func (queue *Queue) mayBeLoadFromStorage() {
 	swappedToTransient := true
 
 	currentLength := queue.SafeQueue.Length()
-	needle := queue.maxMessagesInRam - currentLength
+	needle := queue.maxMessagesInRAM - currentLength
 
-	if currentLength >= queue.maxMessagesInRam/2 || needle <= 0 || !queue.swappedToDisk {
+	if currentLength >= queue.maxMessagesInRAM/2 || needle <= 0 || !queue.swappedToDisk {
 		return
 	}
 
 	pMessages := make([]*amqp.Message, 0, needle)
 	tMessages := make([]*amqp.Message, 0, needle)
 
-	var lastIteratedMsgId uint64
-	lastMemMsgId := queue.lastMemMsgId
+	var lastIteratedMsgID uint64
+	lastMemMsgID := queue.lastMemMsgID
 
 	var wg sync.WaitGroup
 	// 2 - search for transient and persistent
 	wg.Add(2)
 
 	go func() {
-		if currentLength < queue.maxMessagesInRam/2 && queue.swappedToDisk {
-			iterated := queue.msgPStorage.IterateByQueueFromMsgID(queue.name, queue.lastStoredMsgId, needle, func(message *amqp.Message) {
-				lastIteratedMsgId = message.ID
+		if currentLength < queue.maxMessagesInRAM/2 && queue.swappedToDisk {
+			iterated := queue.msgPStorage.IterateByQueueFromMsgID(queue.name, queue.lastStoredMsgID, needle, func(message *amqp.Message) {
+				lastIteratedMsgID = message.ID
 				pMessages = append(pMessages, message)
 			})
 
-			if iterated == 0 || lastMemMsgId == lastIteratedMsgId {
+			if iterated == 0 || lastMemMsgID == lastIteratedMsgID {
 				swappedToPersistent = false
 			}
 		}
@@ -291,13 +292,13 @@ func (queue *Queue) mayBeLoadFromStorage() {
 	}()
 
 	go func() {
-		if currentLength < queue.maxMessagesInRam/2 && queue.swappedToDisk {
-			iterated := queue.msgTStorage.IterateByQueueFromMsgID(queue.name, queue.lastStoredMsgId, needle, func(message *amqp.Message) {
-				lastIteratedMsgId = message.ID
+		if currentLength < queue.maxMessagesInRAM/2 && queue.swappedToDisk {
+			iterated := queue.msgTStorage.IterateByQueueFromMsgID(queue.name, queue.lastStoredMsgID, needle, func(message *amqp.Message) {
+				lastIteratedMsgID = message.ID
 				tMessages = append(tMessages, message)
 			})
 
-			if iterated == 0 || lastMemMsgId == lastIteratedMsgId {
+			if iterated == 0 || lastMemMsgID == lastIteratedMsgID {
 				swappedToTransient = false
 			}
 		}
@@ -317,12 +318,12 @@ func (queue *Queue) mayBeLoadFromStorage() {
 	}
 
 	for _, message := range sortedMessages[0:pos] {
-		if message.ID == lastMemMsgId {
+		if message.ID == lastMemMsgID {
 			continue
 		}
 		queue.SafeQueue.Push(message)
-		queue.lastMemMsgId = message.ID
-		queue.lastStoredMsgId = message.ID
+		queue.lastMemMsgID = message.ID
+		queue.lastStoredMsgID = message.ID
 		queue.callConsumers()
 	}
 
@@ -357,19 +358,20 @@ func (queue *Queue) mergeSortedMessageSlices(A, B []*amqp.Message) []*amqp.Messa
 	return result
 }
 
+// LoadFromMsgStorage loads messages into queue from msgstorage
 func (queue *Queue) LoadFromMsgStorage() {
-	iterated := queue.msgPStorage.IterateByQueueFromMsgID(queue.name, 0, queue.maxMessagesInRam, func(message *amqp.Message) {
+	iterated := queue.msgPStorage.IterateByQueueFromMsgID(queue.name, 0, queue.maxMessagesInRAM, func(message *amqp.Message) {
 		queue.SafeQueue.Push(message)
 
-		queue.lastStoredMsgId = message.ID
-		queue.lastMemMsgId = message.ID
+		queue.lastStoredMsgID = message.ID
+		queue.lastMemMsgID = message.ID
 	})
 
-	if queue.SafeQueue.Length() >= queue.maxMessagesInRam {
+	if queue.SafeQueue.Length() >= queue.maxMessagesInRAM {
 		queue.swappedToDisk = true
 	}
 
-	if iterated >= queue.maxMessagesInRam {
+	if iterated >= queue.maxMessagesInRAM {
 		queue.queueLength = int64(queue.msgPStorage.GetQueueLength(queue.name))
 	} else {
 		queue.queueLength = int64(iterated)

@@ -44,7 +44,7 @@ func NewBinding(queue string, exchange string, routingKey string, arguments *amq
 	if topic {
 		var err error
 		if binding.regexp, err = buildRegexp(routingKey); err != nil {
-			return nil, fmt.Errorf("Bad topic routing key %s -- %s",
+			return nil, fmt.Errorf("bad topic routing key %s -- %s",
 				routingKey,
 				err.Error())
 		}

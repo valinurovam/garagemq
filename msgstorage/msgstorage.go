@@ -176,7 +176,7 @@ func (storage *MsgStorage) Del(message *amqp.Message, queue string) error {
 	return nil
 }
 
-// Iterate with func fn over messages
+// Iterate iterates over all messages
 func (storage *MsgStorage) Iterate(fn func(queue string, message *amqp.Message)) {
 	storage.db.Iterate(
 		func(key []byte, value []byte) {
@@ -188,7 +188,7 @@ func (storage *MsgStorage) Iterate(fn func(queue string, message *amqp.Message))
 	)
 }
 
-// Iterate with func fn over messages
+// IterateByQueue iterates over queue and call fn on each message
 func (storage *MsgStorage) IterateByQueue(queue string, limit uint64, fn func(message *amqp.Message)) {
 	prefix := "msg." + queue + "."
 	storage.db.IterateByPrefix(
@@ -202,10 +202,10 @@ func (storage *MsgStorage) IterateByQueue(queue string, limit uint64, fn func(me
 	)
 }
 
-// Iterate with func fn over messages
-func (storage *MsgStorage) IterateByQueueFromMsgID(queue string, msgId uint64, limit uint64, fn func(message *amqp.Message)) uint64 {
+// IterateByQueueFromMsgID iterates over queue from specific msgId and call fn on each message
+func (storage *MsgStorage) IterateByQueueFromMsgID(queue string, msgID uint64, limit uint64, fn func(message *amqp.Message)) uint64 {
 	prefix := "msg." + queue + "."
-	from := makeKey(msgId, queue)
+	from := makeKey(msgID, queue)
 	return storage.db.IterateByPrefixFrom(
 		[]byte(prefix),
 		[]byte(from),
@@ -218,6 +218,7 @@ func (storage *MsgStorage) IterateByQueueFromMsgID(queue string, msgId uint64, l
 	)
 }
 
+// GetQueueLength returns queue length in message storage
 func (storage *MsgStorage) GetQueueLength(queue string) uint64 {
 	prefix := "msg." + queue + "."
 	return storage.db.KeysByPrefixCount([]byte(prefix))

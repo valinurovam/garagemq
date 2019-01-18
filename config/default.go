@@ -22,7 +22,7 @@ func defaultConfig() *Config {
 		},
 		Queue: Queue{
 			ShardSize:        65536,
-			MaxMessagesInRam: 131072,
+			MaxMessagesInRAM: 131072,
 		},
 		Db: Db{
 			DefaultPath: "db",

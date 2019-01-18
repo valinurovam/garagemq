@@ -67,7 +67,7 @@ func getDefaultTestConfig() TestConfig {
 			},
 			Queue: config.Queue{
 				ShardSize:        128,
-				MaxMessagesInRam: 4096,
+				MaxMessagesInRAM: 4096,
 			},
 			Db: config.Db{
 				DefaultPath: "db_test",

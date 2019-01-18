@@ -1,5 +1,5 @@
 amqp.gen:
-	go run protocol/protogen.go && go fmt amqp/*_generated.go
+	go run protocol/*.go && go fmt amqp/*_generated.go
 
 deps:
 	dep ensure && cd admin-frontend && yarn install

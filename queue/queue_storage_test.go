@@ -57,14 +57,14 @@ func (storage *MsgStorageMock) GetQueueLength(queue string) uint64 {
 	return uint64(len(storage.messages))
 }
 
-func (storage *MsgStorageMock) IterateByQueueFromMsgID(queue string, msgId uint64, limit uint64, fn func(message *amqp.Message)) uint64 {
+func (storage *MsgStorageMock) IterateByQueueFromMsgID(queue string, msgID uint64, limit uint64, fn func(message *amqp.Message)) uint64 {
 	if storage.messages != nil {
 		var startPos int
 		var ok bool
-		if startPos, ok = storage.index[msgId]; !ok {
-			msgId++
+		if startPos, ok = storage.index[msgID]; !ok {
+			msgID++
 
-			if startPos, ok = storage.index[msgId]; !ok {
+			if startPos, ok = storage.index[msgID]; !ok {
 				return 0
 			}
 		}
