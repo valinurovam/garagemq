@@ -309,7 +309,7 @@ func (conn *Connection) handleIncoming() {
 		conn.close()
 	}()
 
-	buffer := bufio.NewReader(conn.netConn)
+	buffer := bufio.NewReaderSize(conn.netConn, 16 * 1024 * 1024)
 
 	for {
 		// TODO

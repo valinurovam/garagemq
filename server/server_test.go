@@ -39,10 +39,12 @@ type TestConfig struct {
 
 func (sc *ServerClient) clean() {
 	cfg := getDefaultTestConfig()
-	// sc.server.Stop take a long time for tests and better just increase limits to open files
-	// ulimit -n 1024
-	//sc.server.Stop()
-	os.RemoveAll(cfg.srvConfig.Db.DefaultPath)
+	if sc.server != nil && sc.server.status == Running {
+		sc.server.Stop()
+	}
+	if err:=os.RemoveAll(cfg.srvConfig.Db.DefaultPath); err != nil {
+		panic(err)
+	}
 	metrics.Destroy()
 }
 

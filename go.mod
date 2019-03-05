@@ -1,0 +1,35 @@
+module github.com/valinurovam/garagemq
+
+require (
+	github.com/AndreasBriese/bbloom v0.0.0-20180913140656-343706a395b7
+	github.com/dgraph-io/badger v1.5.4
+	github.com/dgryski/go-farm v0.0.0-20190104051053-3adb47b1fb0f
+	github.com/fsnotify/fsnotify v1.4.7
+	github.com/golang/protobuf v1.3.0
+	github.com/hashicorp/hcl v1.0.0
+	github.com/konsorten/go-windows-terminal-sequences v1.0.2
+	github.com/magiconair/properties v1.8.0
+	github.com/mitchellh/mapstructure v1.1.2
+	github.com/pelletier/go-toml v1.2.0
+	github.com/pkg/errors v0.8.1
+	github.com/sirupsen/logrus v1.3.0
+	github.com/spf13/afero v1.2.1
+	github.com/spf13/cast v1.3.0
+	github.com/spf13/jwalterweatherman v1.1.0
+	github.com/spf13/pflag v1.0.3
+	github.com/spf13/viper v1.3.1
+	github.com/streadway/amqp v0.0.0-20190225234609-30f8ed68076e
+	github.com/tidwall/btree v0.0.0-20170113224114-9876f1454cf0
+	github.com/tidwall/buntdb v1.0.0
+	github.com/tidwall/gjson v1.2.1
+	github.com/tidwall/grect v0.0.0-20161006141115-ba9a043346eb
+	github.com/tidwall/match v1.0.1
+	github.com/tidwall/pretty v0.0.0-20180105212114-65a9db5fad51
+	github.com/tidwall/rtree v0.0.0-20180113144539-6cd427091e0e
+	github.com/tidwall/tinyqueue v0.0.0-20180302190814-1e39f5511563
+	golang.org/x/crypto v0.0.0-20190228161510-8dd112bcdc25
+	golang.org/x/net v0.0.0-20190301231341-16b79f2e4e95
+	golang.org/x/sys v0.0.0-20190303192550-c2f5717e611c
+	golang.org/x/text v0.3.0
+	gopkg.in/yaml.v2 v2.2.2
+)
