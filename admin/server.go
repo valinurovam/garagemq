@@ -28,6 +28,6 @@ func NewAdminServer(amqpServer *server.Server, host string, port string) *AdminS
 	return adminServer
 }
 
-func (server *AdminServer) Start() {
-	server.s.ListenAndServe()
+func (server *AdminServer) Start() error {
+	return server.s.ListenAndServe()
 }

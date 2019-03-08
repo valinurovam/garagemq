@@ -3,11 +3,16 @@ language: go
 sudo: false
 
 go:
-- "1.10.x"
 - "1.11.x"
 - tip
 
+env:
+  - GO111MODULE=on
+
+install: true
+
 before_install:
+  - go get golang.org/x/tools/cmd/cover
   - go get github.com/mattn/goveralls
 
 script:

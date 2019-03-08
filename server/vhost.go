@@ -341,12 +341,14 @@ func (vhost *VirtualHost) DeleteQueue(queueName string, ifUnused bool, ifEmpty b
 	if qu == nil {
 		return 0, errors.New("not found")
 	}
-	qu.Stop()
 
 	var length, err = qu.Delete(ifUnused, ifEmpty)
 	if err != nil {
 		return 0, err
 	}
+
+	qu.Stop()
+
 	for _, ex := range vhost.exchanges {
 		removedBindings := ex.RemoveQueueBindings(queueName)
 		vhost.RemoveBindings(removedBindings)

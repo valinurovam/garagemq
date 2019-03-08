@@ -75,7 +75,11 @@ func main() {
 	adminServer := admin.NewAdminServer(srv, cfg.Admin.IP, cfg.Admin.Port)
 
 	// Start admin server
-	go adminServer.Start()
+	go func() {
+		if err := adminServer.Start(); err != nil {
+			panic("Failed to start adminServer - " + err.Error())
+		}
+	}()
 
 	// Start GarageMQ broker
 	srv.Start()

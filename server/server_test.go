@@ -22,7 +22,7 @@ func init() {
 	logrus.SetOutput(ioutil.Discard)
 	//logrus.SetFormatter(&logrus.TextFormatter{FullTimestamp: true})
 	//logrus.SetOutput(os.Stdout)
-	//logrus.SetLevel(logrus.DebugLevel)
+	//logrus.SetLevel(logrus.InfoLevel)
 }
 
 type ServerClient struct {
@@ -39,10 +39,12 @@ type TestConfig struct {
 
 func (sc *ServerClient) clean() {
 	cfg := getDefaultTestConfig()
-	// sc.server.Stop take a long time for tests and better just increase limits to open files
-	// ulimit -n 1024
-	//sc.server.Stop()
-	os.RemoveAll(cfg.srvConfig.Db.DefaultPath)
+	if sc.server != nil && sc.server.status == Running {
+		sc.server.Stop()
+	}
+	if err:=os.RemoveAll(cfg.srvConfig.Db.DefaultPath); err != nil {
+		panic(err)
+	}
 	metrics.Destroy()
 }
 
@@ -87,6 +89,7 @@ func getDefaultTestConfig() TestConfig {
 		clientConfig: amqpclient.Config{},
 	}
 }
+
 func getNewSC(config TestConfig) (*ServerClient, error) {
 	metrics.NewTrackRegistry(15, time.Second, true)
 	sc := &ServerClient{}
@@ -94,6 +97,7 @@ func getNewSC(config TestConfig) (*ServerClient, error) {
 	sc.server.initServerStorage()
 	sc.server.initUsers()
 	sc.server.initDefaultVirtualHosts()
+	sc.server.status = Running
 
 	toServer, toServerEx, fromClient, fromClientEx, err := networkSim()
 	if err != nil {

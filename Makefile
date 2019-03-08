@@ -8,13 +8,13 @@ build.all: deps
 	go build -o bin/garagemq main.go && cd admin-frontend && yarn build
 
 build:
-	go build -o bin/garagemq main.go
+	env GO111MODULE=on go build -o bin/garagemq main.go
 
 run: build
 	bin/garagemq
 
 vet:
-	go vet github.com/valinurovam/garagemq...
+	env GO111MODULE=on go vet github.com/valinurovam/garagemq...
 
 test:
-	ulimit -n 2048 && go test -cover github.com/valinurovam/garagemq...
+	ulimit -n 2048 && env GO111MODULE=on go test -cover github.com/valinurovam/garagemq...

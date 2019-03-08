@@ -13,8 +13,8 @@ func defaultConfig() *Config {
 			IP:           "0.0.0.0",
 			Port:         "5672",
 			Nodelay:      false,
-			ReadBufSize:  196608,
-			WriteBufSize: 196608,
+			ReadBufSize:  128 * 196608,
+			WriteBufSize: 128 * 196608,
 		},
 		Admin: AdminConfig{
 			IP:   "0.0.0.0",
