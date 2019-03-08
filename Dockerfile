@@ -1,12 +1,25 @@
-FROM golang:1.10-alpine
-RUN apk update && apk upgrade && \
-    apk add --no-cache bash git openssh make
+# build stage
+FROM golang as builder
 
-ADD . /go/src/github.com/valinurovam/garagemq
-WORKDIR /go/src/github.com/valinurovam/garagemq
+ENV GO111MODULE=on
 
-RUN GOOS=linux GOARCH=amd64 make build
+WORKDIR /app
+
+COPY go.mod .
+COPY go.sum .
+
+RUN go mod download
+
+COPY . .
+
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o bin/garagemq
+
+# final stage
+FROM alpine
+COPY --from=builder /app/bin/garagemq /app/
+COPY --from=builder /app/admin-frontend/build /app/admin-frontend/build
+WORKDIR /app
 
 EXPOSE 5672 15672
 
-CMD ["bin/garagemq"]
+ENTRYPOINT ["/app/garagemq"]
