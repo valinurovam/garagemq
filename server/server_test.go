@@ -22,7 +22,7 @@ func init() {
 	logrus.SetOutput(ioutil.Discard)
 	//logrus.SetFormatter(&logrus.TextFormatter{FullTimestamp: true})
 	//logrus.SetOutput(os.Stdout)
-	//logrus.SetLevel(logrus.DebugLevel)
+	//logrus.SetLevel(logrus.InfoLevel)
 }
 
 type ServerClient struct {
@@ -89,6 +89,7 @@ func getDefaultTestConfig() TestConfig {
 		clientConfig: amqpclient.Config{},
 	}
 }
+
 func getNewSC(config TestConfig) (*ServerClient, error) {
 	metrics.NewTrackRegistry(15, time.Second, true)
 	sc := &ServerClient{}
@@ -96,6 +97,7 @@ func getNewSC(config TestConfig) (*ServerClient, error) {
 	sc.server.initServerStorage()
 	sc.server.initUsers()
 	sc.server.initDefaultVirtualHosts()
+	sc.server.status = Running
 
 	toServer, toServerEx, fromClient, fromClientEx, err := networkSim()
 	if err != nil {
