@@ -17,16 +17,16 @@ func Test_BasicQos_Channel_Success(t *testing.T) {
 	prefetchCount := 128
 	prefetchSize := 4096
 	if err := ch.Qos(prefetchCount, prefetchSize, false); err != nil {
-		t.Fatal(err)
+		t.Error(err)
 	}
 
 	channel := getServerChannel(sc, 1)
 	if channel.qos.PrefetchCount() != 0 {
-		t.Fatalf("Expected %d, actual %d", prefetchCount, channel.qos.PrefetchCount())
+		t.Errorf("Expected %d, actual %d", prefetchCount, channel.qos.PrefetchCount())
 	}
 
 	if channel.qos.PrefetchSize() != 0 {
-		t.Fatalf("Expected %d, actual %d", prefetchSize, channel.qos.PrefetchSize())
+		t.Errorf("Expected %d, actual %d", prefetchSize, channel.qos.PrefetchSize())
 	}
 }
 
@@ -37,16 +37,16 @@ func Test_BasicQos_Global_Success(t *testing.T) {
 	prefetchCount := 128
 	prefetchSize := 4096
 	if err := ch.Qos(prefetchCount, prefetchSize, true); err != nil {
-		t.Fatal(err)
+		t.Error(err)
 	}
 
 	channel := getServerChannel(sc, 1)
 	if channel.qos.PrefetchCount() != uint16(prefetchCount) {
-		t.Fatalf("Expected %d, actual %d", prefetchCount, channel.qos.PrefetchCount())
+		t.Errorf("Expected %d, actual %d", prefetchCount, channel.qos.PrefetchCount())
 	}
 
 	if channel.qos.PrefetchSize() != uint32(prefetchSize) {
-		t.Fatalf("Expected %d, actual %d", prefetchSize, channel.qos.PrefetchSize())
+		t.Errorf("Expected %d, actual %d", prefetchSize, channel.qos.PrefetchSize())
 	}
 }
 
@@ -57,27 +57,27 @@ func Test_BasicQos_Check_Global_Success(t *testing.T) {
 
 	prefetchCount := 5
 	if err := ch.Qos(prefetchCount, 0, true); err != nil {
-		t.Fatal(err)
+		t.Error(err)
 	}
 
 	// For consumer we set more than channel qos, for test only global trigger
 	if err := ch.Qos(prefetchCount*2, 0, false); err != nil {
-		t.Fatal(err)
+		t.Error(err)
 	}
-	queue, _ := ch.QueueDeclare("testQu", false, false, false, false, emptyTable)
+	queue, _ := ch.QueueDeclare(t.Name(), false, false, false, false, emptyTable)
 
 	msgCount := 10
 	for i := 0; i < msgCount; i++ {
 		ch.Publish("", queue.Name, false, false, amqp.Publishing{ContentType: "text/plain", Body: []byte("test")})
 	}
 
-	cmr, err := ch.Consume("testQu", "tag", false, false, false, false, emptyTable)
+	cmr, err := ch.Consume(t.Name(), "tag", false, false, false, false, emptyTable)
 	if err != nil {
-		t.Fatal(err)
+		t.Error(err)
 	}
 
 	if len(getServerChannel(sc, 1).consumers) != 1 {
-		t.Fatal("Expected consumers on channel consumers map")
+		t.Error("Expected consumers on channel consumers map")
 	}
 
 	tick := time.After(100 * time.Millisecond)
@@ -99,7 +99,7 @@ func Test_BasicQos_Check_Global_Success(t *testing.T) {
 
 	time.Sleep(100 * time.Millisecond)
 	if count != prefetchCount {
-		t.Fatalf("Expected %d messages, received %d", prefetchCount, count)
+		t.Errorf("Expected %d messages, received %d", prefetchCount, count)
 	}
 }
 
@@ -110,28 +110,28 @@ func Test_BasicQos_Check_NonGlobal_Success(t *testing.T) {
 
 	prefetchCountGlobal := 10
 	if err := ch.Qos(prefetchCountGlobal, 0, true); err != nil {
-		t.Fatal(err)
+		t.Error(err)
 	}
 
 	// For consumer we set less than channel qos, for test only consumer trigger
 	prefetchCountCmr := 5
 	if err := ch.Qos(prefetchCountCmr, 0, false); err != nil {
-		t.Fatal(err)
+		t.Error(err)
 	}
-	queue, _ := ch.QueueDeclare("testQu", false, false, false, false, emptyTable)
+	queue, _ := ch.QueueDeclare(t.Name(), false, false, false, false, emptyTable)
 
 	msgCount := 10
 	for i := 0; i < msgCount; i++ {
 		ch.Publish("", queue.Name, false, false, amqp.Publishing{ContentType: "text/plain", Body: []byte("test")})
 	}
 
-	cmr, err := ch.Consume("testQu", "tag", false, false, false, false, emptyTable)
+	cmr, err := ch.Consume(t.Name(), "tag", false, false, false, false, emptyTable)
 	if err != nil {
-		t.Fatal(err)
+		t.Error(err)
 	}
 
 	if len(getServerChannel(sc, 1).consumers) != 1 {
-		t.Fatal("Expected consumers on channel consumers map")
+		t.Error("Expected consumers on channel consumers map")
 	}
 
 	tick := time.After(100 * time.Millisecond)
@@ -153,7 +153,7 @@ func Test_BasicQos_Check_NonGlobal_Success(t *testing.T) {
 
 	time.Sleep(100 * time.Millisecond)
 	if count != prefetchCountCmr {
-		t.Fatalf("Expected %d messages, received %d", prefetchCountCmr, count)
+		t.Errorf("Expected %d messages, received %d", prefetchCountCmr, count)
 	}
 }
 
@@ -163,7 +163,7 @@ func Test_BasicPublish_Success(t *testing.T) {
 	ch, _ := sc.client.Channel()
 
 	ch.ExchangeDeclare("testEx", "direct", false, false, false, false, emptyTable)
-	queue, _ := ch.QueueDeclare("testQu", false, false, false, false, emptyTable)
+	queue, _ := ch.QueueDeclare(t.Name(), false, false, false, false, emptyTable)
 
 	if err := ch.Publish(
 		"testEx",
@@ -171,7 +171,7 @@ func Test_BasicPublish_Success(t *testing.T) {
 		false, false,
 		amqp.Publishing{ContentType: "text/plain", Body: []byte("test")},
 	); err != nil {
-		t.Fatal(err)
+		t.Error(err)
 	}
 }
 
@@ -180,7 +180,7 @@ func Test_BasicPublish_Persistent_Success(t *testing.T) {
 	defer sc.clean()
 	ch, _ := sc.client.Channel()
 
-	qu, _ := ch.QueueDeclare("testQu", true, false, false, false, emptyTable)
+	qu, _ := ch.QueueDeclare(t.Name(), true, false, false, false, emptyTable)
 
 	if err := ch.Publish(
 		"",
@@ -188,7 +188,7 @@ func Test_BasicPublish_Persistent_Success(t *testing.T) {
 		false, false,
 		amqp.Publishing{ContentType: "text/plain", Body: []byte("testMessage"), DeliveryMode: amqp.Persistent},
 	); err != nil {
-		t.Fatal(err)
+		t.Error(err)
 	}
 
 	// wait call persistStorage()
@@ -198,17 +198,17 @@ func Test_BasicPublish_Persistent_Success(t *testing.T) {
 	sc, _ = getNewSC(getDefaultTestConfig())
 	ch, _ = sc.client.Channel()
 
-	msg, ok, errGet := ch.Get("testQu", true)
+	msg, ok, errGet := ch.Get(t.Name(), true)
 	if errGet != nil {
-		t.Fatal(errGet)
+		t.Error(errGet)
 	}
 
 	if !ok {
-		t.Fatal("Persistent message not found after server restart")
+		t.Error("Persistent message not found after server restart")
 	}
 
 	if !bytes.Equal(msg.Body, []byte("testMessage")) {
-		t.Fatal("Received strange message after server restart")
+		t.Error("Received strange message after server restart")
 	}
 }
 
@@ -217,7 +217,7 @@ func Test_BasicPublish_Persistent_Failed_QueueNonDurable(t *testing.T) {
 	defer sc.clean()
 	ch, _ := sc.client.Channel()
 
-	qu, _ := ch.QueueDeclare("testQu", false, false, false, false, emptyTable)
+	qu, _ := ch.QueueDeclare(t.Name(), false, false, false, false, emptyTable)
 
 	if err := ch.Publish(
 		"",
@@ -225,7 +225,7 @@ func Test_BasicPublish_Persistent_Failed_QueueNonDurable(t *testing.T) {
 		false, false,
 		amqp.Publishing{ContentType: "text/plain", Body: []byte("test"), DeliveryMode: amqp.Persistent},
 	); err != nil {
-		t.Fatal(err)
+		t.Error(err)
 	}
 
 	time.Sleep(100 * time.Millisecond)
@@ -250,7 +250,7 @@ func Test_BasicPublish_Failed_ExchangeNotFound(t *testing.T) {
 	ch.NotifyClose(c)
 
 	ch.ExchangeDeclare("testEx", "direct", false, false, false, false, emptyTable)
-	queue, _ := ch.QueueDeclare("testQu", false, false, false, false, emptyTable)
+	queue, _ := ch.QueueDeclare(t.Name(), false, false, false, false, emptyTable)
 
 	if err := ch.Publish(
 		"test",
@@ -258,14 +258,14 @@ func Test_BasicPublish_Failed_ExchangeNotFound(t *testing.T) {
 		false, false,
 		amqp.Publishing{ContentType: "text/plain", Body: []byte("test")},
 	); err != nil {
-		t.Fatal(err)
+		t.Error(err)
 	}
 
 	time.Sleep(100 * time.Millisecond)
 	select {
 	case <-c:
 	default:
-		t.Fatal("Expected exhchange not found error")
+		t.Error("Expected exhchange not found error")
 	}
 }
 
@@ -277,7 +277,7 @@ func Test_BasicPublish_Failed_Immediate(t *testing.T) {
 	ch.NotifyClose(c)
 
 	ch.ExchangeDeclare("testEx", "direct", false, false, false, false, emptyTable)
-	queue, _ := ch.QueueDeclare("testQu", false, false, false, false, emptyTable)
+	queue, _ := ch.QueueDeclare(t.Name(), false, false, false, false, emptyTable)
 
 	if err := ch.Publish(
 		"test",
@@ -285,14 +285,14 @@ func Test_BasicPublish_Failed_Immediate(t *testing.T) {
 		false, true,
 		amqp.Publishing{ContentType: "text/plain", Body: []byte("test")},
 	); err != nil {
-		t.Fatal(err)
+		t.Error(err)
 	}
 
 	time.Sleep(100 * time.Millisecond)
 	select {
 	case <-c:
 	default:
-		t.Fatal("Expected Immediate not implemented error")
+		t.Error("Expected Immediate not implemented error")
 	}
 }
 
@@ -304,7 +304,7 @@ func Test_BasicPublish_Failed_Mandatory(t *testing.T) {
 	ch.NotifyReturn(r)
 
 	ch.ExchangeDeclare("testEx", "direct", false, false, false, false, emptyTable)
-	queue, _ := ch.QueueDeclare("testQu", false, false, false, false, emptyTable)
+	queue, _ := ch.QueueDeclare(t.Name(), false, false, false, false, emptyTable)
 
 	if err := ch.Publish(
 		"testEx",
@@ -312,14 +312,14 @@ func Test_BasicPublish_Failed_Mandatory(t *testing.T) {
 		true, false,
 		amqp.Publishing{ContentType: "text/plain", Body: []byte("test")},
 	); err != nil {
-		t.Fatal(err)
+		t.Error(err)
 	}
 
 	time.Sleep(100 * time.Millisecond)
 	select {
 	case <-r:
 	default:
-		t.Fatal("Expected No route error")
+		t.Error("Expected No route error")
 	}
 }
 
@@ -328,20 +328,20 @@ func Test_BasicConsume_WithOrderCheck_Success(t *testing.T) {
 	defer sc.clean()
 	ch, _ := sc.client.Channel()
 
-	queue, _ := ch.QueueDeclare("testQu", false, false, false, false, emptyTable)
+	queue, _ := ch.QueueDeclare(t.Name(), false, false, false, false, emptyTable)
 
 	msgCount := 10
 	for i := 0; i < msgCount; i++ {
 		ch.Publish("", queue.Name, false, false, amqp.Publishing{ContentType: "text/plain", Body: []byte("test" + strconv.Itoa(i))})
 	}
 
-	cmr, err := ch.Consume("testQu", "tag", false, false, false, false, emptyTable)
+	cmr, err := ch.Consume(t.Name(), "tag", false, false, false, false, emptyTable)
 	if err != nil {
-		t.Fatal(err)
+		t.Error(err)
 	}
 
 	if len(getServerChannel(sc, 1).consumers) != 1 {
-		t.Fatal("Expected consumers on channel consumers map")
+		t.Error("Expected consumers on channel consumers map")
 	}
 
 	tick := time.After(100 * time.Millisecond)
@@ -352,12 +352,12 @@ func Test_BasicConsume_WithOrderCheck_Success(t *testing.T) {
 		case msg := <-cmr:
 			err := ch.Ack(msg.DeliveryTag, false)
 			if err != nil {
-				t.Fatal(err)
+				t.Error(err)
 			}
 			// order check
 			expectedBody := []byte("test" + strconv.Itoa(count))
 			if !bytes.Equal(msg.Body, expectedBody) {
-				t.Fatalf("Expected body %s, actual %s", expectedBody, msg.Body)
+				t.Errorf("Expected body %s, actual %s", expectedBody, msg.Body)
 			}
 			count++
 		case <-tick:
@@ -372,7 +372,7 @@ func Test_BasicConsume_WithOrderCheck_Success(t *testing.T) {
 
 	time.Sleep(100 * time.Millisecond)
 	if count != msgCount {
-		t.Fatalf("Expected %d messages, received %d", msgCount, count)
+		t.Errorf("Expected %d messages, received %d", msgCount, count)
 	}
 }
 
@@ -381,11 +381,11 @@ func Test_BasicConsume_Failed_QueueNotFound(t *testing.T) {
 	defer sc.clean()
 	ch, _ := sc.client.Channel()
 
-	ch.QueueDeclare("testQu", false, false, false, false, emptyTable)
+	ch.QueueDeclare(t.Name(), false, false, false, false, emptyTable)
 
 	_, err := ch.Consume("test", "tag", false, false, false, false, emptyTable)
 	if err == nil {
-		t.Fatal("Expected NOT_FOUND error")
+		t.Error("Expected NOT_FOUND error")
 	}
 }
 
@@ -394,16 +394,16 @@ func Test_BasicConsume_Failed_SameTag(t *testing.T) {
 	defer sc.clean()
 	ch, _ := sc.client.Channel()
 
-	ch.QueueDeclare("testQu", false, false, false, false, emptyTable)
+	ch.QueueDeclare(t.Name(), false, false, false, false, emptyTable)
 
-	_, err := ch.Consume("testQu", "tag", false, false, false, false, emptyTable)
+	_, err := ch.Consume(t.Name(), "tag", false, false, false, false, emptyTable)
 	if err != nil {
-		t.Fatal(err)
+		t.Error(err)
 	}
 
-	_, err = ch.Consume("testQu", "tag", false, false, false, false, emptyTable)
+	_, err = ch.Consume(t.Name(), "tag", false, false, false, false, emptyTable)
 	if err == nil {
-		t.Fatal("Expected NOT_ALLOWED error")
+		t.Error("Expected NOT_ALLOWED error")
 	}
 }
 
@@ -418,22 +418,22 @@ func Test_BasicConsume_Failed_ExclusiveQueue(t *testing.T) {
 
 	_, err := ch1.Consume("testQu_Ex1", "tag_ex1", false, true, false, false, emptyTable)
 	if err != nil {
-		t.Fatal(err)
+		t.Error(err)
 	}
 
 	_, err = ch1.Consume("testQu_Ex1", "tag1", false, false, false, false, emptyTable)
 	if err == nil {
-		t.Fatal("Expected ACCESS_REFUSED error")
+		t.Error("Expected ACCESS_REFUSED error")
 	}
 
 	_, err = ch2.Consume("testQu_Ex2", "tag_ex2", false, false, false, false, emptyTable)
 	if err != nil {
-		t.Fatal(err)
+		t.Error(err)
 	}
 
 	_, err = ch2.Consume("testQu_Ex2", "tag2", false, true, false, false, emptyTable)
 	if err == nil {
-		t.Fatal("Expected ACCESS_REFUSED error")
+		t.Error("Expected ACCESS_REFUSED error")
 	}
 }
 
@@ -442,21 +442,21 @@ func Test_BasicConsume_Success_Exclusive_Reconsume(t *testing.T) {
 	defer sc.clean()
 	ch, _ := sc.client.Channel()
 
-	ch.QueueDeclare("testQu", false, false, false, false, emptyTable)
+	ch.QueueDeclare(t.Name(), false, false, false, false, emptyTable)
 
-	_, err := ch.Consume("testQu", "tag", false, true, false, false, emptyTable)
+	_, err := ch.Consume(t.Name(), "tag", false, true, false, false, emptyTable)
 	if err != nil {
-		t.Fatal(err)
+		t.Error(err)
 	}
 
 	if err = ch.Cancel("tag", false); err != nil {
-		t.Fatal(err)
+		t.Error(err)
 	}
 
 	// after cancel exclusive consumer server must allow us to consume again
-	_, err = ch.Consume("testQu", "tag", false, true, false, false, emptyTable)
+	_, err = ch.Consume(t.Name(), "tag", false, true, false, false, emptyTable)
 	if err != nil {
-		t.Fatal(err)
+		t.Error(err)
 	}
 }
 
@@ -465,23 +465,23 @@ func Test_BasicCancel_Success(t *testing.T) {
 	defer sc.clean()
 	ch, _ := sc.client.Channel()
 
-	ch.QueueDeclare("testQu", false, false, false, false, emptyTable)
+	ch.QueueDeclare(t.Name(), false, false, false, false, emptyTable)
 
-	_, err := ch.Consume("testQu", "tag", false, false, false, false, emptyTable)
+	_, err := ch.Consume(t.Name(), "tag", false, false, false, false, emptyTable)
 	if err != nil {
-		t.Fatal(err)
+		t.Error(err)
 	}
 
 	if len(getServerChannel(sc, 1).consumers) != 1 {
-		t.Fatal("Expected consumers on channel consumers map")
+		t.Error("Expected consumers on channel consumers map")
 	}
 
 	if err = ch.Cancel("tag", false); err != nil {
-		t.Fatal(err)
+		t.Error(err)
 	}
 
 	if len(getServerChannel(sc, 1).consumers) != 0 {
-		t.Fatal("Expected empty channel consumers map")
+		t.Error("Expected empty channel consumers map")
 	}
 }
 
@@ -490,15 +490,15 @@ func Test_BasicCancel_Failed_Unknown_Tag(t *testing.T) {
 	defer sc.clean()
 	ch, _ := sc.client.Channel()
 
-	ch.QueueDeclare("testQu", false, false, false, false, emptyTable)
+	ch.QueueDeclare(t.Name(), false, false, false, false, emptyTable)
 
-	_, err := ch.Consume("testQu", "tag", false, false, false, false, emptyTable)
+	_, err := ch.Consume(t.Name(), "tag", false, false, false, false, emptyTable)
 	if err != nil {
-		t.Fatal(err)
+		t.Error(err)
 	}
 
 	if err = ch.Cancel("tag_unknown", false); err == nil {
-		t.Fatal("Expected NOT_FOUND error")
+		t.Error("Expected NOT_FOUND error")
 	}
 }
 
@@ -507,16 +507,16 @@ func Test_BasicAck_Success(t *testing.T) {
 	defer sc.clean()
 	ch, _ := sc.client.Channel()
 
-	queue, _ := ch.QueueDeclare("testQu", false, false, false, false, emptyTable)
+	queue, _ := ch.QueueDeclare(t.Name(), false, false, false, false, emptyTable)
 
 	msgCount := 10
 	for i := 0; i < msgCount; i++ {
 		ch.Publish("", queue.Name, false, false, amqp.Publishing{ContentType: "text/plain", Body: []byte("test")})
 	}
 
-	cmr, err := ch.Consume("testQu", "tag", false, false, false, false, emptyTable)
+	cmr, err := ch.Consume(t.Name(), "tag", false, false, false, false, emptyTable)
 	if err != nil {
-		t.Fatal(err)
+		t.Error(err)
 	}
 
 	tick := time.After(100 * time.Millisecond)
@@ -540,7 +540,7 @@ func Test_BasicAck_Success(t *testing.T) {
 
 	unackedLength := len(getServerChannel(sc, 1).ackStore)
 	if unackedLength != msgCount {
-		t.Fatalf("Expected %d unacked, actual %d", msgCount, unackedLength)
+		t.Errorf("Expected %d unacked, actual %d", msgCount, unackedLength)
 	}
 	for _, dlv := range deliveries {
 		ch.Ack(dlv.DeliveryTag, false)
@@ -550,7 +550,7 @@ func Test_BasicAck_Success(t *testing.T) {
 
 	unackedLength = len(getServerChannel(sc, 1).ackStore)
 	if unackedLength != 0 {
-		t.Fatalf("Expected %d unacked, actual %d", 0, unackedLength)
+		t.Errorf("Expected %d unacked, actual %d", 0, unackedLength)
 	}
 }
 
@@ -559,16 +559,16 @@ func Test_BasicAckMultiple_Success(t *testing.T) {
 	defer sc.clean()
 	ch, _ := sc.client.Channel()
 
-	queue, _ := ch.QueueDeclare("testQu", false, false, false, false, emptyTable)
+	queue, _ := ch.QueueDeclare(t.Name(), false, false, false, false, emptyTable)
 
 	msgCount := 10
 	for i := 0; i < msgCount; i++ {
 		ch.Publish("", queue.Name, false, false, amqp.Publishing{ContentType: "text/plain", Body: []byte("test")})
 	}
 
-	cmr, err := ch.Consume("testQu", "tag", false, false, false, false, emptyTable)
+	cmr, err := ch.Consume(t.Name(), "tag", false, false, false, false, emptyTable)
 	if err != nil {
-		t.Fatal(err)
+		t.Error(err)
 	}
 
 	tick := time.After(100 * time.Millisecond)
@@ -592,7 +592,7 @@ func Test_BasicAckMultiple_Success(t *testing.T) {
 
 	unackedLength := len(getServerChannel(sc, 1).ackStore)
 	if unackedLength != msgCount {
-		t.Fatalf("Expected %d unacked, actual %d", msgCount, unackedLength)
+		t.Errorf("Expected %d unacked, actual %d", msgCount, unackedLength)
 	}
 
 	dlv := deliveries[len(deliveries)-1]
@@ -602,7 +602,7 @@ func Test_BasicAckMultiple_Success(t *testing.T) {
 
 	unackedLength = len(getServerChannel(sc, 1).ackStore)
 	if unackedLength != 0 {
-		t.Fatalf("Expected %d unacked, actual %d", 0, unackedLength)
+		t.Errorf("Expected %d unacked, actual %d", 0, unackedLength)
 	}
 }
 
@@ -611,16 +611,16 @@ func Test_BasicNack_RequeueTrue_Success(t *testing.T) {
 	defer sc.clean()
 	ch, _ := sc.client.Channel()
 
-	queue, _ := ch.QueueDeclare("testQu", false, false, false, false, emptyTable)
+	queue, _ := ch.QueueDeclare(t.Name(), false, false, false, false, emptyTable)
 
 	msgCount := 10
 	for i := 0; i < msgCount; i++ {
 		ch.Publish("", queue.Name, false, false, amqp.Publishing{ContentType: "text/plain", Body: []byte("test")})
 	}
 
-	cmr, err := ch.Consume("testQu", "tag", false, false, false, false, emptyTable)
+	cmr, err := ch.Consume(t.Name(), "tag", false, false, false, false, emptyTable)
 	if err != nil {
-		t.Fatal(err)
+		t.Error(err)
 	}
 
 	tick := time.After(100 * time.Millisecond)
@@ -646,7 +646,7 @@ func Test_BasicNack_RequeueTrue_Success(t *testing.T) {
 
 	unackedLength := len(getServerChannel(sc, 1).ackStore)
 	if unackedLength != msgCount {
-		t.Fatalf("Expected %d unacked, actual %d", msgCount, unackedLength)
+		t.Errorf("Expected %d unacked, actual %d", msgCount, unackedLength)
 	}
 	for _, dlv := range deliveries {
 		ch.Nack(dlv.DeliveryTag, false, true)
@@ -656,13 +656,13 @@ func Test_BasicNack_RequeueTrue_Success(t *testing.T) {
 
 	unackedLength = len(getServerChannel(sc, 1).ackStore)
 	if unackedLength != 0 {
-		t.Fatalf("Expected %d unacked, actual %d", 0, unackedLength)
+		t.Errorf("Expected %d unacked, actual %d", 0, unackedLength)
 	}
 
 	queueLength := sc.server.getVhost("/").GetQueue(queue.Name).Length()
 
 	if int(queueLength) != msgCount {
-		t.Fatalf("Expected %d queue length, actual %d", msgCount, queueLength)
+		t.Errorf("Expected %d queue length, actual %d", msgCount, queueLength)
 	}
 }
 
@@ -671,16 +671,16 @@ func Test_BasicNack_RequeueTrue_Multiple_Success(t *testing.T) {
 	defer sc.clean()
 	ch, _ := sc.client.Channel()
 
-	queue, _ := ch.QueueDeclare("testQu", false, false, false, false, emptyTable)
+	queue, _ := ch.QueueDeclare(t.Name(), false, false, false, false, emptyTable)
 
 	msgCount := 10
 	for i := 0; i < msgCount; i++ {
 		ch.Publish("", queue.Name, false, false, amqp.Publishing{ContentType: "text/plain", Body: []byte("test")})
 	}
 
-	cmr, err := ch.Consume("testQu", "tag", false, false, false, false, emptyTable)
+	cmr, err := ch.Consume(t.Name(), "tag", false, false, false, false, emptyTable)
 	if err != nil {
-		t.Fatal(err)
+		t.Error(err)
 	}
 
 	tick := time.After(100 * time.Millisecond)
@@ -706,7 +706,7 @@ func Test_BasicNack_RequeueTrue_Multiple_Success(t *testing.T) {
 
 	unackedLength := len(getServerChannel(sc, 1).ackStore)
 	if unackedLength != msgCount {
-		t.Fatalf("Expected %d unacked, actual %d", msgCount, unackedLength)
+		t.Errorf("Expected %d unacked, actual %d", msgCount, unackedLength)
 	}
 
 	dlv := deliveries[len(deliveries)-1]
@@ -716,13 +716,13 @@ func Test_BasicNack_RequeueTrue_Multiple_Success(t *testing.T) {
 
 	unackedLength = len(getServerChannel(sc, 1).ackStore)
 	if unackedLength != 0 {
-		t.Fatalf("Expected %d unacked, actual %d", 0, unackedLength)
+		t.Errorf("Expected %d unacked, actual %d", 0, unackedLength)
 	}
 
 	queueLength := sc.server.getVhost("/").GetQueue(queue.Name).Length()
 
 	if int(queueLength) != msgCount {
-		t.Fatalf("Expected %d queue length, actual %d", msgCount, queueLength)
+		t.Errorf("Expected %d queue length, actual %d", msgCount, queueLength)
 	}
 }
 
@@ -731,16 +731,16 @@ func Test_BasicNack_RequeueFalse_Success(t *testing.T) {
 	defer sc.clean()
 	ch, _ := sc.client.Channel()
 
-	queue, _ := ch.QueueDeclare("testQu", false, false, false, false, emptyTable)
+	queue, _ := ch.QueueDeclare(t.Name(), false, false, false, false, emptyTable)
 
 	msgCount := 10
 	for i := 0; i < msgCount; i++ {
 		ch.Publish("", queue.Name, false, false, amqp.Publishing{ContentType: "text/plain", Body: []byte("test")})
 	}
 
-	cmr, err := ch.Consume("testQu", "tag", false, false, false, false, emptyTable)
+	cmr, err := ch.Consume(t.Name(), "tag", false, false, false, false, emptyTable)
 	if err != nil {
-		t.Fatal(err)
+		t.Error(err)
 	}
 
 	tick := time.After(100 * time.Millisecond)
@@ -764,7 +764,7 @@ func Test_BasicNack_RequeueFalse_Success(t *testing.T) {
 
 	unackedLength := len(getServerChannel(sc, 1).ackStore)
 	if unackedLength != msgCount {
-		t.Fatalf("Expected %d unacked, actual %d", msgCount, unackedLength)
+		t.Errorf("Expected %d unacked, actual %d", msgCount, unackedLength)
 	}
 	for _, dlv := range deliveries {
 		ch.Nack(dlv.DeliveryTag, false, false)
@@ -774,13 +774,13 @@ func Test_BasicNack_RequeueFalse_Success(t *testing.T) {
 
 	unackedLength = len(getServerChannel(sc, 1).ackStore)
 	if unackedLength != 0 {
-		t.Fatalf("Expected %d unacked, actual %d", 0, unackedLength)
+		t.Errorf("Expected %d unacked, actual %d", 0, unackedLength)
 	}
 
 	queueLength := sc.server.getVhost("/").GetQueue(queue.Name).Length()
 
 	if queueLength != 0 {
-		t.Fatalf("Expected empty queue after nack with requeue false")
+		t.Errorf("Expected empty queue after nack with requeue false")
 	}
 }
 
@@ -789,16 +789,16 @@ func Test_BasicNack_RequeueFalse_Multiple_Success(t *testing.T) {
 	defer sc.clean()
 	ch, _ := sc.client.Channel()
 
-	queue, _ := ch.QueueDeclare("testQu", false, false, false, false, emptyTable)
+	queue, _ := ch.QueueDeclare(t.Name(), false, false, false, false, emptyTable)
 
 	msgCount := 10
 	for i := 0; i < msgCount; i++ {
 		ch.Publish("", queue.Name, false, false, amqp.Publishing{ContentType: "text/plain", Body: []byte("test")})
 	}
 
-	cmr, err := ch.Consume("testQu", "tag", false, false, false, false, emptyTable)
+	cmr, err := ch.Consume(t.Name(), "tag", false, false, false, false, emptyTable)
 	if err != nil {
-		t.Fatal(err)
+		t.Error(err)
 	}
 
 	tick := time.After(100 * time.Millisecond)
@@ -822,7 +822,7 @@ func Test_BasicNack_RequeueFalse_Multiple_Success(t *testing.T) {
 
 	unackedLength := len(getServerChannel(sc, 1).ackStore)
 	if unackedLength != msgCount {
-		t.Fatalf("Expected %d unacked, actual %d", msgCount, unackedLength)
+		t.Errorf("Expected %d unacked, actual %d", msgCount, unackedLength)
 	}
 	dlv := deliveries[len(deliveries)-1]
 	ch.Nack(dlv.DeliveryTag, true, false)
@@ -831,13 +831,13 @@ func Test_BasicNack_RequeueFalse_Multiple_Success(t *testing.T) {
 
 	unackedLength = len(getServerChannel(sc, 1).ackStore)
 	if unackedLength != 0 {
-		t.Fatalf("Expected %d unacked, actual %d", 0, unackedLength)
+		t.Errorf("Expected %d unacked, actual %d", 0, unackedLength)
 	}
 
 	queueLength := sc.server.getVhost("/").GetQueue(queue.Name).Length()
 
 	if queueLength != 0 {
-		t.Fatalf("Expected empty queue after nack with requeue false")
+		t.Errorf("Expected empty queue after nack with requeue false")
 	}
 }
 
@@ -846,16 +846,16 @@ func Test_BasicReject_RequeueTrue_Success(t *testing.T) {
 	defer sc.clean()
 	ch, _ := sc.client.Channel()
 
-	queue, _ := ch.QueueDeclare("testQu", false, false, false, false, emptyTable)
+	queue, _ := ch.QueueDeclare(t.Name(), false, false, false, false, emptyTable)
 
 	msgCount := 10
 	for i := 0; i < msgCount; i++ {
 		ch.Publish("", queue.Name, false, false, amqp.Publishing{ContentType: "text/plain", Body: []byte("test")})
 	}
 
-	cmr, err := ch.Consume("testQu", "tag", false, false, false, false, emptyTable)
+	cmr, err := ch.Consume(t.Name(), "tag", false, false, false, false, emptyTable)
 	if err != nil {
-		t.Fatal(err)
+		t.Error(err)
 	}
 
 	tick := time.After(100 * time.Millisecond)
@@ -881,7 +881,7 @@ func Test_BasicReject_RequeueTrue_Success(t *testing.T) {
 
 	unackedLength := len(getServerChannel(sc, 1).ackStore)
 	if unackedLength != msgCount {
-		t.Fatalf("Expected %d unacked, actual %d", msgCount, unackedLength)
+		t.Errorf("Expected %d unacked, actual %d", msgCount, unackedLength)
 	}
 	for _, dlv := range deliveries {
 		ch.Reject(dlv.DeliveryTag, true)
@@ -891,13 +891,13 @@ func Test_BasicReject_RequeueTrue_Success(t *testing.T) {
 
 	unackedLength = len(getServerChannel(sc, 1).ackStore)
 	if unackedLength != 0 {
-		t.Fatalf("Expected %d unacked, actual %d", 0, unackedLength)
+		t.Errorf("Expected %d unacked, actual %d", 0, unackedLength)
 	}
 
 	queueLength := sc.server.getVhost("/").GetQueue(queue.Name).Length()
 
 	if int(queueLength) != msgCount {
-		t.Fatalf("Expected %d queue length, actual %d", msgCount, queueLength)
+		t.Errorf("Expected %d queue length, actual %d", msgCount, queueLength)
 	}
 }
 
@@ -906,16 +906,16 @@ func Test_BasicReject_RequeueFalse_Success(t *testing.T) {
 	defer sc.clean()
 	ch, _ := sc.client.Channel()
 
-	queue, _ := ch.QueueDeclare("testQu", false, false, false, false, emptyTable)
+	queue, _ := ch.QueueDeclare(t.Name(), false, false, false, false, emptyTable)
 
 	msgCount := 10
 	for i := 0; i < msgCount; i++ {
 		ch.Publish("", queue.Name, false, false, amqp.Publishing{ContentType: "text/plain", Body: []byte("test")})
 	}
 
-	cmr, err := ch.Consume("testQu", "tag", false, false, false, false, emptyTable)
+	cmr, err := ch.Consume(t.Name(), "tag", false, false, false, false, emptyTable)
 	if err != nil {
-		t.Fatal(err)
+		t.Error(err)
 	}
 
 	tick := time.After(100 * time.Millisecond)
@@ -939,7 +939,7 @@ func Test_BasicReject_RequeueFalse_Success(t *testing.T) {
 
 	unackedLength := len(getServerChannel(sc, 1).ackStore)
 	if unackedLength != msgCount {
-		t.Fatalf("Expected %d unacked, actual %d", msgCount, unackedLength)
+		t.Errorf("Expected %d unacked, actual %d", msgCount, unackedLength)
 	}
 	for _, dlv := range deliveries {
 		ch.Reject(dlv.DeliveryTag, false)
@@ -949,13 +949,13 @@ func Test_BasicReject_RequeueFalse_Success(t *testing.T) {
 
 	unackedLength = len(getServerChannel(sc, 1).ackStore)
 	if unackedLength != 0 {
-		t.Fatalf("Expected %d unacked, actual %d", 0, unackedLength)
+		t.Errorf("Expected %d unacked, actual %d", 0, unackedLength)
 	}
 
 	queueLength := sc.server.getVhost("/").GetQueue(queue.Name).Length()
 
 	if queueLength != 0 {
-		t.Fatalf("Expected empty queue after nack with requeue false")
+		t.Errorf("Expected empty queue after nack with requeue false")
 	}
 }
 
@@ -964,7 +964,7 @@ func Test_BasicGet_Success(t *testing.T) {
 	defer sc.clean()
 	ch, _ := sc.client.Channel()
 
-	qu, _ := ch.QueueDeclare("testQu", true, false, false, false, emptyTable)
+	qu, _ := ch.QueueDeclare(t.Name(), true, false, false, false, emptyTable)
 
 	if err := ch.Publish(
 		"",
@@ -972,20 +972,20 @@ func Test_BasicGet_Success(t *testing.T) {
 		false, false,
 		amqp.Publishing{ContentType: "text/plain", Body: []byte("testMessage")},
 	); err != nil {
-		t.Fatal(err)
+		t.Error(err)
 	}
 
-	msg, ok, errGet := ch.Get("testQu", true)
+	msg, ok, errGet := ch.Get(t.Name(), true)
 	if errGet != nil {
-		t.Fatal(errGet)
+		t.Error(errGet)
 	}
 
 	if !ok {
-		t.Fatal("Message not found")
+		t.Error("Message not found")
 	}
 
 	if !bytes.Equal(msg.Body, []byte("testMessage")) {
-		t.Fatal("Received strange message")
+		t.Error("Received strange message")
 	}
 }
 
@@ -994,15 +994,15 @@ func Test_BasicGet_Success_Empty(t *testing.T) {
 	defer sc.clean()
 	ch, _ := sc.client.Channel()
 
-	ch.QueueDeclare("testQu", true, false, false, false, emptyTable)
+	ch.QueueDeclare(t.Name(), true, false, false, false, emptyTable)
 
-	_, ok, errGet := ch.Get("testQu", true)
+	_, ok, errGet := ch.Get(t.Name(), true)
 	if errGet != nil {
-		t.Fatal(errGet)
+		t.Error(errGet)
 	}
 
 	if ok {
-		t.Fatal("Expected BasicEmpty")
+		t.Error("Expected BasicEmpty")
 	}
 }
 
@@ -1011,7 +1011,7 @@ func Test_BasicGet_Success_WithAck(t *testing.T) {
 	defer sc.clean()
 	ch, _ := sc.client.Channel()
 
-	qu, _ := ch.QueueDeclare("testQu", true, false, false, false, emptyTable)
+	qu, _ := ch.QueueDeclare(t.Name(), true, false, false, false, emptyTable)
 
 	if err := ch.Publish(
 		"",
@@ -1019,13 +1019,13 @@ func Test_BasicGet_Success_WithAck(t *testing.T) {
 		false, false,
 		amqp.Publishing{ContentType: "text/plain", Body: []byte("testMessage")},
 	); err != nil {
-		t.Fatal(err)
+		t.Error(err)
 	}
 
-	ch.Get("testQu", false)
+	ch.Get(t.Name(), false)
 	unackedLength := len(getServerChannel(sc, 1).ackStore)
 	if unackedLength != 1 {
-		t.Fatalf("Expected %d unacked, actual %d", 1, unackedLength)
+		t.Errorf("Expected %d unacked, actual %d", 1, unackedLength)
 	}
 
 }
@@ -1035,11 +1035,11 @@ func Test_BasicGet_Succ(t *testing.T) {
 	defer sc.clean()
 	ch, _ := sc.client.Channel()
 
-	ch.QueueDeclare("testQu", true, false, false, false, emptyTable)
+	ch.QueueDeclare(t.Name(), true, false, false, false, emptyTable)
 
 	_, _, errGet := ch.Get("testQu_unknown", true)
 	if errGet == nil {
-		t.Fatal("Expected NOT_FOUND error")
+		t.Error("Expected NOT_FOUND error")
 	}
 }
 
@@ -1048,10 +1048,10 @@ func Test_BasicGet_Failed_QueueNotFound(t *testing.T) {
 	defer sc.clean()
 	ch, _ := sc.client.Channel()
 
-	ch.QueueDeclare("testQu", true, false, false, false, emptyTable)
+	ch.QueueDeclare(t.Name(), true, false, false, false, emptyTable)
 
 	_, _, errGet := ch.Get("testQu_unknown", true)
 	if errGet == nil {
-		t.Fatal("Expected NOT_FOUND error")
+		t.Error("Expected NOT_FOUND error")
 	}
 }

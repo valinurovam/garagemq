@@ -4,7 +4,6 @@ import (
 	"time"
 
 	"github.com/dgraph-io/badger"
-	"github.com/dgraph-io/badger/options"
 	"github.com/valinurovam/garagemq/interfaces"
 )
 
@@ -16,9 +15,7 @@ type Badger struct {
 // NewBadger returns new instance of badger wrapper
 func NewBadger(storageDir string) *Badger {
 	storage := &Badger{}
-	opts := badger.DefaultOptions
-	//opts.MaxTableSize = 32 << 20
-	opts.TableLoadingMode = options.MemoryMap
+	opts := badger.DefaultOptions(storageDir)
 	opts.SyncWrites = true
 	opts.Dir = storageDir
 	opts.ValueDir = storageDir

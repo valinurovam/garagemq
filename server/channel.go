@@ -14,6 +14,7 @@ import (
 	"github.com/valinurovam/garagemq/consumer"
 	"github.com/valinurovam/garagemq/exchange"
 	"github.com/valinurovam/garagemq/metrics"
+	"github.com/valinurovam/garagemq/pool"
 	"github.com/valinurovam/garagemq/qos"
 	"github.com/valinurovam/garagemq/queue"
 )
@@ -47,11 +48,10 @@ type Channel struct {
 	incoming           chan *amqp.Frame
 	outgoing           chan *amqp.Frame
 	logger             *log.Entry
-	statusLock         sync.RWMutex
 	status             int
 	protoVersion       string
 	currentMessage     *amqp.Message
-	cmrLock            sync.Mutex
+	cmrLock            sync.RWMutex
 	consumers          map[string]*consumer.Consumer
 	qos                *qos.AmqpQos
 	consumerQos        *qos.AmqpQos
@@ -62,6 +62,10 @@ type Channel struct {
 	ackLock            sync.Mutex
 	ackStore           map[uint64]*UnackedMessage
 	metrics            *ChannelMetricsState
+
+	bufferPool *pool.BufferPool
+
+	closeCh chan bool
 }
 
 // UnackedMessage represents the unacknowledged message
@@ -80,7 +84,7 @@ func NewChannel(id uint16, conn *Connection) *Channel {
 		server: conn.server,
 		// for incoming channel much capacity is good for performance
 		// but it is difficult to implement processing already queued frames on shutdown or connection close
-		incoming:     make(chan *amqp.Frame, 1),
+		incoming:     make(chan *amqp.Frame, 128),
 		outgoing:     conn.outgoing,
 		status:       channelNew,
 		protoVersion: conn.server.protoVersion,
@@ -89,6 +93,8 @@ func NewChannel(id uint16, conn *Connection) *Channel {
 		consumerQos:  qos.NewAmqpQos(0, 0),
 		ackStore:     make(map[uint64]*UnackedMessage),
 		confirmQueue: make([]*amqp.ConfirmMeta, 0),
+		closeCh:      make(chan bool),
+		bufferPool:   pool.NewBufferPool(0),
 	}
 
 	channel.logger = log.WithFields(log.Fields{
@@ -129,7 +135,8 @@ func (channel *Channel) handleIncoming() {
 	// The response to receiving a Close after sending Close must be to send Close­Ok.
 	for {
 		select {
-		case <-channel.conn.ctx.Done():
+		case <-channel.closeCh:
+			channel.close()
 			return
 		case frame := <-channel.incoming:
 			if frame == nil {
@@ -304,7 +311,7 @@ func (channel *Channel) handleContentBody(bodyFrame *amqp.Frame) *amqp.Error {
 // SendMethod send method to client
 // Method will be packed into frame and send to outgoing channel
 func (channel *Channel) SendMethod(method amqp.Method) {
-	var rawMethod = emptyBufferPool.Get()
+	var rawMethod = channel.bufferPool.Get()
 	if err := amqp.WriteMethod(rawMethod, method, channel.server.protoVersion); err != nil {
 		logrus.WithError(err).Error("Error")
 	}
@@ -315,7 +322,7 @@ func (channel *Channel) SendMethod(method amqp.Method) {
 
 	payload := make([]byte, rawMethod.Len())
 	copy(payload, rawMethod.Bytes())
-	emptyBufferPool.Put(rawMethod)
+	channel.bufferPool.Put(rawMethod)
 
 	channel.sendOutgoing(&amqp.Frame{Type: byte(amqp.FrameMethod), ChannelID: channel.id, Payload: payload, CloseAfter: closeAfter, Sync: method.Sync()})
 }
@@ -326,7 +333,6 @@ func (channel *Channel) sendOutgoing(frame *amqp.Frame) {
 		if channel.id == 0 {
 			close(channel.outgoing)
 		}
-		return
 	case channel.outgoing <- frame:
 	}
 }
@@ -335,12 +341,12 @@ func (channel *Channel) sendOutgoing(frame *amqp.Frame) {
 func (channel *Channel) SendContent(method amqp.Method, message *amqp.Message) {
 	channel.SendMethod(method)
 
-	var rawHeader = emptyBufferPool.Get()
+	var rawHeader = channel.bufferPool.Get()
 	amqp.WriteContentHeader(rawHeader, message.Header, channel.server.protoVersion)
 
 	payload := make([]byte, rawHeader.Len())
 	copy(payload, rawHeader.Bytes())
-	emptyBufferPool.Put(rawHeader)
+	channel.bufferPool.Put(rawHeader)
 
 	channel.sendOutgoing(&amqp.Frame{Type: byte(amqp.FrameHeader), ChannelID: channel.id, Payload: payload, CloseAfter: false})
 
@@ -443,10 +449,11 @@ func (channel *Channel) close() {
 		channel.handleReject(0, true, true, &amqp.BasicNack{})
 	}
 	channel.status = channelClosed
+	channel.logger.Info("Channel closed")
 }
 
 func (channel *Channel) delete() {
-	channel.close()
+	channel.closeCh <- true
 	channel.status = channelDelete
 }
 
@@ -586,8 +593,7 @@ func (channel *Channel) rejectMsg(unackedMessage *UnackedMessage, deliveryTag ui
 }
 
 func (channel *Channel) decQosAndConsumerNext(unackedMessage *UnackedMessage) {
-	channel.cmrLock.Lock()
-	defer channel.cmrLock.Unlock()
+	channel.cmrLock.RLock()
 	if cmr, ok := channel.consumers[unackedMessage.cTag]; ok {
 		cmr.Consume()
 
@@ -598,6 +604,7 @@ func (channel *Channel) decQosAndConsumerNext(unackedMessage *UnackedMessage) {
 		channel.qos.Dec(1, uint32(unackedMessage.msg.BodySize))
 		channel.conn.qos.Dec(1, uint32(unackedMessage.msg.BodySize))
 	}
+	channel.cmrLock.RUnlock()
 }
 
 func (channel *Channel) getExchangeWithError(exchangeName string, method amqp.Method) (ex *exchange.Exchange, err *amqp.Error) {
@@ -652,7 +659,7 @@ func (channel *Channel) changeFlow(active bool) {
 	}
 	channel.active = active
 
-	channel.cmrLock.Lock()
+	channel.cmrLock.RLock()
 	if channel.active {
 		for _, cmr := range channel.consumers {
 			cmr.UnPause()
@@ -663,7 +670,7 @@ func (channel *Channel) changeFlow(active bool) {
 			cmr.Pause()
 		}
 	}
-	channel.cmrLock.Unlock()
+	channel.cmrLock.RUnlock()
 }
 
 // GetConsumersCount returns consumers count on channel

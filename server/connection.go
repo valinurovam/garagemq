@@ -87,7 +87,7 @@ func NewConnection(server *Server, netConn *net.TCPConn) (connection *Connection
 		server:            server,
 		netConn:           netConn,
 		channels:          make(map[uint16]*Channel),
-		outgoing:          make(chan *amqp.Frame, 100),
+		outgoing:          make(chan *amqp.Frame, 128),
 		maxChannels:       server.config.Connection.ChannelsMax,
 		maxFrameSize:      server.config.Connection.FrameMaxSize,
 		qos:               qos.NewAmqpQos(0, 0),
@@ -128,7 +128,8 @@ func (conn *Connection) close() {
 	conn.status = ConnClosed
 	conn.statusLock.Unlock()
 
-	conn.netConn.Close()
+	// @todo should we chech for errors here? And what should we do if error occur
+	_ = conn.netConn.Close()
 
 	if conn.cancelCtx != nil {
 		conn.cancelCtx()
@@ -226,7 +227,7 @@ func (conn *Connection) handleConnection() {
 			"given":     buf,
 			"supported": amqp.AmqpHeader,
 		}).Warn("Unsupported protocol")
-		conn.netConn.Write(amqp.AmqpHeader)
+		_, _ = conn.netConn.Write(amqp.AmqpHeader)
 		conn.close()
 		return
 	}
@@ -252,7 +253,8 @@ func (conn *Connection) handleOutgoing() {
 		conn.close()
 	}()
 
-	buffer := bufio.NewWriter(conn.netConn)
+	var err error
+	buffer := bufio.NewWriterSize(conn.netConn, 128<<10)
 	for {
 		select {
 		case <-conn.ctx.Done():
@@ -261,22 +263,31 @@ func (conn *Connection) handleOutgoing() {
 			if frame == nil {
 				return
 			}
-			if err := amqp.WriteFrame(buffer, frame); err != nil && !conn.isClosedError(err) {
+
+			if err = amqp.WriteFrame(buffer, frame); err != nil && !conn.isClosedError(err) {
 				conn.logger.WithError(err).Warn("writing frame")
 				return
 			}
 
 			if frame.CloseAfter {
-				buffer.Flush()
+				if err = buffer.Flush(); err != nil && !conn.isClosedError(err) {
+					conn.logger.WithError(err).Warn("writing frame")
+				}
 				return
 			}
 
 			if frame.Sync {
 				conn.srvMetrics.TrafficOut.Counter.Inc(int64(buffer.Buffered()))
 				conn.metrics.TrafficOut.Counter.Inc(int64(buffer.Buffered()))
-				buffer.Flush()
+				if err = buffer.Flush(); err != nil && !conn.isClosedError(err) {
+					conn.logger.WithError(err).Warn("writing frame")
+					return
+				}
 			} else {
-				conn.mayBeFlushBuffer(buffer)
+				if err = conn.mayBeFlushBuffer(buffer); err != nil && !conn.isClosedError(err) {
+					conn.logger.WithError(err).Warn("writing frame")
+					return
+				}
 			}
 
 			select {
@@ -287,11 +298,13 @@ func (conn *Connection) handleOutgoing() {
 	}
 }
 
-func (conn *Connection) mayBeFlushBuffer(buffer *bufio.Writer) {
+func (conn *Connection) mayBeFlushBuffer(buffer *bufio.Writer) (err error) {
 	if buffer.Buffered() >= flushThreshold {
 		conn.srvMetrics.TrafficOut.Counter.Inc(int64(buffer.Buffered()))
 		conn.metrics.TrafficOut.Counter.Inc(int64(buffer.Buffered()))
-		buffer.Flush()
+		if err = buffer.Flush(); err != nil {
+			return err
+		}
 	}
 
 	if len(conn.outgoing) == 0 {
@@ -299,8 +312,11 @@ func (conn *Connection) mayBeFlushBuffer(buffer *bufio.Writer) {
 		// if nothing to store into buffer - we flush
 		conn.srvMetrics.TrafficOut.Counter.Inc(int64(buffer.Buffered()))
 		conn.metrics.TrafficOut.Counter.Inc(int64(buffer.Buffered()))
-		buffer.Flush()
+		if err = buffer.Flush(); err != nil {
+			return err
+		}
 	}
+	return
 }
 
 func (conn *Connection) handleIncoming() {
@@ -309,7 +325,7 @@ func (conn *Connection) handleIncoming() {
 		conn.close()
 	}()
 
-	buffer := bufio.NewReaderSize(conn.netConn, 16 * 1024 * 1024)
+	buffer := bufio.NewReaderSize(conn.netConn, 128<<10)
 
 	for {
 		// TODO
@@ -346,7 +362,10 @@ func (conn *Connection) handleIncoming() {
 		}
 
 		if conn.heartbeatTimeout > 0 {
-			conn.netConn.SetReadDeadline(time.Now().Add(time.Duration(conn.heartbeatTimeout) * time.Second))
+			if err = conn.netConn.SetReadDeadline(time.Now().Add(time.Duration(conn.heartbeatTimeout) * time.Second)); err != nil {
+				conn.logger.WithError(err).Warn("reading frame")
+				return
+			}
 		}
 
 		if frame.Type == amqp.FrameHeartbeat && frame.ChannelID != 0 {

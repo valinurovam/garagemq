@@ -10,7 +10,7 @@ func Test_Connection_Success(t *testing.T) {
 	sc, err := getNewSC(getDefaultTestConfig())
 	defer sc.clean()
 	if err != nil {
-		t.Fatal(err)
+		t.Error(err)
 	}
 }
 
@@ -20,7 +20,7 @@ func Test_Connection_FailedVhostAccess(t *testing.T) {
 	sc, err := getNewSC(cfg)
 	defer sc.clean()
 	if err == nil {
-		t.Fatal("Expected no access to vhost error")
+		t.Error("Expected no access to vhost error")
 	}
 }
 
@@ -35,7 +35,7 @@ func Test_Connection_Failed_WhenWrongAuth(t *testing.T) {
 	sc, err := getNewSC(cfg)
 	defer sc.clean()
 	if err == nil {
-		t.Fatal("Expected auth error")
+		t.Error("Expected auth error")
 	}
 }
 
@@ -50,6 +50,6 @@ func Test_Connection_Failed_WhenWrongAuth_UnknownUser(t *testing.T) {
 	sc, err := getNewSC(cfg)
 	defer sc.clean()
 	if err == nil {
-		t.Fatal("Expected auth error")
+		t.Error("Expected auth error")
 	}
 }

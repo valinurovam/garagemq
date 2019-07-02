@@ -23,7 +23,7 @@ const exDefaultName = ""
 type VirtualHost struct {
 	name            string
 	system          bool
-	exLock          sync.Mutex
+	exLock          sync.RWMutex
 	exchanges       map[string]*exchange.Exchange
 	quLock          sync.RWMutex
 	queues          map[string]*queue.Queue
@@ -165,8 +165,8 @@ func (vhost *VirtualHost) getQueue(name string) *queue.Queue {
 
 // GetExchange returns exchange by name or nil if not exists
 func (vhost *VirtualHost) GetExchange(name string) *exchange.Exchange {
-	vhost.exLock.Lock()
-	defer vhost.exLock.Unlock()
+	vhost.exLock.RLock()
+	defer vhost.exLock.RUnlock()
 	return vhost.getExchange(name)
 }
 

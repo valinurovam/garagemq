@@ -11,7 +11,7 @@ type BufferPool struct {
 }
 
 // NewBufferPool returns a new BufferPool
-func NewBufferPool(bufferSize int) (bp *BufferPool) {
+func NewBufferPool(bufferSize int) *BufferPool {
 	return &BufferPool{
 		sync.Pool{
 			New: func() interface{} {

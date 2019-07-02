@@ -14,12 +14,12 @@ func Test_Confirm_Success(t *testing.T) {
 	err := ch.Confirm(false)
 
 	if err != nil {
-		t.Fatal(err)
+		t.Error(err)
 	}
 
 	channel := getServerChannel(sc, 1)
 	if channel.confirmMode == false {
-		t.Fatal("Channel non confirm mode")
+		t.Error("Channel non confirm mode")
 	}
 }
 
@@ -34,7 +34,7 @@ func Test_ConfirmReceive_Acks_Success(t *testing.T) {
 	nacks := make(chan uint64, msgCount)
 	ch.NotifyConfirm(acks, nacks)
 
-	queue, _ := ch.QueueDeclare("testQu", false, false, false, false, emptyTable)
+	queue, _ := ch.QueueDeclare(t.Name(), false, false, false, false, emptyTable)
 
 	for i := 0; i < msgCount; i++ {
 		ch.Publish("", queue.Name, false, false, amqp.Publishing{ContentType: "text/plain", Body: []byte("test")})
@@ -60,7 +60,7 @@ func Test_ConfirmReceive_Acks_Success(t *testing.T) {
 	}
 
 	if confirmsCount != msgCount {
-		t.Fatalf("Expected %d confirms, actual %d", msgCount, confirmsCount)
+		t.Errorf("Expected %d confirms, actual %d", msgCount, confirmsCount)
 	}
 }
 
@@ -75,7 +75,7 @@ func Test_ConfirmReceive_Acks_NoRoute_Success(t *testing.T) {
 	nacks := make(chan uint64, msgCount)
 	ch.NotifyConfirm(acks, nacks)
 
-	ch.QueueDeclare("testQu", false, false, false, false, emptyTable)
+	ch.QueueDeclare(t.Name(), false, false, false, false, emptyTable)
 
 	for i := 0; i < msgCount; i++ {
 		ch.Publish("", "bad-route", false, false, amqp.Publishing{ContentType: "text/plain", Body: []byte("test")})
@@ -101,7 +101,7 @@ func Test_ConfirmReceive_Acks_NoRoute_Success(t *testing.T) {
 	}
 
 	if confirmsCount != msgCount {
-		t.Fatalf("Expected %d confirms, actual %d", msgCount, confirmsCount)
+		t.Errorf("Expected %d confirms, actual %d", msgCount, confirmsCount)
 	}
 }
 
@@ -116,7 +116,7 @@ func Test_ConfirmReceive_Acks_Persistent_Success(t *testing.T) {
 	nacks := make(chan uint64, msgCount)
 	ch.NotifyConfirm(acks, nacks)
 
-	queue, _ := ch.QueueDeclare("testQu", true, false, false, false, emptyTable)
+	queue, _ := ch.QueueDeclare(t.Name(), true, false, false, false, emptyTable)
 
 	for i := 0; i < msgCount; i++ {
 		ch.Publish("", queue.Name, false, false, amqp.Publishing{ContentType: "text/plain", Body: []byte("test"), DeliveryMode: amqp.Persistent})
@@ -142,6 +142,6 @@ func Test_ConfirmReceive_Acks_Persistent_Success(t *testing.T) {
 	}
 
 	if confirmsCount != msgCount {
-		t.Fatalf("Expected %d confirms, actual %d", msgCount, confirmsCount)
+		t.Errorf("Expected %d confirms, actual %d", msgCount, confirmsCount)
 	}
 }

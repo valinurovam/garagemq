@@ -3,6 +3,7 @@ package server
 import (
 	"bytes"
 	"io/ioutil"
+	"log"
 	"net"
 	"os"
 	"testing"
@@ -99,6 +100,9 @@ func getNewSC(config TestConfig) (*ServerClient, error) {
 	sc.server.initDefaultVirtualHosts()
 	sc.server.status = Running
 
+	// the only chance to disable badger logger
+	log.SetOutput(ioutil.Discard)
+
 	toServer, toServerEx, fromClient, fromClientEx, err := networkSim()
 	if err != nil {
 		return sc, err
@@ -168,7 +172,7 @@ func TestServer_GetConnections(t *testing.T) {
 
 	conns := sc.server.GetConnections()
 	if len(conns) == 0 {
-		t.Fatal("Expected at least test connections")
+		t.Error("Expected at least test connections")
 	}
 }
 
@@ -178,7 +182,7 @@ func TestServer_GetProtoVersion(t *testing.T) {
 
 	version := sc.server.GetProtoVersion()
 	if version != proto {
-		t.Fatalf("Expected %s, actual %s", proto, version)
+		t.Errorf("Expected %s, actual %s", proto, version)
 	}
 }
 
@@ -188,11 +192,11 @@ func TestServer_GetVhosts(t *testing.T) {
 
 	vhosts := sc.server.GetVhosts()
 	if len(vhosts) == 0 {
-		t.Fatal("Expected at least default vhost")
+		t.Error("Expected at least default vhost")
 	}
 	for _, vhost := range vhosts {
 		if sc.server.GetVhost(vhost.GetName()) != vhost {
-			t.Fatal("Expected equal vhosts")
+			t.Error("Expected equal vhosts")
 		}
 	}
 }
@@ -208,16 +212,16 @@ func TestServer_RealStart(t *testing.T) {
 
 	conn, err := amqpclient.Dial("amqp://guest:guest@localhost:55672/")
 	if err != nil {
-		t.Fatal("Could not connect to real server", err)
+		t.Error("Could not connect to real server", err)
 		return
 	}
 
 	if len(server.connections) == 0 {
-		t.Fatal("Expected connected client")
+		t.Error("Expected connected client")
 	}
 
 	if len(server.connections[1].channels) == 0 {
-		t.Fatal("Expected channels on connections")
+		t.Error("Expected channels on connections")
 	}
 	defer conn.Close()
 }
@@ -234,22 +238,22 @@ func TestServer_WrongProtocol(t *testing.T) {
 	amqpAddr, err := net.ResolveTCPAddr("tcp", "localhost:55672")
 	connDial, err := net.DialTCP("tcp", nil, amqpAddr)
 	if err != nil {
-		t.Fatal("AMQP Dial failed:", err.Error())
+		t.Error("AMQP Dial failed:", err.Error())
 	}
 
 	_, err = connDial.Write([]byte{'A', 'M', 'Q', 'P', 0, 0, 0, 0})
 	if err != nil {
-		t.Fatal("Failed to send AMQP header", err.Error())
+		t.Error("Failed to send AMQP header", err.Error())
 	}
 
 	supported := make([]byte, 8)
 
 	_, err = connDial.Read(supported)
 	if err != nil {
-		t.Fatal("Failed to read response from server")
+		t.Error("Failed to read response from server")
 	}
 
 	if !bytes.Equal(supported, amqp.AmqpHeader) {
-		t.Fatalf("Expected %v, actual %v", amqp.AmqpHeader, supported)
+		t.Errorf("Expected %v, actual %v", amqp.AmqpHeader, supported)
 	}
 }

@@ -43,7 +43,7 @@ type Queue struct {
 	cmrLock     sync.RWMutex
 	consumers   []interfaces.Consumer
 	consumeExcl bool
-	call        chan bool
+	call        chan struct{}
 	wasConsumed bool
 	shardSize   int
 	actLock     sync.RWMutex
@@ -63,21 +63,21 @@ type Queue struct {
 	lastStoredMsgID        uint64
 	lastMemMsgID           uint64
 	swappedToDisk          bool
-	maybeLoadFromStorageCh chan bool
+	maybeLoadFromStorageCh chan struct{}
 	wg                     *sync.WaitGroup
 }
 
 // NewQueue returns new instance of Queue
 func NewQueue(name string, connID uint64, exclusive bool, autoDelete bool, durable bool, config config.Queue, msgStorageP interfaces.MsgStorage, msgStorageT interfaces.MsgStorage, autoDeleteQueue chan string) *Queue {
 	return &Queue{
-		SafeQueue:  *safequeue.NewSafeQueue(config.ShardSize),
-		name:       name,
-		connID:     connID,
-		exclusive:  exclusive,
-		autoDelete: autoDelete,
-		durable:    durable,
-		call:       make(chan bool, 1),
-		maybeLoadFromStorageCh: make(chan bool, 1),
+		SafeQueue:              *safequeue.NewSafeQueue(config.ShardSize),
+		name:                   name,
+		connID:                 connID,
+		exclusive:              exclusive,
+		autoDelete:             autoDelete,
+		durable:                durable,
+		call:                   make(chan struct{}, 1),
+		maybeLoadFromStorageCh: make(chan struct{}, 1),
 		wasConsumed:            false,
 		active:                 false,
 		shardSize:              config.ShardSize,
@@ -108,9 +108,13 @@ func NewQueue(name string, connID uint64, exclusive bool, autoDelete bool, durab
 
 // Start starts base queue loop to send events to consumers
 // Current consumer to handle message from queue selected by round robin
-func (queue *Queue) Start() {
+func (queue *Queue) Start() error {
 	queue.actLock.Lock()
 	defer queue.actLock.Unlock()
+
+	if queue.active {
+		return nil
+	}
 
 	queue.active = true
 	queue.wg.Add(1)
@@ -142,6 +146,8 @@ func (queue *Queue) Start() {
 			queue.mayBeLoadFromStorage()
 		}
 	}()
+
+	return nil
 }
 
 // Stop stops main queue loop
@@ -220,21 +226,20 @@ func (queue *Queue) Pop() *amqp.Message {
 // PopQos returns message from queue head with QOS check
 func (queue *Queue) PopQos(qosList []*qos.AmqpQos) *amqp.Message {
 	queue.actLock.RLock()
-	defer queue.actLock.RUnlock()
-
 	if !queue.active {
+		queue.actLock.RUnlock()
 		return nil
 	}
+	queue.actLock.RUnlock()
 
 	select {
-	case queue.maybeLoadFromStorageCh <- true:
+	case queue.maybeLoadFromStorageCh <- struct{}{}:
 	default:
-
 	}
 
 	queue.SafeQueue.Lock()
-	defer queue.SafeQueue.Unlock()
-	if message := queue.SafeQueue.HeadItem(); message != nil {
+	var message *amqp.Message
+	if message = queue.SafeQueue.HeadItem(); message != nil {
 		allowed := true
 		for _, q := range qosList {
 			if !q.IsActive() {
@@ -249,11 +254,13 @@ func (queue *Queue) PopQos(qosList []*qos.AmqpQos) *amqp.Message {
 		if allowed {
 			queue.SafeQueue.DirtyPop()
 			atomic.AddInt64(&queue.queueLength, -1)
-			return message
+		} else {
+			message = nil
 		}
 	}
+	queue.SafeQueue.Unlock()
 
-	return nil
+	return message
 }
 
 func (queue *Queue) mayBeLoadFromStorage() {
@@ -386,10 +393,12 @@ func (queue *Queue) LoadFromMsgStorage() {
 // AckMsg accept ack event for message
 func (queue *Queue) AckMsg(message *amqp.Message) {
 	queue.actLock.RLock()
-	defer queue.actLock.RUnlock()
 	if !queue.active {
+		queue.actLock.RUnlock()
 		return
 	}
+	queue.actLock.RUnlock()
+
 	if queue.durable && message.IsPersistent() {
 		// TODO handle error
 		queue.msgPStorage.Del(message, queue.name)
@@ -408,10 +417,12 @@ func (queue *Queue) AckMsg(message *amqp.Message) {
 // Requeue add message into queue head
 func (queue *Queue) Requeue(message *amqp.Message) {
 	queue.actLock.RLock()
-	defer queue.actLock.RUnlock()
 	if !queue.active {
+		queue.actLock.RUnlock()
 		return
 	}
+	queue.actLock.RUnlock()
+
 	message.DeliveryCount++
 	queue.SafeQueue.PushHead(message)
 	if queue.durable && message.IsPersistent() {
@@ -508,7 +519,7 @@ func (queue *Queue) AddConsumer(consumer interfaces.Consumer, exclusive bool) er
 }
 
 // RemoveConsumer remove consumer
-// If it was last consumer and queue is auto-delte - queue will be removed
+// If it was last consumer and queue is auto-delete - queue will be removed
 func (queue *Queue) RemoveConsumer(cTag string) {
 	queue.cmrLock.Lock()
 	defer queue.cmrLock.Unlock()
@@ -538,7 +549,7 @@ func (queue *Queue) callConsumers() {
 		return
 	}
 	select {
-	case queue.call <- true:
+	case queue.call <- struct{}{}:
 	default:
 	}
 }
