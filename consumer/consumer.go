@@ -31,7 +31,7 @@ type Consumer struct {
 	statusLock  sync.RWMutex
 	status      int
 	qos         []*qos.AmqpQos
-	consume     chan bool
+	consume     chan struct{}
 }
 
 // NewConsumer returns new instance of Consumer
@@ -48,7 +48,7 @@ func NewConsumer(queueName string, consumerTag string, noAck bool, channel inter
 		channel:     channel,
 		queue:       queue,
 		qos:         qos,
-		consume:     make(chan bool, 1),
+		consume:     make(chan struct{}, 1),
 	}
 }
 
@@ -150,7 +150,7 @@ func (consumer *Consumer) consumeMsg() bool {
 	}
 
 	select {
-	case consumer.consume <- true:
+	case consumer.consume <- struct{}{}:
 		return true
 	default:
 		return false

@@ -69,7 +69,7 @@ func (storage *MsgStorage) periodicPersist() {
 
 // no need to be thread safe
 func (storage *MsgStorage) getQueueLen() int {
-	return len(storage.add) + len(storage.add) + len(storage.add)
+	return len(storage.add) + len(storage.update) + len(storage.del)
 }
 
 func (storage *MsgStorage) persist() {

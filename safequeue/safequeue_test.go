@@ -6,7 +6,7 @@ import (
 	"github.com/valinurovam/garagemq/amqp"
 )
 
-const SIZE = 32
+const SIZE = 65536
 
 func TestSafeQueue(t *testing.T) {
 	queue := NewSafeQueue(SIZE)

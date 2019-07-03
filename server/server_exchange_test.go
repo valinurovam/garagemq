@@ -22,17 +22,17 @@ func Test_DefaultExchanges(t *testing.T) {
 	for _, name := range exchanges {
 		name = "amq." + name
 		if vhost.GetExchange(name) == nil {
-			t.Fatalf("Default exchange '%s' does not exists", name)
+			t.Errorf("Default exchange '%s' does not exists", name)
 		}
 	}
 
 	systemExchange := vhost.GetDefaultExchange()
 	if systemExchange == nil {
-		t.Fatal("System exchange does not exists")
+		t.Error("System exchange does not exists")
 	}
 
 	if systemExchange.ExType() != exchange.ExTypeDirect {
-		t.Fatalf("Expected: 'direct' system exchange kind")
+		t.Errorf("Expected: 'direct' system exchange kind")
 	}
 }
 
@@ -42,11 +42,11 @@ func Test_ExchangeDeclare_Success(t *testing.T) {
 	ch, _ := sc.client.Channel()
 
 	if err := ch.ExchangeDeclare("test", "direct", false, false, false, false, emptyTable); err != nil {
-		t.Fatal(err)
+		t.Error(err)
 	}
 
 	if sc.server.getVhost("/").GetExchange("test") == nil {
-		t.Fatal("Exchange does not exists after 'ExchangeDeclare'")
+		t.Error("Exchange does not exists after 'ExchangeDeclare'")
 	}
 }
 
@@ -56,16 +56,16 @@ func Test_ExchangeDeclareDurable_Success(t *testing.T) {
 	ch, _ := sc.client.Channel()
 
 	if err := ch.ExchangeDeclare("test", "direct", true, false, false, false, emptyTable); err != nil {
-		t.Fatal(err)
+		t.Error(err)
 	}
 
 	if sc.server.getVhost("/").GetExchange("test") == nil {
-		t.Fatal("Exchange does not exists after 'ExchangeDeclareDurable'")
+		t.Error("Exchange does not exists after 'ExchangeDeclareDurable'")
 	}
 
 	storedExchanges := sc.server.storage.GetVhostExchanges("/")
 	if len(storedExchanges) == 0 {
-		t.Fatal("Queue does not exists into storage after 'ExchangeDeclareDurable'")
+		t.Error("Queue does not exists into storage after 'ExchangeDeclareDurable'")
 	}
 	found := false
 	for _, ex := range storedExchanges {
@@ -75,7 +75,7 @@ func Test_ExchangeDeclareDurable_Success(t *testing.T) {
 	}
 
 	if !found {
-		t.Fatal("Exchange does not exists into storage after 'ExchangeDeclareDurable'")
+		t.Error("Exchange does not exists into storage after 'ExchangeDeclareDurable'")
 	}
 }
 
@@ -87,7 +87,7 @@ func Test_ExchangeDeclare_Success_RedeclareEqual(t *testing.T) {
 	ch.ExchangeDeclare("test", "direct", false, false, false, false, emptyTable)
 
 	if err := ch.ExchangeDeclare("test", "direct", false, false, false, false, emptyTable); err != nil {
-		t.Fatal(err)
+		t.Error(err)
 	}
 }
 
@@ -97,7 +97,7 @@ func Test_ExchangeDeclare_Failed_WrongType(t *testing.T) {
 	ch, _ := sc.client.Channel()
 
 	if err := ch.ExchangeDeclare("test", "test", false, false, false, false, emptyTable); err == nil {
-		t.Fatal("Expected NotImplemented error")
+		t.Error("Expected NotImplemented error")
 	}
 }
 
@@ -109,7 +109,7 @@ func Test_ExchangeDeclare_Failed_RedeclareNotEqual(t *testing.T) {
 	ch.ExchangeDeclare("test", "direct", false, false, false, false, emptyTable)
 
 	if err := ch.ExchangeDeclare("test", "direct", false, true, false, false, emptyTable); err == nil {
-		t.Fatal("Expected: args inequivalent error")
+		t.Error("Expected: args inequivalent error")
 	}
 }
 
@@ -119,7 +119,7 @@ func Test_ExchangeDeclare_Failed_EmptyName(t *testing.T) {
 	ch, _ := sc.client.Channel()
 
 	if err := ch.ExchangeDeclare("", "direct", false, false, false, false, emptyTable); err == nil {
-		t.Fatal("Expected: exchange name is required error")
+		t.Error("Expected: exchange name is required error")
 	}
 }
 
@@ -129,7 +129,7 @@ func Test_ExchangeDeclare_Failed_DefaultName(t *testing.T) {
 	ch, _ := sc.client.Channel()
 
 	if err := ch.ExchangeDeclare("amq.direct", "direct", false, false, false, false, emptyTable); err == nil {
-		t.Fatal("Expected: access refused error")
+		t.Error("Expected: access refused error")
 	}
 }
 
@@ -141,7 +141,7 @@ func Test_ExchangeDeclarePassive_Success(t *testing.T) {
 	ch.ExchangeDeclare("test", "direct", false, false, false, false, emptyTable)
 
 	if err := ch.ExchangeDeclarePassive("test", "direct", false, false, false, false, emptyTable); err != nil {
-		t.Fatal(err)
+		t.Error(err)
 	}
 }
 
@@ -153,6 +153,6 @@ func Test_ExchangeDeclarePassive_Failed_NotExists(t *testing.T) {
 	ch.ExchangeDeclare("test", "direct", false, false, false, false, emptyTable)
 
 	if err := ch.ExchangeDeclarePassive("test2", "direct", false, false, false, false, emptyTable); err == nil {
-		t.Fatal("Expected: exchange not found error")
+		t.Error("Expected: exchange not found error")
 	}
 }

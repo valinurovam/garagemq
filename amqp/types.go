@@ -81,59 +81,47 @@ func NewMessage(method *BasicPublish) *Message {
 }
 
 // IsPersistent check if message should be persisted
-func (message *Message) IsPersistent() bool {
-	deliveryMode := message.Header.PropertyList.DeliveryMode
+func (m *Message) IsPersistent() bool {
+	deliveryMode := m.Header.PropertyList.DeliveryMode
 	return deliveryMode != nil && *deliveryMode == 2
 }
 
 // GenerateSeq returns next message ID
-func (message *Message) GenerateSeq() {
-	if message.ID == 0 {
-		message.ID = atomic.AddUint64(&msgID, 1)
+func (m *Message) GenerateSeq() {
+	if m.ID == 0 {
+		m.ID = atomic.AddUint64(&msgID, 1)
 	}
 }
 
 // Append appends new body-frame into message and increase bodySize
-func (message *Message) Append(body *Frame) {
-	message.Body = append(message.Body, body)
-	message.BodySize += uint64(len(body.Payload))
+func (m *Message) Append(body *Frame) {
+	m.Body = append(m.Body, body)
+	m.BodySize += uint64(len(body.Payload))
 }
 
 // Marshal converts message into bytes to store into db
-func (message *Message) Marshal(protoVersion string) (data []byte, err error) {
+func (m *Message) Marshal(protoVersion string) (data []byte, err error) {
 	buffer := emptyMessageBufferPool.Get()
 	defer emptyMessageBufferPool.Put(buffer)
-	body := emptyMessageBufferPool.Get()
-	defer emptyMessageBufferPool.Put(body)
 
-	if err = WriteLonglong(buffer, message.ID); err != nil {
+	if err = WriteLonglong(buffer, m.ID); err != nil {
 		return nil, err
 	}
 
-	if err = WriteContentHeader(buffer, message.Header, protoVersion); err != nil {
+	if err = WriteContentHeader(buffer, m.Header, protoVersion); err != nil {
 		return nil, err
 	}
-	if err = WriteShortstr(buffer, message.Exchange); err != nil {
+	if err = WriteShortstr(buffer, m.Exchange); err != nil {
 		return nil, err
 	}
-	if err = WriteShortstr(buffer, message.RoutingKey); err != nil {
-		return nil, err
-	}
-	if err = WriteLonglong(buffer, message.BodySize); err != nil {
+	if err = WriteShortstr(buffer, m.RoutingKey); err != nil {
 		return nil, err
 	}
 
-	for _, frame := range message.Body {
-		if err = WriteFrame(body, frame); err != nil {
+	for _, frame := range m.Body {
+		if err = WriteFrame(buffer, frame); err != nil {
 			return nil, err
 		}
-	}
-	if err = WriteLongstr(buffer, body.Bytes()); err != nil {
-		return nil, err
-	}
-
-	if err = WriteLong(buffer, message.DeliveryCount); err != nil {
-		return nil, err
 	}
 
 	data = make([]byte, buffer.Len())
@@ -142,42 +130,30 @@ func (message *Message) Marshal(protoVersion string) (data []byte, err error) {
 }
 
 // Unmarshal restore message entity from bytes
-func (message *Message) Unmarshal(buffer []byte, protoVersion string) (err error) {
+func (m *Message) Unmarshal(buffer []byte, protoVersion string) (err error) {
 	reader := bytes.NewReader(buffer)
-	if message.ID, err = ReadLonglong(reader); err != nil {
+	if m.ID, err = ReadLonglong(reader); err != nil {
 		return err
 	}
 
-	if message.Header, err = ReadContentHeader(reader, protoVersion); err != nil {
+	if m.Header, err = ReadContentHeader(reader, protoVersion); err != nil {
 		return err
 	}
-	if message.Exchange, err = ReadShortstr(reader); err != nil {
+	if m.Exchange, err = ReadShortstr(reader); err != nil {
 		return err
 	}
-	if message.RoutingKey, err = ReadShortstr(reader); err != nil {
-		return err
-	}
-	if message.BodySize, err = ReadLonglong(reader); err != nil {
+	if m.RoutingKey, err = ReadShortstr(reader); err != nil {
 		return err
 	}
 
-	rawBody, err := ReadLongstr(reader)
-	if err != nil {
-		return err
-	}
-	bodyBuffer := bytes.NewReader(rawBody)
-
-	for bodyBuffer.Len() != 0 {
-		body, errFrame := ReadFrame(bodyBuffer)
+	for m.BodySize < m.Header.BodySize {
+		body, errFrame := ReadFrame(reader)
 		if errFrame != nil {
 			return errFrame
 		}
-		message.Body = append(message.Body, body)
+		m.Append(body)
 	}
 
-	if message.DeliveryCount, err = ReadLong(reader); err != nil {
-		return err
-	}
 	return nil
 }
 

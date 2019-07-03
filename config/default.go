@@ -1,5 +1,10 @@
 package config
 
+const (
+	dbBuntDB = "buntdb"
+	dbBadger = "badger"
+)
+
 func defaultConfig() *Config {
 	return &Config{
 		Proto: "amqp-rabbit",
@@ -13,20 +18,20 @@ func defaultConfig() *Config {
 			IP:           "0.0.0.0",
 			Port:         "5672",
 			Nodelay:      false,
-			ReadBufSize:  128 * 196608,
-			WriteBufSize: 128 * 196608,
+			ReadBufSize:  128 << 10, // 128Kb
+			WriteBufSize: 128 << 10, // 128Kb
 		},
 		Admin: AdminConfig{
 			IP:   "0.0.0.0",
 			Port: "15672",
 		},
 		Queue: Queue{
-			ShardSize:        65536,
-			MaxMessagesInRAM: 131072,
+			ShardSize:        8 << 10, // 8k
+			MaxMessagesInRAM: 10 * 8 << 10, // 10 buckets
 		},
 		Db: Db{
 			DefaultPath: "db",
-			Engine:      "badger",
+			Engine:      dbBadger,
 		},
 		Vhost: Vhost{
 			DefaultPath: "/",

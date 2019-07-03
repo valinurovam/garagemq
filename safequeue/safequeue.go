@@ -12,7 +12,7 @@ import (
 // SafeQueue represents simple FIFO queue
 // TODO Is that implementation faster? test simple slice queue
 type SafeQueue struct {
-	sync.Mutex
+	sync.RWMutex
 	shards    [][]*amqp.Message
 	shardSize int
 	tailIdx   int
@@ -113,8 +113,8 @@ func (queue *SafeQueue) DirtyPop() (item *amqp.Message) {
 
 // Length returns queue length
 func (queue *SafeQueue) Length() uint64 {
-	queue.Lock()
-	defer queue.Unlock()
+	queue.RLock()
+	defer queue.RUnlock()
 	return queue.length
 }
 

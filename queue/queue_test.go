@@ -456,7 +456,7 @@ func TestQueue_Push_Durable_Persistent(t *testing.T) {
 
 	queue.Push(message)
 	if !storage.add {
-		t.Fatal("Storage.Add not called message push")
+		t.Error("Storage.Add not called message push")
 	}
 }
 

@@ -13,6 +13,9 @@ build:
 run: build
 	bin/garagemq
 
+profile: build
+	bin/garagemq --hprof=true
+
 vet:
 	env GO111MODULE=on go vet github.com/valinurovam/garagemq...
 

@@ -11,14 +11,14 @@ func Test_ServerPersist_Queue_Success(t *testing.T) {
 	defer sc.clean()
 	ch, _ := sc.client.Channel()
 
-	ch.QueueDeclare("testQu", true, false, false, false, emptyTable)
+	ch.QueueDeclare(t.Name(), true, false, false, false, emptyTable)
 	sc.server.Stop()
 
 	sc, _ = getNewSC(getDefaultTestConfig())
 	ch, _ = sc.client.Channel()
 
-	if _, err := ch.QueueDeclarePassive("testQu", false, false, false, false, emptyTable); err != nil {
-		t.Fatal("Expected queue exists after server restart", err)
+	if _, err := ch.QueueDeclarePassive(t.Name(), false, false, false, false, emptyTable); err != nil {
+		t.Error("Expected queue exists after server restart", err)
 	}
 }
 
@@ -35,18 +35,18 @@ func Test_ServerPersist_Exchange_Success(t *testing.T) {
 	ch, _ = sc.client.Channel()
 
 	if err := ch.ExchangeDeclarePassive("testExDirect", "direct", true, false, false, false, emptyTable); err != nil {
-		t.Fatal("Expected exchange exists after server restart", err)
+		t.Error("Expected exchange exists after server restart", err)
 	}
 	ex := sc.server.getVhost("/").GetExchange("testExDirect")
 	if ex.ExType() != exchange.ExTypeDirect {
-		t.Fatal("Expected direct exchange")
+		t.Error("Expected direct exchange")
 	}
 
 	if err := ch.ExchangeDeclarePassive("testExTopic", "topic", true, false, false, false, emptyTable); err != nil {
-		t.Fatal("Expected exchange exists after server restart", err)
+		t.Error("Expected exchange exists after server restart", err)
 	}
 	ex = sc.server.getVhost("/").GetExchange("testExTopic")
 	if ex.ExType() != exchange.ExTypeTopic {
-		t.Fatal("Expected topic exchange")
+		t.Error("Expected topic exchange")
 	}
 }
