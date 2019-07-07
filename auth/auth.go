@@ -5,12 +5,18 @@ import (
 	"crypto/md5"
 	"encoding/hex"
 	"errors"
+	"fmt"
 
 	"golang.org/x/crypto/bcrypt"
 )
 
-// SaslPlain method
-const SaslPlain = "PLAIN"
+const (
+	// SaslPlain method
+	SaslPlain  = "PLAIN"
+	authMD5    = "md5"
+	authPlain  = "plain"
+	authBcrypt = "bcrypt"
+)
 
 // SaslData represents standard SASL properties
 type SaslData struct {
@@ -23,7 +29,7 @@ type SaslData struct {
 func ParsePlain(response []byte) (SaslData, error) {
 	parts := bytes.Split(response, []byte{0})
 	if len(parts) != 3 {
-		return SaslData{}, errors.New("Unable to parse PLAIN SALS response")
+		return SaslData{}, errors.New("unable to parse PLAIN SALS response")
 	}
 
 	saslData := SaslData{}
@@ -35,26 +41,37 @@ func ParsePlain(response []byte) (SaslData, error) {
 }
 
 // HashPassword hash raw password and return hash for check
-func HashPassword(password string, isMd5 bool) (string, error) {
-	if isMd5 {
+func HashPassword(password string, authType string) (string, error) {
+	switch authType {
+	case authMD5:
 		h := md5.New()
 		// digest.Write never return any error, so skip error ckeck
 		h.Write([]byte(password))
 		return hex.EncodeToString(h.Sum(nil)), nil
+	case authBcrypt:
+		hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+		return string(hash), err
+	case authPlain:
+		return password, nil
+	default:
+		return "", fmt.Errorf("unknown auth type %s", authType)
 	}
-	hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
-	return string(hash), err
 }
 
 // CheckPasswordHash check given password and hash
-func CheckPasswordHash(password, hash string, isMd5 bool) bool {
-	if isMd5 {
+func CheckPasswordHash(password, hash string, authType string) bool {
+	switch authType {
+	case authMD5:
 		h := md5.New()
 		// digest.Write never return any error, so skip error ckeck
 		h.Write([]byte(password))
-
 		return hash == hex.EncodeToString(h.Sum(nil))
+	case authBcrypt:
+		err := bcrypt.CompareHashAndPassword([]byte(hash), []byte(password))
+		return err == nil
+	case authPlain:
+		return password == hash
+	default:
+		return false
 	}
-	err := bcrypt.CompareHashAndPassword([]byte(hash), []byte(password))
-	return err == nil
 }

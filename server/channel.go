@@ -40,6 +40,8 @@ type ChannelMetricsState struct {
 // Within a single socket connection, there can be multiple
 // independent threads of control, called "channels"
 type Channel struct {
+	deliveryTag        uint64
+	confirmDeliveryTag uint64
 	active             bool
 	confirmMode        bool
 	id                 uint16
@@ -55,8 +57,6 @@ type Channel struct {
 	consumers          map[string]*consumer.Consumer
 	qos                *qos.AmqpQos
 	consumerQos        *qos.AmqpQos
-	deliveryTag        uint64
-	confirmDeliveryTag uint64
 	confirmLock        sync.Mutex
 	confirmQueue       []*amqp.ConfirmMeta
 	ackLock            sync.Mutex

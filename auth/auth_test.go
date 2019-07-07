@@ -30,34 +30,73 @@ func TestParsePlain_Failed_WrongFormat(t *testing.T) {
 	}
 }
 
+
+func TestHashPassword_Failed(t *testing.T) {
+	password := t.Name()
+	_, err := HashPassword(password, t.Name())
+	if err == nil {
+		t.Fatal("Expected error about auth type")
+	}
+}
+
+
 func TestCheckPasswordHash_Bcrypt(t *testing.T) {
-	password := "tEsTpAsSwOrD123"
-	hash, err := HashPassword(password, false)
+	password := t.Name()
+	hash, err := HashPassword(password, authBcrypt)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	if !CheckPasswordHash(password, hash, false) {
+	if !CheckPasswordHash(password, hash, authBcrypt) {
 		t.Fatal("Expected true on check password")
 	}
 
-	if CheckPasswordHash("tEsTpAsSwOrD", hash, false) {
+	if CheckPasswordHash("tEsTpAsSwOrD", hash, authBcrypt) {
 		t.Fatal("Expected false on check password")
 	}
 }
 
 func TestCheckPasswordHash_MD5(t *testing.T) {
-	password := "tEsTpAsSwOrD123"
-	hash, err := HashPassword(password, true)
+	password := t.Name()
+	hash, err := HashPassword(password, authMD5)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	if !CheckPasswordHash(password, hash, true) {
+	if !CheckPasswordHash(password, hash, authMD5) {
 		t.Fatal("Expected true on check password")
 	}
 
-	if CheckPasswordHash("tEsTpAsSwOrD", hash, true) {
+	if CheckPasswordHash("tEsTpAsSwOrD", hash, authMD5) {
 		t.Fatal("Expected false on check password")
 	}
+}
+
+func TestCheckPasswordHash_Plain(t *testing.T) {
+	password := t.Name()
+	hash, err := HashPassword(password, authPlain)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if !CheckPasswordHash(password, hash, authPlain) {
+		t.Fatal("Expected true on check password")
+	}
+
+	if CheckPasswordHash("tEsTpAsSwOrD", hash, authMD5) {
+		t.Fatal("Expected false on check password")
+	}
+}
+
+func TestCheckFailed(t *testing.T) {
+	password := t.Name()
+	hash, err := HashPassword(password, authPlain)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if CheckPasswordHash(password, hash, "wrong type") {
+		t.Fatal("Expected false on check password with wrong type")
+	}
+
 }
