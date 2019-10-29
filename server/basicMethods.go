@@ -1,10 +1,10 @@
 package server
 
 import (
-	"github.com/valinurovam/garagemq/amqp"
-	"github.com/valinurovam/garagemq/consumer"
-	"github.com/valinurovam/garagemq/qos"
-	"github.com/valinurovam/garagemq/queue"
+	"github.com/patrickwalker/garagemq/amqp"
+	"github.com/patrickwalker/garagemq/consumer"
+	"github.com/patrickwalker/garagemq/qos"
+	"github.com/patrickwalker/garagemq/queue"
 )
 
 func (channel *Channel) basicRoute(method amqp.Method) *amqp.Error {

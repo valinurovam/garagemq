@@ -7,12 +7,12 @@ import (
 	"sync"
 	"sync/atomic"
 
-	"github.com/valinurovam/garagemq/amqp"
-	"github.com/valinurovam/garagemq/config"
-	"github.com/valinurovam/garagemq/interfaces"
-	"github.com/valinurovam/garagemq/metrics"
-	"github.com/valinurovam/garagemq/qos"
-	"github.com/valinurovam/garagemq/safequeue"
+	"github.com/patrickwalker/garagemq/amqp"
+	"github.com/patrickwalker/garagemq/config"
+	"github.com/patrickwalker/garagemq/interfaces"
+	"github.com/patrickwalker/garagemq/metrics"
+	"github.com/patrickwalker/garagemq/qos"
+	"github.com/patrickwalker/garagemq/safequeue"
 )
 
 // MetricsState represents current metrics states for queue

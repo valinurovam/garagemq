@@ -6,14 +6,14 @@ import (
 	"sync"
 
 	log "github.com/sirupsen/logrus"
-	"github.com/valinurovam/garagemq/amqp"
-	"github.com/valinurovam/garagemq/binding"
-	"github.com/valinurovam/garagemq/config"
-	"github.com/valinurovam/garagemq/exchange"
-	"github.com/valinurovam/garagemq/metrics"
-	"github.com/valinurovam/garagemq/msgstorage"
-	"github.com/valinurovam/garagemq/queue"
-	"github.com/valinurovam/garagemq/srvstorage"
+	"github.com/patrickwalker/garagemq/amqp"
+	"github.com/patrickwalker/garagemq/binding"
+	"github.com/patrickwalker/garagemq/config"
+	"github.com/patrickwalker/garagemq/exchange"
+	"github.com/patrickwalker/garagemq/metrics"
+	"github.com/patrickwalker/garagemq/msgstorage"
+	"github.com/patrickwalker/garagemq/queue"
+	"github.com/patrickwalker/garagemq/srvstorage"
 )
 
 const exDefaultName = ""

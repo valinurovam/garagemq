@@ -3,8 +3,8 @@ package admin
 import (
 	"net/http"
 
-	"github.com/valinurovam/garagemq/metrics"
-	"github.com/valinurovam/garagemq/server"
+	"github.com/patrickwalker/garagemq/metrics"
+	"github.com/patrickwalker/garagemq/server"
 )
 
 type OverviewHandler struct {

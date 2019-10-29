@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"github.com/tidwall/buntdb"
-	"github.com/valinurovam/garagemq/interfaces"
+	"github.com/patrickwalker/garagemq/interfaces"
 )
 
 // BuntDB implements wrapper for BuntDB database

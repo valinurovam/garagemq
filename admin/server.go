@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/valinurovam/garagemq/server"
+	"github.com/patrickwalker/garagemq/server"
 )
 
 type AdminServer struct {

@@ -1,7 +1,7 @@
 package queue
 
 import (
-	"github.com/valinurovam/garagemq/amqp"
+	"github.com/patrickwalker/garagemq/amqp"
 )
 
 type MsgStorageMock struct {

@@ -3,7 +3,7 @@ package server
 import (
 	"testing"
 
-	"github.com/valinurovam/garagemq/config"
+	"github.com/patrickwalker/garagemq/config"
 )
 
 func Test_Connection_Success(t *testing.T) {

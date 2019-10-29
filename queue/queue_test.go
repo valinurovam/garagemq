@@ -4,9 +4,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/valinurovam/garagemq/amqp"
-	"github.com/valinurovam/garagemq/config"
-	"github.com/valinurovam/garagemq/qos"
+	"github.com/patrickwalker/garagemq/amqp"
+	"github.com/patrickwalker/garagemq/config"
+	"github.com/patrickwalker/garagemq/qos"
 )
 
 const SIZE = 32

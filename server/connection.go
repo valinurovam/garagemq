@@ -13,9 +13,9 @@ import (
 	"time"
 
 	log "github.com/sirupsen/logrus"
-	"github.com/valinurovam/garagemq/amqp"
-	"github.com/valinurovam/garagemq/metrics"
-	"github.com/valinurovam/garagemq/qos"
+	"github.com/patrickwalker/garagemq/amqp"
+	"github.com/patrickwalker/garagemq/metrics"
+	"github.com/patrickwalker/garagemq/qos"
 )
 
 // connection status list

@@ -11,9 +11,9 @@ import (
 
 	"github.com/sirupsen/logrus"
 	amqpclient "github.com/streadway/amqp"
-	"github.com/valinurovam/garagemq/amqp"
-	"github.com/valinurovam/garagemq/config"
-	"github.com/valinurovam/garagemq/metrics"
+	"github.com/patrickwalker/garagemq/amqp"
+	"github.com/patrickwalker/garagemq/config"
+	"github.com/patrickwalker/garagemq/metrics"
 )
 
 var emptyTable = make(amqpclient.Table)

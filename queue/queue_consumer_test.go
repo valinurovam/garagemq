@@ -1,7 +1,7 @@
 package queue
 
 import (
-	"github.com/valinurovam/garagemq/qos"
+	"github.com/patrickwalker/garagemq/qos"
 )
 
 // ConsumerMock implements AMQP consumer mock

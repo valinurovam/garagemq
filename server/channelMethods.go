@@ -1,7 +1,7 @@
 package server
 
 import (
-	"github.com/valinurovam/garagemq/amqp"
+	"github.com/patrickwalker/garagemq/amqp"
 )
 
 func (channel *Channel) channelRoute(method amqp.Method) *amqp.Error {

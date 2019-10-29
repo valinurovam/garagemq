@@ -5,7 +5,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/valinurovam/garagemq/pool"
+	"github.com/patrickwalker/garagemq/pool"
 )
 
 var emptyMessageBufferPool = pool.NewBufferPool(0)

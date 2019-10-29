@@ -3,7 +3,7 @@ package safequeue
 import (
 	"sync"
 
-	"github.com/valinurovam/garagemq/amqp"
+	"github.com/patrickwalker/garagemq/amqp"
 )
 
 // We change item's type from {}interface to *amqp.Message, cause we know that we use safequeue only in AMQP context

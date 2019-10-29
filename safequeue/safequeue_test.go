@@ -3,7 +3,7 @@ package safequeue
 import (
 	"testing"
 
-	"github.com/valinurovam/garagemq/amqp"
+	"github.com/patrickwalker/garagemq/amqp"
 )
 
 const SIZE = 65536

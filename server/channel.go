@@ -10,13 +10,13 @@ import (
 
 	"github.com/sirupsen/logrus"
 	log "github.com/sirupsen/logrus"
-	"github.com/valinurovam/garagemq/amqp"
-	"github.com/valinurovam/garagemq/consumer"
-	"github.com/valinurovam/garagemq/exchange"
-	"github.com/valinurovam/garagemq/metrics"
-	"github.com/valinurovam/garagemq/pool"
-	"github.com/valinurovam/garagemq/qos"
-	"github.com/valinurovam/garagemq/queue"
+	"github.com/patrickwalker/garagemq/amqp"
+	"github.com/patrickwalker/garagemq/consumer"
+	"github.com/patrickwalker/garagemq/exchange"
+	"github.com/patrickwalker/garagemq/metrics"
+	"github.com/patrickwalker/garagemq/pool"
+	"github.com/patrickwalker/garagemq/qos"
+	"github.com/patrickwalker/garagemq/queue"
 )
 
 const (

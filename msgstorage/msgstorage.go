@@ -6,8 +6,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/valinurovam/garagemq/amqp"
-	"github.com/valinurovam/garagemq/interfaces"
+	"github.com/patrickwalker/garagemq/amqp"
+	"github.com/patrickwalker/garagemq/interfaces"
 )
 
 // MsgStorage represents storage for store all durable messages

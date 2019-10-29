@@ -1,4 +1,4 @@
-# GarageMQ [![Build Status](https://travis-ci.org/valinurovam/garagemq.svg?branch=master)](https://travis-ci.org/valinurovam/garagemq) [![Coverage Status](https://coveralls.io/repos/github/valinurovam/garagemq/badge.svg)](https://coveralls.io/github/valinurovam/garagemq) [![Go Report Card](https://goreportcard.com/badge/github.com/valinurovam/garagemq)](https://goreportcard.com/report/github.com/valinurovam/garagemq)
+# GarageMQ [![Build Status](https://travis-ci.org/patrickwalker/garagemq.svg?branch=master)](https://travis-ci.org/patrickwalker/garagemq) [![Coverage Status](https://coveralls.io/repos/github/patrickwalker/garagemq/badge.svg)](https://coveralls.io/github/patrickwalker/garagemq) [![Go Report Card](https://goreportcard.com/badge/github.com/patrickwalker/garagemq)](https://goreportcard.com/report/github.com/patrickwalker/garagemq)
 
 GarageMQ is a message broker that implement the Advanced Message Queuing Protocol (AMQP). Compatible with any AMQP or RabbitMQ clients (tested streadway/amqp and php-amqp lib)
 
@@ -48,17 +48,17 @@ docker run --name garagemq -p 5672:5672 -p 15672:15672 amplitudo/garagemq
 or
 
 ```shell
-go get -u github.com/valinurovam/garagemq/...
-cd $GOPATH/src/github.com/valinurovam/garagemq
+go get -u github.com/patrickwalker/garagemq/...
+cd $GOPATH/src/github.com/patrickwalker/garagemq
 docker build -t garagemq .
 docker run --name garagemq -p 5672:5672 -p 15672:15672 garagemq
 
 ```
 ### Go get
-You can also use [go get](https://golang.org/cmd/go/#hdr-Download_and_install_packages_and_dependencies): ```go get -u github.com/valinurovam/garagemq/...```
+You can also use [go get](https://golang.org/cmd/go/#hdr-Download_and_install_packages_and_dependencies): ```go get -u github.com/patrickwalker/garagemq/...```
 ```shell
-go get -u github.com/valinurovam/garagemq/...
-cd $GOPATH/src/github.com/valinurovam/garagemq
+go get -u github.com/patrickwalker/garagemq/...
+cd $GOPATH/src/github.com/patrickwalker/garagemq
 make build.all && make run
 ```
 ### Execution flags

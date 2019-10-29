@@ -5,8 +5,8 @@ import (
 	"net/http"
 	"sort"
 
-	"github.com/valinurovam/garagemq/metrics"
-	"github.com/valinurovam/garagemq/server"
+	"github.com/patrickwalker/garagemq/metrics"
+	"github.com/patrickwalker/garagemq/server"
 )
 
 type ChannelsHandler struct {

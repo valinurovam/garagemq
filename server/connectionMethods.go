@@ -4,8 +4,8 @@ import (
 	"os"
 	"runtime"
 
-	"github.com/valinurovam/garagemq/amqp"
-	"github.com/valinurovam/garagemq/auth"
+	"github.com/patrickwalker/garagemq/amqp"
+	"github.com/patrickwalker/garagemq/auth"
 )
 
 func (channel *Channel) connectionRoute(method amqp.Method) *amqp.Error {
@@ -68,7 +68,7 @@ func (channel *Channel) connectionStartOk(method *amqp.ConnectionStartOk) *amqp.
 		channel.conn.close()
 	}
 
-	if !channel.server.checkAuth(saslData) {
+	if !channel.server.CheckAuth(saslData) {
 		return amqp.NewConnectionError(amqp.NotAllowed, "login failure", method.ClassIdentifier(), method.MethodIdentifier())
 	}
 	channel.conn.userName = saslData.Username

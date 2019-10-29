@@ -11,14 +11,14 @@ import (
 	"syscall"
 
 	log "github.com/sirupsen/logrus"
-	"github.com/valinurovam/garagemq/amqp"
-	"github.com/valinurovam/garagemq/auth"
-	"github.com/valinurovam/garagemq/config"
-	"github.com/valinurovam/garagemq/interfaces"
-	"github.com/valinurovam/garagemq/metrics"
-	"github.com/valinurovam/garagemq/msgstorage"
-	"github.com/valinurovam/garagemq/srvstorage"
-	"github.com/valinurovam/garagemq/storage"
+	"github.com/patrickwalker/garagemq/amqp"
+	"github.com/patrickwalker/garagemq/auth"
+	"github.com/patrickwalker/garagemq/config"
+	"github.com/patrickwalker/garagemq/interfaces"
+	"github.com/patrickwalker/garagemq/metrics"
+	"github.com/patrickwalker/garagemq/msgstorage"
+	"github.com/patrickwalker/garagemq/srvstorage"
+	"github.com/patrickwalker/garagemq/storage"
 )
 
 type ServerState int
@@ -61,6 +61,7 @@ type Server struct {
 	status       ServerState
 	storage      *srvstorage.SrvStorage
 	metrics      *SrvMetricsState
+	CheckAuth 	 func(saslData auth.SaslData) bool 
 }
 
 // NewServer returns new instance of AMQP Server
@@ -76,7 +77,7 @@ func NewServer(host string, port string, protoVersion string, config *config.Con
 		connSeq:      0,
 	}
 	server.initMetrics()
-
+	server.CheckAuth =  server.checkAuth
 	return
 }
 
@@ -214,6 +215,16 @@ func (srv *Server) removeConnection(connID uint64) {
 	defer srv.connLock.Unlock()
 
 	delete(srv.connections, connID)
+}
+
+// AddUser adds a AMQP user to the server performs an update of password if already exists
+func (srv *Server) AddUser(user config.User){
+	srv.users[user.Username] = user.Password
+}
+
+// SetAuth allows a user to substitute the Auth Function used
+func (srv *Server) SetAuth(in func(auth.SaslData) bool){
+	srv.CheckAuth = in
 }
 
 func (srv *Server) checkAuth(saslData auth.SaslData) bool {

@@ -8,7 +8,7 @@ import (
 	"io"
 	"time"
 
-	"github.com/valinurovam/garagemq/pool"
+	"github.com/patrickwalker/garagemq/pool"
 )
 
 var emptyBufferPool = pool.NewBufferPool(0)

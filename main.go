@@ -14,10 +14,10 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
-	"github.com/valinurovam/garagemq/admin"
-	"github.com/valinurovam/garagemq/config"
-	"github.com/valinurovam/garagemq/metrics"
-	"github.com/valinurovam/garagemq/server"
+	"github.com/patrickwalker/garagemq/admin"
+	"github.com/patrickwalker/garagemq/config"
+	"github.com/patrickwalker/garagemq/metrics"
+	"github.com/patrickwalker/garagemq/server"
 )
 
 func init() {

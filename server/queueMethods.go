@@ -3,10 +3,10 @@ package server
 import (
 	"fmt"
 
-	"github.com/valinurovam/garagemq/amqp"
-	"github.com/valinurovam/garagemq/binding"
-	"github.com/valinurovam/garagemq/exchange"
-	"github.com/valinurovam/garagemq/queue"
+	"github.com/patrickwalker/garagemq/amqp"
+	"github.com/patrickwalker/garagemq/binding"
+	"github.com/patrickwalker/garagemq/exchange"
+	"github.com/patrickwalker/garagemq/queue"
 )
 
 func (channel *Channel) queueRoute(method amqp.Method) *amqp.Error {

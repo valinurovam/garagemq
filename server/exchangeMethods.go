@@ -2,8 +2,8 @@ package server
 
 import (
 	"fmt"
-	"github.com/valinurovam/garagemq/amqp"
-	"github.com/valinurovam/garagemq/exchange"
+	"github.com/patrickwalker/garagemq/amqp"
+	"github.com/patrickwalker/garagemq/exchange"
 	"strings"
 )
 

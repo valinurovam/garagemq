@@ -7,10 +7,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/valinurovam/garagemq/binding"
-	"github.com/valinurovam/garagemq/exchange"
-	"github.com/valinurovam/garagemq/interfaces"
-	"github.com/valinurovam/garagemq/queue"
+	"github.com/patrickwalker/garagemq/binding"
+	"github.com/patrickwalker/garagemq/exchange"
+	"github.com/patrickwalker/garagemq/interfaces"
+	"github.com/patrickwalker/garagemq/queue"
 )
 
 const queuePrefix = "vhost.queue"

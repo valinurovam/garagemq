@@ -4,7 +4,7 @@ import (
 	"time"
 
 	"github.com/dgraph-io/badger"
-	"github.com/valinurovam/garagemq/interfaces"
+	"github.com/patrickwalker/garagemq/interfaces"
 )
 
 // Badger implements wrapper for badger database

@@ -3,8 +3,8 @@ package exchange
 import (
 	"testing"
 
-	"github.com/valinurovam/garagemq/amqp"
-	"github.com/valinurovam/garagemq/binding"
+	"github.com/patrickwalker/garagemq/amqp"
+	"github.com/patrickwalker/garagemq/binding"
 )
 
 func getTestEx() *Exchange {

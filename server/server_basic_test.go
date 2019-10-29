@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/streadway/amqp"
-	amqp2 "github.com/valinurovam/garagemq/amqp"
+	amqp2 "github.com/patrickwalker/garagemq/amqp"
 )
 
 func Test_BasicQos_Channel_Success(t *testing.T) {

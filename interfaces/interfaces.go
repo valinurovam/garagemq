@@ -1,7 +1,7 @@
 package interfaces
 
 import (
-	"github.com/valinurovam/garagemq/amqp"
+	"github.com/patrickwalker/garagemq/amqp"
 )
 
 // Channel represents base channel public interface

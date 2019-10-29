@@ -6,10 +6,10 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/valinurovam/garagemq/amqp"
-	"github.com/valinurovam/garagemq/interfaces"
-	"github.com/valinurovam/garagemq/qos"
-	"github.com/valinurovam/garagemq/queue"
+	"github.com/patrickwalker/garagemq/amqp"
+	"github.com/patrickwalker/garagemq/interfaces"
+	"github.com/patrickwalker/garagemq/qos"
+	"github.com/patrickwalker/garagemq/queue"
 )
 
 const (

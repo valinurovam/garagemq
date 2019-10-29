@@ -3,7 +3,7 @@ package server
 import (
 	"testing"
 
-	"github.com/valinurovam/garagemq/exchange"
+	"github.com/patrickwalker/garagemq/exchange"
 )
 
 func Test_ServerPersist_Queue_Success(t *testing.T) {
