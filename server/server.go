@@ -173,6 +173,8 @@ func (srv *Server) listen() {
 		"address": address,
 	}).Info("Server started")
 
+	daemonReady()
+
 	for {
 		conn, err := srv.listener.AcceptTCP()
 		if err != nil {
