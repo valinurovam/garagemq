@@ -47,11 +47,11 @@ type SrvMetricsState struct {
 
 // Server implements AMQP server
 type Server struct {
+	connSeq      uint64
 	host         string
 	port         string
 	protoVersion string
 	listener     *net.TCPListener
-	connSeq      uint64
 	connLock     sync.Mutex
 	connections  map[uint64]*Connection
 	config       *config.Config
@@ -227,7 +227,7 @@ func (srv *Server) checkAuth(saslData auth.SaslData) bool {
 		return auth.CheckPasswordHash(
 			saslData.Password,
 			passwordHash,
-			srv.config.Security.PasswordCheck == "md5",
+			srv.config.Security.PasswordCheck,
 		)
 	}
 	return false
