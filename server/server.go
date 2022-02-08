@@ -151,6 +151,14 @@ func (srv *Server) Stop() {
 	srv.status = Stopped
 }
 
+func (srv *Server) Addr() string {
+	if srv.listener != nil {
+		return srv.listener.Addr().String()
+	}
+
+	return ""
+}
+
 func (srv *Server) getVhost(name string) *VirtualHost {
 	srv.vhostsLock.Lock()
 	defer srv.vhostsLock.Unlock()
