@@ -178,7 +178,7 @@ func (srv *Server) listen() {
 	}
 
 	log.WithFields(log.Fields{
-		"address": address,
+		"address": srv.listener.Addr().String(),
 	}).Info("Server started")
 
 	daemonReady()
