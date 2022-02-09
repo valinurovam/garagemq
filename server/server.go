@@ -179,6 +179,11 @@ func (srv *Server) listen() {
 		os.Exit(1)
 	}
 
+	host, port, err := net.SplitHostPort(srv.listener.Addr().String())
+	if err == nil {
+		srv.host, srv.port = host, port
+	}
+
 	if srv.status == Starting {
 		srv.status = Running
 	}
