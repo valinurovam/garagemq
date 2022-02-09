@@ -179,6 +179,10 @@ func (srv *Server) listen() {
 		os.Exit(1)
 	}
 
+	if srv.status == Starting {
+		srv.status = Running
+	}
+
 	log.WithFields(log.Fields{
 		"address": srv.listener.Addr().String(),
 	}).Info("Server started")
@@ -188,7 +192,7 @@ func (srv *Server) listen() {
 	for {
 		conn, err := srv.listener.AcceptTCP()
 		if err != nil {
-			if srv.status != Running && srv.status != Starting {
+			if srv.status != Running {
 				return
 			}
 			srv.stopWithError(err, "accepting connection")
@@ -203,7 +207,6 @@ func (srv *Server) listen() {
 		conn.SetNoDelay(srv.config.TCP.Nodelay)
 
 		srv.acceptConnection(conn)
-		srv.status = Running
 	}
 }
 
