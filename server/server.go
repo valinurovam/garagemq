@@ -27,6 +27,7 @@ type ServerState int
 const (
 	Stopped ServerState = iota
 	Running
+	Starting
 	Stopping
 )
 
@@ -103,6 +104,8 @@ func (srv *Server) Start() {
 		"pid": os.Getpid(),
 	}).Info("Server starting")
 
+	srv.status = Starting
+
 	go srv.hookSignals()
 
 	srv.initServerStorage()
@@ -116,7 +119,6 @@ func (srv *Server) Start() {
 	go srv.listen()
 
 	srv.storage.UpdateLastStart()
-	srv.status = Running
 	select {}
 }
 
@@ -186,7 +188,7 @@ func (srv *Server) listen() {
 	for {
 		conn, err := srv.listener.AcceptTCP()
 		if err != nil {
-			if srv.status != Running {
+			if srv.status != Running && srv.status != Starting {
 				return
 			}
 			srv.stopWithError(err, "accepting connection")
@@ -201,6 +203,7 @@ func (srv *Server) listen() {
 		conn.SetNoDelay(srv.config.TCP.Nodelay)
 
 		srv.acceptConnection(conn)
+		srv.status = Running
 	}
 }
 
