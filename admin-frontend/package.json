@@ -2,6 +2,9 @@
   "name": "admin-frontend",
   "version": "0.1.0",
   "private": true,
+  "engines": {
+    "node": "14.* || 16.*"
+  },
   "dependencies": {
     "@material-ui/core": "^1.5.1",
     "@material-ui/icons": "^2.0.3",

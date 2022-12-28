@@ -76,12 +76,11 @@ class Overview extends React.Component {
 
         metricsData.forEach(function (metric) {
             if (metric.name === 'server.traffic_in' || metric.name === 'server.traffic_out') {
-                metric.sample.map((sample) => {
-                    if (!sample) {
-                        return
+                metric.sample.forEach((sample) => {
+                    if (sample) {
+                        // convert to MB/s
+                        sample.value = Math.round(sample.value * 100 / 1024 / 1024) / 100
                     }
-                    // convert to MB/s
-                    sample.value = Math.round(sample.value * 100 / 1024 / 1024) / 100
                 })
             }
             metrics[metric.name] = metric.sample

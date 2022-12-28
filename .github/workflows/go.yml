@@ -10,8 +10,7 @@ on:
     branches: [ "master" ]
 
 jobs:
-
-  build:
+  build-go:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -33,3 +32,29 @@ jobs:
         env:
           COVERALLS_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: goveralls -coverprofile=covprofile -service=github
+
+  build-js:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: 'admin-frontend'
+    strategy:
+      matrix:
+        node-version: [ 14.x, 16.x ]
+
+    steps:
+      - uses: actions/checkout@v3
+      - name: Use Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v3
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: 'npm'
+          cache-dependency-path: '**/package-lock.json'
+
+      - name: Install deps
+        working-directory: admin-frontend
+        run: npm ci
+
+      - name: Build admin
+        working-directory: admin-frontend
+        run: npm run build --if-present
