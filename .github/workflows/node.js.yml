@@ -12,7 +12,7 @@ on:
 defaults:
   run:
     shell: bash
-    working-directory: admin-frontend
+    working-directory: ./admin-frontend
 
 jobs:
   build:
