@@ -8,6 +8,11 @@ on:
     branches: [ "master" ]
   pull_request:
     branches: [ "master" ]
+    
+defaults:
+  run:
+    shell: bash
+    working-directory: admin-frontend
 
 jobs:
   build:
