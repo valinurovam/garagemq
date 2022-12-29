@@ -1,4 +1,4 @@
-# GarageMQ [![Build Status](https://github.com/valinurovam/garagemq/actions/workflows/go.yml/badge.svg)](https://github.com/valinurovam/garagemq/actions) [![Coverage Status](https://coveralls.io/repos/github/valinurovam/garagemq/badge.svg)](https://coveralls.io/github/valinurovam/garagemq) [![Go Report Card](https://goreportcard.com/badge/github.com/valinurovam/garagemq)](https://goreportcard.com/report/github.com/valinurovam/garagemq)
+# GarageMQ [![Build Status](https://github.com/valinurovam/garagemq/actions/workflows/build.yml/badge.svg)](https://github.com/valinurovam/garagemq/actions) [![Coverage Status](https://coveralls.io/repos/github/valinurovam/garagemq/badge.svg)](https://coveralls.io/github/valinurovam/garagemq) [![Go Report Card](https://goreportcard.com/badge/github.com/valinurovam/garagemq)](https://goreportcard.com/report/github.com/valinurovam/garagemq)
 
 GarageMQ is a message broker that implement the Advanced Message Queuing Protocol (AMQP). Compatible with any AMQP or RabbitMQ clients (tested streadway/amqp and php-amqp lib)
 
