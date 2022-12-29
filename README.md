@@ -22,7 +22,7 @@ GarageMQ is a message broker that implement the Advanced Message Queuing Protoco
 
 ## Goals of this project
 
-- Have fun and learn a lon
+- Have fun and learn a lot
 - Implement AMQP message broker in Go
 - Make protocol compatible with RabbitMQ and standard AMQP 0-9-1.
 
