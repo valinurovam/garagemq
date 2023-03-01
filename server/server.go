@@ -161,6 +161,12 @@ func (srv *Server) getVhost(name string) *VirtualHost {
 func (srv *Server) listen() {
 	address := srv.host + ":" + srv.port
 	tcpAddr, err := net.ResolveTCPAddr("tcp4", address)
+	if err != nil {
+		log.WithError(err).WithFields(log.Fields{
+			"address": address,
+		}).Error("Error resolving tcp address")
+		os.Exit(1)
+	}
 	srv.listener, err = net.ListenTCP("tcp", tcpAddr)
 	if err != nil {
 		log.WithError(err).WithFields(log.Fields{
@@ -329,12 +335,13 @@ func (srv *Server) onSignal(sig os.Signal) {
 }
 
 // Special method for calling in tests without os.Exit(0)
-func (srv *Server) testOnSignal(sig os.Signal) {
-	switch sig {
-	case syscall.SIGTERM, syscall.SIGINT:
-		srv.Stop()
-	}
-}
+// Commented out as it's not currently used
+// func (srv *Server) testOnSignal(sig os.Signal) {
+// 	switch sig {
+// 	case syscall.SIGTERM, syscall.SIGINT:
+// 		srv.Stop()
+// 	}
+// }
 
 func (srv *Server) hookSignals() {
 	c := make(chan os.Signal, 1)

@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	amqp2 "github.com/streadway/amqp"
+	amqpclient "github.com/rabbitmq/amqp091-go"
 	"github.com/valinurovam/garagemq/amqp"
 )
 
@@ -84,7 +84,7 @@ func Test_ChannelFlow_Failed_FlowOkSend(t *testing.T) {
 	ch, _ := sc.client.Channel()
 
 	flowChan := make(chan bool)
-	closeChan := make(chan *amqp2.Error, 1)
+	closeChan := make(chan *amqpclient.Error, 1)
 	ch.NotifyFlow(flowChan)
 	ch.NotifyClose(closeChan)
 
@@ -100,7 +100,7 @@ func Test_ChannelFlow_Failed_FlowOkSend(t *testing.T) {
 		fmt.Println(notify)
 	}
 
-	var closeErr *amqp2.Error
+	var closeErr *amqpclient.Error
 
 	select {
 	case closeErr = <-closeChan:

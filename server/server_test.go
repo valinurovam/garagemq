@@ -2,15 +2,15 @@ package server
 
 import (
 	"bytes"
-	"io/ioutil"
+	"io"
 	"log"
 	"net"
 	"os"
 	"testing"
 	"time"
 
+	amqpclient "github.com/rabbitmq/amqp091-go"
 	"github.com/sirupsen/logrus"
-	amqpclient "github.com/streadway/amqp"
 	"github.com/valinurovam/garagemq/amqp"
 	"github.com/valinurovam/garagemq/config"
 	"github.com/valinurovam/garagemq/metrics"
@@ -20,7 +20,7 @@ var emptyTable = make(amqpclient.Table)
 var proto = amqp.ProtoRabbit
 
 func init() {
-	logrus.SetOutput(ioutil.Discard)
+	logrus.SetOutput(io.Discard)
 	//logrus.SetFormatter(&logrus.TextFormatter{FullTimestamp: true})
 	//logrus.SetOutput(os.Stdout)
 	//logrus.SetLevel(logrus.InfoLevel)
@@ -43,7 +43,7 @@ func (sc *ServerClient) clean() {
 	if sc.server != nil && sc.server.status == Running {
 		sc.server.Stop()
 	}
-	if err:=os.RemoveAll(cfg.srvConfig.Db.DefaultPath); err != nil {
+	if err := os.RemoveAll(cfg.srvConfig.Db.DefaultPath); err != nil {
 		panic(err)
 	}
 	metrics.Destroy()
@@ -101,7 +101,7 @@ func getNewSC(config TestConfig) (*ServerClient, error) {
 	sc.server.status = Running
 
 	// the only chance to disable badger logger
-	log.SetOutput(ioutil.Discard)
+	log.SetOutput(io.Discard)
 
 	toServer, toServerEx, fromClient, fromClientEx, err := networkSim()
 	if err != nil {
@@ -135,6 +135,9 @@ func getNewSC(config TestConfig) (*ServerClient, error) {
 func networkSim() (net.Conn, net.Conn, *net.TCPConn, *net.TCPConn, error) {
 	tcpAddr, _ := net.ResolveTCPAddr("tcp", "127.0.0.1:0")
 	listener, err := net.ListenTCP("tcp", tcpAddr)
+	if err != nil {
+		return nil, nil, nil, nil, err
+	}
 	defer listener.Close()
 	toServer1, err := net.Dial("tcp", listener.Addr().String())
 	if err != nil {
@@ -236,6 +239,9 @@ func TestServer_WrongProtocol(t *testing.T) {
 	defer server.Stop()
 
 	amqpAddr, err := net.ResolveTCPAddr("tcp", "localhost:55672")
+	if err != nil {
+		t.Error("Address resolving failed:", err.Error())
+	}
 	connDial, err := net.DialTCP("tcp", nil, amqpAddr)
 	if err != nil {
 		t.Error("AMQP Dial failed:", err.Error())

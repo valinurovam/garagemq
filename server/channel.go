@@ -8,7 +8,6 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/sirupsen/logrus"
 	log "github.com/sirupsen/logrus"
 	"github.com/valinurovam/garagemq/amqp"
 	"github.com/valinurovam/garagemq/consumer"
@@ -313,7 +312,7 @@ func (channel *Channel) handleContentBody(bodyFrame *amqp.Frame) *amqp.Error {
 func (channel *Channel) SendMethod(method amqp.Method) {
 	var rawMethod = channel.bufferPool.Get()
 	if err := amqp.WriteMethod(rawMethod, method, channel.server.protoVersion); err != nil {
-		logrus.WithError(err).Error("Error")
+		log.WithError(err).Error("Error")
 	}
 
 	closeAfter := method.ClassIdentifier() == amqp.ClassConnection && method.MethodIdentifier() == amqp.MethodConnectionCloseOk
@@ -375,8 +374,8 @@ func (channel *Channel) addConfirm(meta *amqp.ConfirmMeta) {
 }
 
 func (channel *Channel) sendConfirms() {
-	tick := time.Tick(20 * time.Millisecond)
-	for range tick {
+	tick := time.NewTicker(20 * time.Millisecond)
+	for range tick.C {
 		if channel.status == channelClosed {
 			return
 		}

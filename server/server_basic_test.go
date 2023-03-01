@@ -2,12 +2,13 @@ package server
 
 import (
 	"bytes"
+	"context"
 	"strconv"
 	"testing"
 	"time"
 
-	"github.com/streadway/amqp"
-	amqp2 "github.com/valinurovam/garagemq/amqp"
+	amqpclient "github.com/rabbitmq/amqp091-go"
+	"github.com/valinurovam/garagemq/amqp"
 )
 
 func Test_BasicQos_Channel_Success(t *testing.T) {
@@ -68,7 +69,7 @@ func Test_BasicQos_Check_Global_Success(t *testing.T) {
 
 	msgCount := 10
 	for i := 0; i < msgCount; i++ {
-		ch.Publish("", queue.Name, false, false, amqp.Publishing{ContentType: "text/plain", Body: []byte("test")})
+		ch.PublishWithContext(context.Background(), "", queue.Name, false, false, amqpclient.Publishing{ContentType: "text/plain", Body: []byte("test")})
 	}
 
 	cmr, err := ch.Consume(t.Name(), "tag", false, false, false, false, emptyTable)
@@ -122,7 +123,7 @@ func Test_BasicQos_Check_NonGlobal_Success(t *testing.T) {
 
 	msgCount := 10
 	for i := 0; i < msgCount; i++ {
-		ch.Publish("", queue.Name, false, false, amqp.Publishing{ContentType: "text/plain", Body: []byte("test")})
+		ch.PublishWithContext(context.Background(), "", queue.Name, false, false, amqpclient.Publishing{ContentType: "text/plain", Body: []byte("test")})
 	}
 
 	cmr, err := ch.Consume(t.Name(), "tag", false, false, false, false, emptyTable)
@@ -165,11 +166,11 @@ func Test_BasicPublish_Success(t *testing.T) {
 	ch.ExchangeDeclare("testEx", "direct", false, false, false, false, emptyTable)
 	queue, _ := ch.QueueDeclare(t.Name(), false, false, false, false, emptyTable)
 
-	if err := ch.Publish(
+	if err := ch.PublishWithContext(context.Background(),
 		"testEx",
 		queue.Name,
 		false, false,
-		amqp.Publishing{ContentType: "text/plain", Body: []byte("test")},
+		amqpclient.Publishing{ContentType: "text/plain", Body: []byte("test")},
 	); err != nil {
 		t.Error(err)
 	}
@@ -182,11 +183,11 @@ func Test_BasicPublish_Persistent_Success(t *testing.T) {
 
 	qu, _ := ch.QueueDeclare(t.Name(), true, false, false, false, emptyTable)
 
-	if err := ch.Publish(
+	if err := ch.PublishWithContext(context.Background(),
 		"",
 		qu.Name,
 		false, false,
-		amqp.Publishing{ContentType: "text/plain", Body: []byte("testMessage"), DeliveryMode: amqp.Persistent},
+		amqpclient.Publishing{ContentType: "text/plain", Body: []byte("testMessage"), DeliveryMode: amqpclient.Persistent},
 	); err != nil {
 		t.Error(err)
 	}
@@ -219,11 +220,11 @@ func Test_BasicPublish_Persistent_Failed_QueueNonDurable(t *testing.T) {
 
 	qu, _ := ch.QueueDeclare(t.Name(), false, false, false, false, emptyTable)
 
-	if err := ch.Publish(
+	if err := ch.PublishWithContext(context.Background(),
 		"",
 		qu.Name,
 		false, false,
-		amqp.Publishing{ContentType: "text/plain", Body: []byte("test"), DeliveryMode: amqp.Persistent},
+		amqpclient.Publishing{ContentType: "text/plain", Body: []byte("test"), DeliveryMode: amqpclient.Persistent},
 	); err != nil {
 		t.Error(err)
 	}
@@ -233,7 +234,7 @@ func Test_BasicPublish_Persistent_Failed_QueueNonDurable(t *testing.T) {
 	found := false
 	vhost := sc.server.getVhost("/")
 	storage := vhost.msgStorageP
-	storage.Iterate(func(queue string, message *amqp2.Message) {
+	storage.Iterate(func(queue string, message *amqp.Message) {
 		found = true
 	})
 
@@ -246,17 +247,17 @@ func Test_BasicPublish_Failed_ExchangeNotFound(t *testing.T) {
 	sc, _ := getNewSC(getDefaultTestConfig())
 	defer sc.clean()
 	ch, _ := sc.client.Channel()
-	c := make(chan *amqp.Error)
+	c := make(chan *amqpclient.Error)
 	ch.NotifyClose(c)
 
 	ch.ExchangeDeclare("testEx", "direct", false, false, false, false, emptyTable)
 	queue, _ := ch.QueueDeclare(t.Name(), false, false, false, false, emptyTable)
 
-	if err := ch.Publish(
+	if err := ch.PublishWithContext(context.Background(),
 		"test",
 		queue.Name,
 		false, false,
-		amqp.Publishing{ContentType: "text/plain", Body: []byte("test")},
+		amqpclient.Publishing{ContentType: "text/plain", Body: []byte("test")},
 	); err != nil {
 		t.Error(err)
 	}
@@ -273,17 +274,17 @@ func Test_BasicPublish_Failed_Immediate(t *testing.T) {
 	sc, _ := getNewSC(getDefaultTestConfig())
 	defer sc.clean()
 	ch, _ := sc.client.Channel()
-	c := make(chan *amqp.Error)
+	c := make(chan *amqpclient.Error)
 	ch.NotifyClose(c)
 
 	ch.ExchangeDeclare("testEx", "direct", false, false, false, false, emptyTable)
 	queue, _ := ch.QueueDeclare(t.Name(), false, false, false, false, emptyTable)
 
-	if err := ch.Publish(
+	if err := ch.PublishWithContext(context.Background(),
 		"test",
 		queue.Name,
 		false, true,
-		amqp.Publishing{ContentType: "text/plain", Body: []byte("test")},
+		amqpclient.Publishing{ContentType: "text/plain", Body: []byte("test")},
 	); err != nil {
 		t.Error(err)
 	}
@@ -300,17 +301,17 @@ func Test_BasicPublish_Failed_Mandatory(t *testing.T) {
 	sc, _ := getNewSC(getDefaultTestConfig())
 	defer sc.clean()
 	ch, _ := sc.client.Channel()
-	r := make(chan amqp.Return)
+	r := make(chan amqpclient.Return)
 	ch.NotifyReturn(r)
 
 	ch.ExchangeDeclare("testEx", "direct", false, false, false, false, emptyTable)
 	queue, _ := ch.QueueDeclare(t.Name(), false, false, false, false, emptyTable)
 
-	if err := ch.Publish(
+	if err := ch.PublishWithContext(context.Background(),
 		"testEx",
 		queue.Name,
 		true, false,
-		amqp.Publishing{ContentType: "text/plain", Body: []byte("test")},
+		amqpclient.Publishing{ContentType: "text/plain", Body: []byte("test")},
 	); err != nil {
 		t.Error(err)
 	}
@@ -332,7 +333,7 @@ func Test_BasicConsume_WithOrderCheck_Success(t *testing.T) {
 
 	msgCount := 10
 	for i := 0; i < msgCount; i++ {
-		ch.Publish("", queue.Name, false, false, amqp.Publishing{ContentType: "text/plain", Body: []byte("test" + strconv.Itoa(i))})
+		ch.PublishWithContext(context.Background(), "", queue.Name, false, false, amqpclient.Publishing{ContentType: "text/plain", Body: []byte("test" + strconv.Itoa(i))})
 	}
 
 	cmr, err := ch.Consume(t.Name(), "tag", false, false, false, false, emptyTable)
@@ -511,7 +512,7 @@ func Test_BasicAck_Success(t *testing.T) {
 
 	msgCount := 10
 	for i := 0; i < msgCount; i++ {
-		ch.Publish("", queue.Name, false, false, amqp.Publishing{ContentType: "text/plain", Body: []byte("test")})
+		ch.PublishWithContext(context.Background(), "", queue.Name, false, false, amqpclient.Publishing{ContentType: "text/plain", Body: []byte("test")})
 	}
 
 	cmr, err := ch.Consume(t.Name(), "tag", false, false, false, false, emptyTable)
@@ -522,7 +523,7 @@ func Test_BasicAck_Success(t *testing.T) {
 	tick := time.After(100 * time.Millisecond)
 	count := 0
 	leave := false
-	deliveries := make([]amqp.Delivery, 0, 10)
+	deliveries := make([]amqpclient.Delivery, 0, 10)
 	for {
 		select {
 		case msg := <-cmr:
@@ -563,7 +564,7 @@ func Test_BasicAckMultiple_Success(t *testing.T) {
 
 	msgCount := 10
 	for i := 0; i < msgCount; i++ {
-		ch.Publish("", queue.Name, false, false, amqp.Publishing{ContentType: "text/plain", Body: []byte("test")})
+		ch.PublishWithContext(context.Background(), "", queue.Name, false, false, amqpclient.Publishing{ContentType: "text/plain", Body: []byte("test")})
 	}
 
 	cmr, err := ch.Consume(t.Name(), "tag", false, false, false, false, emptyTable)
@@ -574,7 +575,7 @@ func Test_BasicAckMultiple_Success(t *testing.T) {
 	tick := time.After(100 * time.Millisecond)
 	count := 0
 	leave := false
-	deliveries := make([]amqp.Delivery, 0, 10)
+	deliveries := make([]amqpclient.Delivery, 0, 10)
 	for {
 		select {
 		case msg := <-cmr:
@@ -615,7 +616,7 @@ func Test_BasicNack_RequeueTrue_Success(t *testing.T) {
 
 	msgCount := 10
 	for i := 0; i < msgCount; i++ {
-		ch.Publish("", queue.Name, false, false, amqp.Publishing{ContentType: "text/plain", Body: []byte("test")})
+		ch.PublishWithContext(context.Background(), "", queue.Name, false, false, amqpclient.Publishing{ContentType: "text/plain", Body: []byte("test")})
 	}
 
 	cmr, err := ch.Consume(t.Name(), "tag", false, false, false, false, emptyTable)
@@ -626,7 +627,7 @@ func Test_BasicNack_RequeueTrue_Success(t *testing.T) {
 	tick := time.After(100 * time.Millisecond)
 	count := 0
 	leave := false
-	deliveries := make([]amqp.Delivery, 0, 10)
+	deliveries := make([]amqpclient.Delivery, 0, 10)
 	for {
 		select {
 		case msg := <-cmr:
@@ -675,7 +676,7 @@ func Test_BasicNack_RequeueTrue_Multiple_Success(t *testing.T) {
 
 	msgCount := 10
 	for i := 0; i < msgCount; i++ {
-		ch.Publish("", queue.Name, false, false, amqp.Publishing{ContentType: "text/plain", Body: []byte("test")})
+		ch.PublishWithContext(context.Background(), "", queue.Name, false, false, amqpclient.Publishing{ContentType: "text/plain", Body: []byte("test")})
 	}
 
 	cmr, err := ch.Consume(t.Name(), "tag", false, false, false, false, emptyTable)
@@ -686,7 +687,7 @@ func Test_BasicNack_RequeueTrue_Multiple_Success(t *testing.T) {
 	tick := time.After(100 * time.Millisecond)
 	count := 0
 	leave := false
-	deliveries := make([]amqp.Delivery, 0, 10)
+	deliveries := make([]amqpclient.Delivery, 0, 10)
 	for {
 		select {
 		case msg := <-cmr:
@@ -735,7 +736,7 @@ func Test_BasicNack_RequeueFalse_Success(t *testing.T) {
 
 	msgCount := 10
 	for i := 0; i < msgCount; i++ {
-		ch.Publish("", queue.Name, false, false, amqp.Publishing{ContentType: "text/plain", Body: []byte("test")})
+		ch.PublishWithContext(context.Background(), "", queue.Name, false, false, amqpclient.Publishing{ContentType: "text/plain", Body: []byte("test")})
 	}
 
 	cmr, err := ch.Consume(t.Name(), "tag", false, false, false, false, emptyTable)
@@ -746,7 +747,7 @@ func Test_BasicNack_RequeueFalse_Success(t *testing.T) {
 	tick := time.After(100 * time.Millisecond)
 	count := 0
 	leave := false
-	deliveries := make([]amqp.Delivery, 0, 10)
+	deliveries := make([]amqpclient.Delivery, 0, 10)
 	for {
 		select {
 		case msg := <-cmr:
@@ -793,7 +794,7 @@ func Test_BasicNack_RequeueFalse_Multiple_Success(t *testing.T) {
 
 	msgCount := 10
 	for i := 0; i < msgCount; i++ {
-		ch.Publish("", queue.Name, false, false, amqp.Publishing{ContentType: "text/plain", Body: []byte("test")})
+		ch.PublishWithContext(context.Background(), "", queue.Name, false, false, amqpclient.Publishing{ContentType: "text/plain", Body: []byte("test")})
 	}
 
 	cmr, err := ch.Consume(t.Name(), "tag", false, false, false, false, emptyTable)
@@ -804,7 +805,7 @@ func Test_BasicNack_RequeueFalse_Multiple_Success(t *testing.T) {
 	tick := time.After(100 * time.Millisecond)
 	count := 0
 	leave := false
-	deliveries := make([]amqp.Delivery, 0, 10)
+	deliveries := make([]amqpclient.Delivery, 0, 10)
 	for {
 		select {
 		case msg := <-cmr:
@@ -850,7 +851,7 @@ func Test_BasicReject_RequeueTrue_Success(t *testing.T) {
 
 	msgCount := 10
 	for i := 0; i < msgCount; i++ {
-		ch.Publish("", queue.Name, false, false, amqp.Publishing{ContentType: "text/plain", Body: []byte("test")})
+		ch.PublishWithContext(context.Background(), "", queue.Name, false, false, amqpclient.Publishing{ContentType: "text/plain", Body: []byte("test")})
 	}
 
 	cmr, err := ch.Consume(t.Name(), "tag", false, false, false, false, emptyTable)
@@ -861,7 +862,7 @@ func Test_BasicReject_RequeueTrue_Success(t *testing.T) {
 	tick := time.After(100 * time.Millisecond)
 	count := 0
 	leave := false
-	deliveries := make([]amqp.Delivery, 0, 10)
+	deliveries := make([]amqpclient.Delivery, 0, 10)
 	for {
 		select {
 		case msg := <-cmr:
@@ -910,7 +911,7 @@ func Test_BasicReject_RequeueFalse_Success(t *testing.T) {
 
 	msgCount := 10
 	for i := 0; i < msgCount; i++ {
-		ch.Publish("", queue.Name, false, false, amqp.Publishing{ContentType: "text/plain", Body: []byte("test")})
+		ch.PublishWithContext(context.Background(), "", queue.Name, false, false, amqpclient.Publishing{ContentType: "text/plain", Body: []byte("test")})
 	}
 
 	cmr, err := ch.Consume(t.Name(), "tag", false, false, false, false, emptyTable)
@@ -921,7 +922,7 @@ func Test_BasicReject_RequeueFalse_Success(t *testing.T) {
 	tick := time.After(100 * time.Millisecond)
 	count := 0
 	leave := false
-	deliveries := make([]amqp.Delivery, 0, 10)
+	deliveries := make([]amqpclient.Delivery, 0, 10)
 	for {
 		select {
 		case msg := <-cmr:
@@ -966,11 +967,11 @@ func Test_BasicGet_Success(t *testing.T) {
 
 	qu, _ := ch.QueueDeclare(t.Name(), true, false, false, false, emptyTable)
 
-	if err := ch.Publish(
+	if err := ch.PublishWithContext(context.Background(),
 		"",
 		qu.Name,
 		false, false,
-		amqp.Publishing{ContentType: "text/plain", Body: []byte("testMessage")},
+		amqpclient.Publishing{ContentType: "text/plain", Body: []byte("testMessage")},
 	); err != nil {
 		t.Error(err)
 	}
@@ -1013,11 +1014,11 @@ func Test_BasicGet_Success_WithAck(t *testing.T) {
 
 	qu, _ := ch.QueueDeclare(t.Name(), true, false, false, false, emptyTable)
 
-	if err := ch.Publish(
+	if err := ch.PublishWithContext(context.Background(),
 		"",
 		qu.Name,
 		false, false,
-		amqp.Publishing{ContentType: "text/plain", Body: []byte("testMessage")},
+		amqpclient.Publishing{ContentType: "text/plain", Body: []byte("testMessage")},
 	); err != nil {
 		t.Error(err)
 	}

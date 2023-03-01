@@ -1,8 +1,6 @@
 package server
 
 import (
-	"fmt"
-
 	"github.com/valinurovam/garagemq/amqp"
 	"github.com/valinurovam/garagemq/binding"
 	"github.com/valinurovam/garagemq/exchange"
@@ -128,7 +126,7 @@ func (channel *Channel) queueBind(method *amqp.QueueBind) *amqp.Error {
 	if ex.GetName() == exDefaultName {
 		return amqp.NewChannelError(
 			amqp.AccessRefused,
-			fmt.Sprintf("operation not permitted on the default exchange"),
+			"operation not permitted on the default exchange",
 			method.ClassIdentifier(),
 			method.MethodIdentifier(),
 		)

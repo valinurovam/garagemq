@@ -1,10 +1,11 @@
 package server
 
 import (
+	"context"
 	"testing"
 	"time"
 
-	"github.com/streadway/amqp"
+	amqpclient "github.com/rabbitmq/amqp091-go"
 )
 
 func Test_QueueDeclare_Success(t *testing.T) {
@@ -125,7 +126,7 @@ func Test_QueueDeclarePassive_Failed_NotExists(t *testing.T) {
 
 	ch.QueueDeclare(t.Name(), false, false, false, false, emptyTable)
 
-	if _, err := ch.QueueDeclarePassive(t.Name() + "new", false, false, false, false, emptyTable); err == nil {
+	if _, err := ch.QueueDeclarePassive(t.Name()+"new", false, false, false, false, emptyTable); err == nil {
 		t.Error("Expected: queue not found error")
 	}
 }
@@ -343,7 +344,7 @@ func Test_QueuePurge_Success(t *testing.T) {
 
 	msgCount := 10
 	for i := 0; i < msgCount; i++ {
-		ch.Publish("", queue.Name, false, false, amqp.Publishing{ContentType: "text/plain", Body: []byte("test")})
+		ch.PublishWithContext(context.Background(), "", queue.Name, false, false, amqpclient.Publishing{ContentType: "text/plain", Body: []byte("test")})
 	}
 
 	time.Sleep(5 * time.Millisecond)
@@ -401,7 +402,7 @@ func Test_QueueDelete_Success(t *testing.T) {
 
 	msgCount := 10
 	for i := 0; i < msgCount; i++ {
-		ch.Publish("", queue.Name, false, false, amqp.Publishing{ContentType: "text/plain", Body: []byte("test")})
+		ch.PublishWithContext(context.Background(), "", queue.Name, false, false, amqpclient.Publishing{ContentType: "text/plain", Body: []byte("test")})
 	}
 
 	time.Sleep(5 * time.Millisecond)
@@ -427,7 +428,7 @@ func Test_QueueDeleteDurable_Success(t *testing.T) {
 
 	msgCount := 10
 	for i := 0; i < msgCount; i++ {
-		ch.Publish("", queue.Name, false, false, amqp.Publishing{ContentType: "text/plain", Body: []byte("test")})
+		ch.PublishWithContext(context.Background(), "", queue.Name, false, false, amqpclient.Publishing{ContentType: "text/plain", Body: []byte("test")})
 	}
 
 	time.Sleep(5 * time.Millisecond)
@@ -469,7 +470,7 @@ func Test_QueueDelete_Failed_NotEmpty(t *testing.T) {
 
 	msgCount := 10
 	for i := 0; i < msgCount; i++ {
-		ch.Publish("", queue.Name, false, false, amqp.Publishing{ContentType: "text/plain", Body: []byte("test")})
+		ch.PublishWithContext(context.Background(), "", queue.Name, false, false, amqpclient.Publishing{ContentType: "text/plain", Body: []byte("test")})
 	}
 
 	time.Sleep(5 * time.Millisecond)
