@@ -394,11 +394,9 @@ func (conn *Connection) heartBeater() {
 
 	go func() {
 		for {
-			select {
-			case lastTs, ok = <-conn.lastOutgoingTS:
-				if !ok {
-					return
-				}
+			lastTs, ok = <-conn.lastOutgoingTS
+			if !ok {
+				return
 			}
 		}
 	}()

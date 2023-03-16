@@ -5,10 +5,10 @@ go 1.19
 require (
 	github.com/coreos/go-systemd v0.0.0-20191104093116-d3cd4ed1dbcf
 	github.com/dgraph-io/badger v1.6.2
+	github.com/rabbitmq/amqp091-go v1.7.0
 	github.com/sirupsen/logrus v1.9.0
 	github.com/spf13/pflag v1.0.5
 	github.com/spf13/viper v1.14.0
-	github.com/streadway/amqp v0.0.0-20190404075320-75d898a42a94
 	github.com/tidwall/buntdb v1.2.10
 	golang.org/x/crypto v0.4.0
 	gopkg.in/yaml.v2 v2.4.0

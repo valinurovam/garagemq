@@ -1,10 +1,11 @@
 package server
 
 import (
+	"context"
 	"testing"
 	"time"
 
-	"github.com/streadway/amqp"
+	amqpclient "github.com/rabbitmq/amqp091-go"
 )
 
 func Test_Confirm_Success(t *testing.T) {
@@ -37,7 +38,7 @@ func Test_ConfirmReceive_Acks_Success(t *testing.T) {
 	queue, _ := ch.QueueDeclare(t.Name(), false, false, false, false, emptyTable)
 
 	for i := 0; i < msgCount; i++ {
-		ch.Publish("", queue.Name, false, false, amqp.Publishing{ContentType: "text/plain", Body: []byte("test")})
+		ch.PublishWithContext(context.Background(), "", queue.Name, false, false, amqpclient.Publishing{ContentType: "text/plain", Body: []byte("test")})
 	}
 
 	tick := time.After(50 * time.Millisecond)
@@ -78,7 +79,7 @@ func Test_ConfirmReceive_Acks_NoRoute_Success(t *testing.T) {
 	ch.QueueDeclare(t.Name(), false, false, false, false, emptyTable)
 
 	for i := 0; i < msgCount; i++ {
-		ch.Publish("", "bad-route", false, false, amqp.Publishing{ContentType: "text/plain", Body: []byte("test")})
+		ch.PublishWithContext(context.Background(), "", "bad-route", false, false, amqpclient.Publishing{ContentType: "text/plain", Body: []byte("test")})
 	}
 
 	tick := time.After(50 * time.Millisecond)
@@ -119,7 +120,7 @@ func Test_ConfirmReceive_Acks_Persistent_Success(t *testing.T) {
 	queue, _ := ch.QueueDeclare(t.Name(), true, false, false, false, emptyTable)
 
 	for i := 0; i < msgCount; i++ {
-		ch.Publish("", queue.Name, false, false, amqp.Publishing{ContentType: "text/plain", Body: []byte("test"), DeliveryMode: amqp.Persistent})
+		ch.PublishWithContext(context.Background(), "", queue.Name, false, false, amqpclient.Publishing{ContentType: "text/plain", Body: []byte("test"), DeliveryMode: amqpclient.Persistent})
 	}
 
 	tick := time.After(50 * time.Millisecond)
