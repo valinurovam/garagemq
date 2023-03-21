@@ -296,18 +296,31 @@ func (srv *Server) getStorageInstance(name string, isPersistent bool) interfaces
 	h.Write([]byte(name))
 	name = hex.EncodeToString(h.Sum(nil))
 
-	stPath := fmt.Sprintf("%s/%s/%s", srv.config.Db.DefaultPath, srv.config.Db.Engine, name)
+	// Sometimes we don't want to persist the database (e.g. when running unit tests or running without write permissions)
+	// In that case, we can specify ":memory:" as the default path in the config file - only BuntDB supports it
+	var stPath string
 
-	if !isPersistent {
-		stPath += ".transient"
-		if err := os.RemoveAll(stPath); err != nil {
-			panic(err)
-		}
+	inMemory := srv.config.Db.DefaultPath == config.DbPathMemory
+	if inMemory && srv.config.Db.Engine != config.DbEngineTypeBuntDb {
+		panic("Only BuntDB supports in-memory storage")
 	}
 
-	if err := os.MkdirAll(stPath, 0777); err != nil {
-		// TODO is here true way to handle error?
-		panic(err)
+	if inMemory {
+		stPath = config.DbPathMemory
+	} else {
+		stPath = fmt.Sprintf("%s/%s/%s", srv.config.Db.DefaultPath, srv.config.Db.Engine, name)
+
+		if !isPersistent {
+			stPath += ".transient"
+			if err := os.RemoveAll(stPath); err != nil {
+				panic(err)
+			}
+		}
+
+		if err := os.MkdirAll(stPath, 0777); err != nil {
+			// TODO is here true way to handle error?
+			panic(err)
+		}
 	}
 
 	log.WithFields(log.Fields{
@@ -316,9 +329,9 @@ func (srv *Server) getStorageInstance(name string, isPersistent bool) interfaces
 	}).Info("Open db storage")
 
 	switch srv.config.Db.Engine {
-	case "badger":
+	case config.DbEngineTypeBadger:
 		return storage.NewBadger(stPath)
-	case "buntdb":
+	case config.DbEngineTypeBuntDb:
 		return storage.NewBuntDB(stPath)
 	default:
 		srv.stopWithError(nil, fmt.Sprintf("Unknown db engine '%s'", srv.config.Db.Engine))

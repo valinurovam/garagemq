@@ -9,6 +9,7 @@ import (
 
 	amqpclient "github.com/rabbitmq/amqp091-go"
 	"github.com/valinurovam/garagemq/amqp"
+	"github.com/valinurovam/garagemq/config"
 )
 
 func Test_BasicQos_Channel_Success(t *testing.T) {
@@ -52,6 +53,19 @@ func Test_BasicQos_Global_Success(t *testing.T) {
 }
 
 func Test_BasicQos_Check_Global_Success(t *testing.T) {
+	test_BasicQos_Check_Global_Success(t, getDefaultTestConfig())
+}
+
+func Test_BasicQos_InMemory_Check_Global_Success(t *testing.T) {
+	cfg := getDefaultTestConfig()
+	// Configure in-memory db
+	cfg.srvConfig.Db.DefaultPath = config.DbPathMemory
+	cfg.srvConfig.Db.Engine = config.DbEngineTypeBuntDb
+
+	test_BasicQos_Check_Global_Success(t, cfg)
+}
+
+func test_BasicQos_Check_Global_Success(t *testing.T, cfg TestConfig) {
 	sc, _ := getNewSC(getDefaultTestConfig())
 	defer sc.clean()
 	ch, _ := sc.client.Channel()

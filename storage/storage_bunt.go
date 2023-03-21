@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/tidwall/buntdb"
+	"github.com/valinurovam/garagemq/config"
 	"github.com/valinurovam/garagemq/interfaces"
 )
 
@@ -17,7 +18,10 @@ type BuntDB struct {
 func NewBuntDB(storagePath string) *BuntDB {
 	storage := &BuntDB{}
 
-	storagePath = fmt.Sprintf("%s/%s", storagePath, "db")
+	if storagePath != config.DbPathMemory {
+		storagePath = fmt.Sprintf("%s/%s", storagePath, "db")
+	}
+
 	var db, err = buntdb.Open(storagePath)
 	if err != nil {
 		panic(err)

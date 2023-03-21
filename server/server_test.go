@@ -39,13 +39,19 @@ type TestConfig struct {
 }
 
 func (sc *ServerClient) clean() {
-	cfg := getDefaultTestConfig()
+	sc.cleanWithCfg(getDefaultTestConfig())
+}
+
+func (sc *ServerClient) cleanWithCfg(cfg TestConfig) {
 	if sc.server != nil && sc.server.status == Running {
 		sc.server.Stop()
 	}
-	if err := os.RemoveAll(cfg.srvConfig.Db.DefaultPath); err != nil {
-		panic(err)
+	if cfg.srvConfig.Db.DefaultPath != config.DbPathMemory {
+		if err := os.RemoveAll(cfg.srvConfig.Db.DefaultPath); err != nil {
+			panic(err)
+		}
 	}
+
 	metrics.Destroy()
 }
 
@@ -261,5 +267,57 @@ func TestServer_WrongProtocol(t *testing.T) {
 
 	if !bytes.Equal(supported, amqp.AmqpHeader) {
 		t.Errorf("Expected %v, actual %v", amqp.AmqpHeader, supported)
+	}
+}
+
+func TestServer_WrongInMemoryDb(t *testing.T) {
+	const expectedError = "Only BuntDB supports in-memory storage"
+	defer func() {
+		r := recover()
+		if r == nil {
+			t.Errorf("Panic was expected but didn't happen")
+		}
+		if r != expectedError {
+			t.Errorf("Expected panic: %v, actual panic: %v", expectedError, r)
+		}
+	}()
+
+	cfg := getDefaultTestConfig()
+	cfg.srvConfig.Db.DefaultPath = config.DbPathMemory
+	// This should cause an error on db init - only BuntDB supports :memory: path
+	cfg.srvConfig.Db.Engine = config.DbEngineTypeBadger
+
+	sc, _ := getNewSC(cfg)
+	defer sc.cleanWithCfg(cfg)
+}
+
+func TestServer_RealStartInMemory(t *testing.T) {
+	cfg := getDefaultTestConfig()
+
+	// Configure in-memory db
+	cfg.srvConfig.Db.DefaultPath = config.DbPathMemory
+	cfg.srvConfig.Db.Engine = config.DbEngineTypeBuntDb
+
+	defer (&ServerClient{}).cleanWithCfg(cfg)
+
+	metrics.NewTrackRegistry(15, time.Second, true)
+	server := NewServer("localhost", "55672", proto, &cfg.srvConfig)
+	go server.Start()
+	time.Sleep(2 * time.Second)
+	defer server.Stop()
+
+	conn, err := amqpclient.Dial("amqp://guest:guest@localhost:55672/")
+	if err != nil {
+		t.Error("Could not connect to real server", err)
+		return
+	}
+	defer conn.Close()
+
+	if len(server.connections) == 0 {
+		t.Error("Expected connected client")
+	}
+
+	if len(server.connections[1].channels) == 0 {
+		t.Error("Expected channels on connections")
 	}
 }
