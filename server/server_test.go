@@ -263,3 +263,19 @@ func TestServer_WrongProtocol(t *testing.T) {
 		t.Errorf("Expected %v, actual %v", amqp.AmqpHeader, supported)
 	}
 }
+
+func TestServer_Addr(t *testing.T) {
+	lis, err := net.ListenTCP("tcp4", &net.TCPAddr{IP: net.ParseIP("0.0.0.0"), Port: 55672})
+	if err != nil {
+		t.Error(err)
+	}
+	defer func() {
+		_ = lis.Close()
+	}()
+
+	server := &Server{listener: lis}
+
+	if expected := "0.0.0.0:55672"; expected != server.Addr() {
+		t.Errorf("Expected %v, actual %v", expected, server.Addr())
+	}
+}

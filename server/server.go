@@ -27,6 +27,7 @@ type ServerState int
 const (
 	Stopped ServerState = iota
 	Running
+	Starting
 	Stopping
 )
 
@@ -103,6 +104,8 @@ func (srv *Server) Start() {
 		"pid": os.Getpid(),
 	}).Info("Server starting")
 
+	srv.status = Starting
+
 	go srv.hookSignals()
 
 	srv.initServerStorage()
@@ -116,7 +119,6 @@ func (srv *Server) Start() {
 	go srv.listen()
 
 	srv.storage.UpdateLastStart()
-	srv.status = Running
 	select {}
 }
 
@@ -151,6 +153,14 @@ func (srv *Server) Stop() {
 	srv.status = Stopped
 }
 
+func (srv *Server) Addr() string {
+	if srv.listener != nil {
+		return srv.listener.Addr().String()
+	}
+
+	return ""
+}
+
 func (srv *Server) getVhost(name string) *VirtualHost {
 	srv.vhostsLock.Lock()
 	defer srv.vhostsLock.Unlock()
@@ -175,8 +185,17 @@ func (srv *Server) listen() {
 		os.Exit(1)
 	}
 
+	_, port, err := net.SplitHostPort(srv.listener.Addr().String())
+	if err == nil {
+		srv.port = port
+	}
+
+	if srv.status == Starting {
+		srv.status = Running
+	}
+
 	log.WithFields(log.Fields{
-		"address": address,
+		"address": srv.listener.Addr().String(),
 	}).Info("Server started")
 
 	daemonReady()
