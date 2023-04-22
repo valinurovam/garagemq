@@ -6,6 +6,13 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
+const (
+	DbEngineTypeBadger string = "badger"
+	DbEngineTypeBuntDb string = "buntdb"
+
+	DbPathMemory string = ":memory:"
+)
+
 // Config represents server changeable se
 type Config struct {
 	Proto      string
