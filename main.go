@@ -36,7 +36,7 @@ func init() {
 		levels = append(levels, l.String())
 	}
 	flag.String("log-file", "stdout", "Log file")
-	flag.String("log-level", "debug", fmt.Sprintf("Log level (%s)", strings.Join(levels, ", ")))
+	flag.String("log-level", "info", fmt.Sprintf("Log level (%s)", strings.Join(levels, ", ")))
 	flag.Bool("hprof", false, "Starts server with hprof profiler.")
 	flag.String("hprof-host", "0.0.0.0", "hprof profiler host.")
 	flag.String("hprof-port", "8080", "hprof profiler port.")
