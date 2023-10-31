@@ -3,8 +3,9 @@ package msgstorage
 import (
 	"strconv"
 	"strings"
-	"sync"
 	"time"
+
+	"github.com/sasha-s/go-deadlock"
 
 	"github.com/valinurovam/garagemq/amqp"
 	"github.com/valinurovam/garagemq/interfaces"
@@ -16,7 +17,7 @@ import (
 // If storage in confirm-mode - in every persisted message storage send confirm to vhost
 type MsgStorage struct {
 	db            interfaces.DbStorage
-	persistLock   sync.Mutex
+	persistLock   deadlock.Mutex
 	add           map[string]*amqp.Message
 	update        map[string]*amqp.Message
 	del           map[string]*amqp.Message

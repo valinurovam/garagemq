@@ -8,6 +8,7 @@ import (
 	"time"
 
 	amqpclient "github.com/rabbitmq/amqp091-go"
+
 	"github.com/valinurovam/garagemq/amqp"
 	"github.com/valinurovam/garagemq/config"
 )

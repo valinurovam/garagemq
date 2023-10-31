@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/tidwall/buntdb"
+
 	"github.com/valinurovam/garagemq/config"
 	"github.com/valinurovam/garagemq/interfaces"
 )
@@ -27,7 +28,7 @@ func NewBuntDB(storagePath string) *BuntDB {
 		panic(err)
 	}
 
-	db.SetConfig(buntdb.Config{
+	_ = db.SetConfig(buntdb.Config{
 		SyncPolicy:         buntdb.Always,
 		AutoShrinkDisabled: true,
 	})
@@ -43,10 +44,14 @@ func (storage *BuntDB) ProcessBatch(batch []*interfaces.Operation) (err error) {
 	return storage.db.Update(func(tx *buntdb.Tx) error {
 		for _, op := range batch {
 			if op.Op == interfaces.OpSet {
-				tx.Set(op.Key, string(op.Value), nil)
+				if _, _, err := tx.Set(op.Key, string(op.Value), nil); err != nil {
+					return err
+				}
 			}
 			if op.Op == interfaces.OpDel {
-				tx.Delete(op.Key)
+				if _, err := tx.Delete(op.Key); err != nil {
+					return err
+				}
 			}
 		}
 		return nil
@@ -125,11 +130,8 @@ func (storage *BuntDB) KeysByPrefixCount(prefix []byte) uint64 {
 }
 
 func (storage *BuntDB) runStorageGC() {
-	timer := time.Tick(30 * time.Minute)
-	for {
-		select {
-		case <-timer:
-			storage.db.Shrink()
-		}
+	timer := time.NewTicker(30 * time.Minute)
+	for range timer.C {
+		storage.db.Shrink()
 	}
 }

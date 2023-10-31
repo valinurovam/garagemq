@@ -10,7 +10,7 @@ import (
 	"time"
 
 	amqpclient "github.com/rabbitmq/amqp091-go"
-	"github.com/sirupsen/logrus"
+
 	"github.com/valinurovam/garagemq/amqp"
 	"github.com/valinurovam/garagemq/config"
 	"github.com/valinurovam/garagemq/metrics"
@@ -20,7 +20,7 @@ var emptyTable = make(amqpclient.Table)
 var proto = amqp.ProtoRabbit
 
 func init() {
-	logrus.SetOutput(io.Discard)
+	//logrus.SetOutput(io.Discard)
 	//logrus.SetFormatter(&logrus.TextFormatter{FullTimestamp: true})
 	//logrus.SetOutput(os.Stdout)
 	//logrus.SetLevel(logrus.InfoLevel)

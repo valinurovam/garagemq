@@ -11,9 +11,11 @@ import (
 	"strings"
 	"time"
 
+	"github.com/sasha-s/go-deadlock"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
+
 	"github.com/valinurovam/garagemq/admin"
 	"github.com/valinurovam/garagemq/config"
 	"github.com/valinurovam/garagemq/metrics"
@@ -34,7 +36,7 @@ func init() {
 		levels = append(levels, l.String())
 	}
 	flag.String("log-file", "stdout", "Log file")
-	flag.String("log-level", "info", fmt.Sprintf("Log level (%s)", strings.Join(levels, ", ")))
+	flag.String("log-level", "debug", fmt.Sprintf("Log level (%s)", strings.Join(levels, ", ")))
 	flag.Bool("hprof", false, "Starts server with hprof profiler.")
 	flag.String("hprof-host", "0.0.0.0", "hprof profiler host.")
 	flag.String("hprof-port", "8080", "hprof profiler port.")
@@ -45,6 +47,10 @@ func init() {
 }
 
 func main() {
+	// server has an issue with locks deadlock
+	// solving is in progress
+	deadlock.Opts.Disable = true
+
 	if viper.GetBool("help") {
 		flag.Usage()
 		os.Exit(0)

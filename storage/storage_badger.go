@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/dgraph-io/badger"
+
 	"github.com/valinurovam/garagemq/interfaces"
 )
 
@@ -228,11 +229,8 @@ func (storage *Badger) IterateByPrefixFrom(prefix []byte, from []byte, limit uin
 
 func (storage *Badger) runStorageGC() {
 	timer := time.NewTicker(10 * time.Minute)
-	for {
-		select {
-		case <-timer.C:
-			storage.storageGC()
-		}
+	for range timer.C {
+		storage.storageGC()
 	}
 }
 

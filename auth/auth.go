@@ -45,7 +45,7 @@ func HashPassword(password string, authType string) (string, error) {
 	switch authType {
 	case authMD5:
 		h := md5.New()
-		// digest.Write never return any error, so skip error ckeck
+		// digest.Write never return any error, so skip error check
 		h.Write([]byte(password))
 		return hex.EncodeToString(h.Sum(nil)), nil
 	case authBcrypt:
@@ -63,7 +63,7 @@ func CheckPasswordHash(password, hash string, authType string) bool {
 	switch authType {
 	case authMD5:
 		h := md5.New()
-		// digest.Write never return any error, so skip error ckeck
+		// digest.Write never return any error, so skip error check
 		h.Write([]byte(password))
 		return hash == hex.EncodeToString(h.Sum(nil))
 	case authBcrypt:

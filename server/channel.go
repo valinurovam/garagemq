@@ -8,7 +8,10 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/sasha-s/go-deadlock"
+
 	log "github.com/sirupsen/logrus"
+
 	"github.com/valinurovam/garagemq/amqp"
 	"github.com/valinurovam/garagemq/consumer"
 	"github.com/valinurovam/garagemq/exchange"
@@ -52,18 +55,19 @@ type Channel struct {
 	status             int
 	protoVersion       string
 	currentMessage     *amqp.Message
-	cmrLock            sync.RWMutex
+	cmrLock            deadlock.RWMutex
 	consumers          map[string]*consumer.Consumer
 	qos                *qos.AmqpQos
 	consumerQos        *qos.AmqpQos
-	confirmLock        sync.Mutex
+	confirmLock        deadlock.Mutex
 	confirmQueue       []*amqp.ConfirmMeta
-	ackLock            sync.Mutex
+	ackLock            deadlock.Mutex
 	ackStore           map[uint64]*UnackedMessage
 	metrics            *ChannelMetricsState
 
 	bufferPool *pool.BufferPool
 
+	wg      sync.WaitGroup
 	closeCh chan bool
 }
 
@@ -119,13 +123,16 @@ func (channel *Channel) initMetrics() {
 
 func (channel *Channel) start() {
 	if channel.id == 0 {
+		channel.wg.Add(1)
 		go channel.connectionStart()
 	}
 
+	channel.wg.Add(1)
 	go channel.handleIncoming()
 }
 
 func (channel *Channel) handleIncoming() {
+	defer channel.wg.Done()
 	buffer := bytes.NewReader([]byte{})
 
 	// TODO
@@ -337,11 +344,13 @@ func (channel *Channel) sendOutgoing(frame *amqp.Frame) {
 }
 
 // SendContent send message to consumers or returns to publishers
-func (channel *Channel) SendContent(method amqp.Method, message *amqp.Message) {
+func (channel *Channel) SendContent(method amqp.Method, message *amqp.Message) *amqp.Error {
 	channel.SendMethod(method)
 
 	var rawHeader = channel.bufferPool.Get()
-	amqp.WriteContentHeader(rawHeader, message.Header, channel.server.protoVersion)
+	if err := amqp.WriteContentHeader(rawHeader, message.Header, channel.server.protoVersion); err != nil {
+		return amqp.NewChannelError(amqp.InternalError, "Unable to write content header", method.ClassIdentifier(), method.MethodIdentifier())
+	}
 
 	payload := make([]byte, rawHeader.Len())
 	copy(payload, rawHeader.Bytes())
@@ -358,6 +367,8 @@ func (channel *Channel) SendContent(method amqp.Method, message *amqp.Message) {
 	case *amqp.BasicDeliver:
 		channel.metrics.Deliver.Counter.Inc(1)
 	}
+
+	return nil
 }
 
 func (channel *Channel) addConfirm(meta *amqp.ConfirmMeta) {
@@ -453,6 +464,8 @@ func (channel *Channel) close() {
 
 func (channel *Channel) delete() {
 	channel.closeCh <- true
+	channel.wg.Wait()
+
 	channel.status = channelDelete
 }
 
@@ -498,26 +511,39 @@ func (channel *Channel) AddUnackedMessage(dTag uint64, cTag string, queue string
 }
 
 func (channel *Channel) handleAck(method *amqp.BasicAck) *amqp.Error {
-	channel.ackLock.Lock()
-	defer channel.ackLock.Unlock()
 	var uMsg *UnackedMessage
 	var msgFound bool
 
 	if method.Multiple {
+		multipleMessages := make([]*UnackedMessage, 0)
+
+		channel.ackLock.Lock()
 		for tag, uMsg := range channel.ackStore {
 			if method.DeliveryTag == 0 || tag <= method.DeliveryTag {
+				multipleMessages = append(multipleMessages, uMsg)
+
 				channel.ackMsg(uMsg, tag)
 			}
+		}
+		channel.ackLock.Unlock()
+
+		for _, uMsg := range multipleMessages {
+			channel.decQosAndConsumeNext(uMsg)
 		}
 
 		return nil
 	}
 
+	channel.ackLock.Lock()
 	if uMsg, msgFound = channel.ackStore[method.DeliveryTag]; !msgFound {
+		channel.ackLock.Unlock()
 		return amqp.NewChannelError(amqp.PreconditionFailed, fmt.Sprintf("Delivery tag [%d] not found", method.DeliveryTag), method.ClassIdentifier(), method.MethodIdentifier())
 	}
 
 	channel.ackMsg(uMsg, method.DeliveryTag)
+	channel.ackLock.Unlock()
+
+	channel.decQosAndConsumeNext(uMsg)
 
 	return nil
 }
@@ -531,17 +557,14 @@ func (channel *Channel) ackMsg(unackedMessage *UnackedMessage, deliveryTag uint6
 		channel.metrics.Acknowledge.Counter.Inc(1)
 		channel.metrics.Unacked.Counter.Dec(1)
 	}
-
-	channel.decQosAndConsumerNext(unackedMessage)
 }
 
 func (channel *Channel) handleReject(deliveryTag uint64, multiple bool, requeue bool, method amqp.Method) *amqp.Error {
-	channel.ackLock.Lock()
-	defer channel.ackLock.Unlock()
 	var uMsg *UnackedMessage
 	var msgFound bool
 
 	if multiple {
+		channel.ackLock.Lock()
 		deliveryTags := make([]uint64, 0)
 		for dTag := range channel.ackStore {
 			deliveryTags = append(deliveryTags, dTag)
@@ -552,20 +575,34 @@ func (channel *Channel) handleReject(deliveryTag uint64, multiple bool, requeue 
 				return deliveryTags[i] > deliveryTags[j]
 			},
 		)
+
+		multipleMessages := make([]*UnackedMessage, 0, len(deliveryTags))
 		for _, tag := range deliveryTags {
 			if deliveryTag == 0 || tag <= deliveryTag {
+				multipleMessages = append(multipleMessages, channel.ackStore[tag])
+
 				channel.rejectMsg(channel.ackStore[tag], tag, requeue)
 			}
+		}
+		channel.ackLock.Unlock()
+
+		for _, uMsg := range multipleMessages {
+			channel.decQosAndConsumeNext(uMsg)
 		}
 
 		return nil
 	}
 
+	channel.ackLock.Lock()
 	if uMsg, msgFound = channel.ackStore[deliveryTag]; !msgFound {
+		channel.ackLock.Unlock()
 		return amqp.NewChannelError(amqp.PreconditionFailed, fmt.Sprintf("Delivery tag [%d] not found", deliveryTag), method.ClassIdentifier(), method.MethodIdentifier())
 	}
 
 	channel.rejectMsg(uMsg, deliveryTag, requeue)
+	channel.ackLock.Unlock()
+
+	channel.decQosAndConsumeNext(uMsg)
 
 	return nil
 }
@@ -587,13 +624,17 @@ func (channel *Channel) rejectMsg(unackedMessage *UnackedMessage, deliveryTag ui
 		channel.server.GetMetrics().Total.Counter.Dec(1)
 		channel.server.GetMetrics().Unacked.Counter.Dec(1)
 	}
-
-	channel.decQosAndConsumerNext(unackedMessage)
 }
 
-func (channel *Channel) decQosAndConsumerNext(unackedMessage *UnackedMessage) {
+func (channel *Channel) getConsumerByTag(cTag string) *consumer.Consumer {
 	channel.cmrLock.RLock()
-	if cmr, ok := channel.consumers[unackedMessage.cTag]; ok {
+	defer channel.cmrLock.RUnlock()
+
+	return channel.consumers[cTag]
+}
+
+func (channel *Channel) decQosAndConsumeNext(unackedMessage *UnackedMessage) {
+	if cmr := channel.getConsumerByTag(unackedMessage.cTag); cmr != nil {
 		cmr.Consume()
 
 		for _, amqpQos := range cmr.Qos() {
@@ -603,7 +644,6 @@ func (channel *Channel) decQosAndConsumerNext(unackedMessage *UnackedMessage) {
 		channel.qos.Dec(1, uint32(unackedMessage.msg.BodySize))
 		channel.conn.qos.Dec(1, uint32(unackedMessage.msg.BodySize))
 	}
-	channel.cmrLock.RUnlock()
 }
 
 func (channel *Channel) getExchangeWithError(exchangeName string, method amqp.Method) (ex *exchange.Exchange, err *amqp.Error) {

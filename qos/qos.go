@@ -1,10 +1,10 @@
 package qos
 
-import "sync"
+import "github.com/sasha-s/go-deadlock"
 
 // AmqpQos represents qos system
 type AmqpQos struct {
-	sync.Mutex
+	deadlock.Mutex
 	prefetchCount uint16
 	currentCount  uint16
 	prefetchSize  uint32
