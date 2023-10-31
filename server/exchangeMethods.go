@@ -2,9 +2,10 @@ package server
 
 import (
 	"fmt"
+	"strings"
+
 	"github.com/valinurovam/garagemq/amqp"
 	"github.com/valinurovam/garagemq/exchange"
-	"strings"
 )
 
 func (channel *Channel) exchangeRoute(method amqp.Method) *amqp.Error {

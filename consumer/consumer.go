@@ -2,9 +2,10 @@ package consumer
 
 import (
 	"fmt"
-	"sync"
 	"sync/atomic"
 	"time"
+
+	"github.com/sasha-s/go-deadlock"
 
 	"github.com/valinurovam/garagemq/amqp"
 	"github.com/valinurovam/garagemq/interfaces"
@@ -28,7 +29,7 @@ type Consumer struct {
 	noAck       bool
 	channel     interfaces.Channel
 	queue       *queue.Queue
-	statusLock  sync.RWMutex
+	statusLock  deadlock.RWMutex
 	status      int
 	qos         []*qos.AmqpQos
 	consume     chan struct{}

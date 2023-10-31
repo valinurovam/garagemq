@@ -3,7 +3,8 @@ package exchange
 import (
 	"bytes"
 	"fmt"
-	"sync"
+
+	"github.com/sasha-s/go-deadlock"
 
 	"github.com/valinurovam/garagemq/amqp"
 	"github.com/valinurovam/garagemq/binding"
@@ -46,7 +47,7 @@ type Exchange struct {
 	autoDelete bool
 	internal   bool
 	system     bool
-	bindLock   sync.Mutex
+	bindLock   deadlock.Mutex
 	bindings   []*binding.Binding
 	metrics    *MetricsState
 }

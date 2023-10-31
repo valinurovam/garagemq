@@ -21,7 +21,7 @@ func (channel *Channel) queueRoute(method amqp.Method) *amqp.Error {
 		return channel.queueDelete(method)
 	}
 
-	return amqp.NewConnectionError(amqp.NotImplemented, "unable to route queue method "+method.Name(), method.ClassIdentifier(), method.MethodIdentifier())
+	return amqp.NewConnectionError(amqp.NotImplemented, "Unable to route queue method "+method.Name(), method.ClassIdentifier(), method.MethodIdentifier())
 }
 
 func (channel *Channel) queueDeclare(method *amqp.QueueDeclare) *amqp.Error {
@@ -93,7 +93,14 @@ func (channel *Channel) queueDeclare(method *amqp.QueueDeclare) *amqp.Error {
 		return nil
 	}
 
-	newQueue.Start()
+	if err := newQueue.Start(); err != nil {
+		return amqp.NewChannelError(
+			amqp.InternalError,
+			err.Error(),
+			method.ClassIdentifier(),
+			method.MethodIdentifier(),
+		)
+	}
 	err := channel.conn.GetVirtualHost().AppendQueue(newQueue)
 	if err != nil {
 		return amqp.NewChannelError(

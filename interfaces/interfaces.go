@@ -6,7 +6,7 @@ import (
 
 // Channel represents base channel public interface
 type Channel interface {
-	SendContent(method amqp.Method, message *amqp.Message)
+	SendContent(method amqp.Method, message *amqp.Message) *amqp.Error
 	SendMethod(method amqp.Method)
 	NextDeliveryTag() uint64
 	AddUnackedMessage(dTag uint64, cTag string, queue string, message *amqp.Message)

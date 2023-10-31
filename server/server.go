@@ -10,7 +10,9 @@ import (
 	"sync"
 	"syscall"
 
+	"github.com/sasha-s/go-deadlock"
 	log "github.com/sirupsen/logrus"
+
 	"github.com/valinurovam/garagemq/amqp"
 	"github.com/valinurovam/garagemq/auth"
 	"github.com/valinurovam/garagemq/config"
@@ -52,15 +54,18 @@ type Server struct {
 	port         string
 	protoVersion string
 	listener     *net.TCPListener
-	connLock     sync.Mutex
+	connLock     deadlock.Mutex
 	connections  map[uint64]*Connection
 	config       *config.Config
 	users        map[string]string
-	vhostsLock   sync.Mutex
+	vhostsLock   deadlock.Mutex
 	vhosts       map[string]*VirtualHost
 	status       ServerState
 	storage      *srvstorage.SrvStorage
 	metrics      *SrvMetricsState
+
+	wg       sync.WaitGroup
+	shutdown chan struct{}
 }
 
 // NewServer returns new instance of AMQP Server
@@ -74,6 +79,7 @@ func NewServer(host string, port string, protoVersion string, config *config.Con
 		users:        make(map[string]string),
 		vhosts:       make(map[string]*VirtualHost),
 		connSeq:      0,
+		shutdown:     make(chan struct{}),
 	}
 	server.initMetrics()
 
@@ -97,12 +103,13 @@ func (srv *Server) initMetrics() {
 	}
 }
 
-// Start start main server loop
+// Start starts main server loop
 func (srv *Server) Start() {
 	log.WithFields(log.Fields{
 		"pid": os.Getpid(),
 	}).Info("Server starting")
 
+	srv.wg.Add(1)
 	go srv.hookSignals()
 
 	srv.initServerStorage()
@@ -113,27 +120,39 @@ func (srv *Server) Start() {
 		srv.initVirtualHostsFromStorage()
 	}
 
-	go srv.listen()
+	if err := srv.initListener(); err != nil {
+		// todo handle error
+	}
+
+	srv.wg.Add(1)
+	go srv.acceptConnections()
 
 	srv.storage.UpdateLastStart()
-	srv.status = Running
-	select {}
+
+	srv.wg.Wait()
 }
 
 // Stop stop server and all vhosts
 func (srv *Server) Stop() {
 	srv.vhostsLock.Lock()
 	defer srv.vhostsLock.Unlock()
-	srv.status = Stopping
 
+	close(srv.shutdown)
 	// stop accept new connections
-	srv.listener.Close()
+	if err := srv.listener.Close(); err != nil {
+		log.WithError(err).Error("unable to close listener, unexpected error")
+	}
+	log.Info("Listener closed")
 
 	var wg sync.WaitGroup
 	srv.connLock.Lock()
 	for _, conn := range srv.connections {
+		conn := conn
 		wg.Add(1)
-		go conn.safeClose(&wg)
+		go func() {
+			defer wg.Done()
+			conn.safeClose()
+		}()
 	}
 	srv.connLock.Unlock()
 	wg.Wait()
@@ -141,11 +160,17 @@ func (srv *Server) Stop() {
 
 	// stop exchanges and queues
 	for _, virtualHost := range srv.vhosts {
-		virtualHost.Stop()
+		if err := virtualHost.Stop(); err != nil {
+			log.WithError(err).WithFields(log.Fields{
+				"vhost": virtualHost.name,
+			}).Error("error on stop virtual host")
+		}
 	}
 
 	if srv.storage != nil {
-		srv.storage.Close()
+		if err := srv.storage.Close(); err != nil {
+			log.WithError(err).Error("error on close server storage")
+		}
 	}
 
 	srv.status = Stopped
@@ -158,21 +183,21 @@ func (srv *Server) getVhost(name string) *VirtualHost {
 	return srv.vhosts[name]
 }
 
-func (srv *Server) listen() {
+func (srv *Server) initListener() error {
 	address := srv.host + ":" + srv.port
 	tcpAddr, err := net.ResolveTCPAddr("tcp4", address)
 	if err != nil {
 		log.WithError(err).WithFields(log.Fields{
 			"address": address,
 		}).Error("Error resolving tcp address")
-		os.Exit(1)
+		return err
 	}
 	srv.listener, err = net.ListenTCP("tcp", tcpAddr)
 	if err != nil {
 		log.WithError(err).WithFields(log.Fields{
 			"address": address,
 		}).Error("Error on listener start")
-		os.Exit(1)
+		return err
 	}
 
 	log.WithFields(log.Fields{
@@ -181,22 +206,48 @@ func (srv *Server) listen() {
 
 	daemonReady()
 
+	return nil
+}
+
+func (srv *Server) acceptConnections() {
+	defer srv.wg.Done()
+
 	for {
 		conn, err := srv.listener.AcceptTCP()
 		if err != nil {
-			if srv.status != Running {
+			select {
+			case <-srv.shutdown:
 				return
 			}
-			srv.stopWithError(err, "accepting connection")
+			log.WithError(err).Error("unable to accept connection")
+			continue
 		}
 		log.WithFields(log.Fields{
 			"from": conn.RemoteAddr().String(),
 			"to":   conn.LocalAddr().String(),
 		}).Info("accepting connection")
 
-		conn.SetReadBuffer(srv.config.TCP.ReadBufSize)
-		conn.SetWriteBuffer(srv.config.TCP.WriteBufSize)
-		conn.SetNoDelay(srv.config.TCP.Nodelay)
+		if srv.config.TCP.ReadBufSize > 0 {
+			err = conn.SetReadBuffer(srv.config.TCP.ReadBufSize)
+			if err != nil {
+				log.WithError(err).Error("unable to accept connection: set read buffer")
+				continue
+			}
+		}
+
+		if srv.config.TCP.WriteBufSize > 0 {
+			err = conn.SetWriteBuffer(srv.config.TCP.WriteBufSize)
+			if err != nil {
+				log.WithError(err).Error("unable to accept connection: set write buffer")
+				continue
+			}
+		}
+
+		err = conn.SetNoDelay(srv.config.TCP.Nodelay)
+		if err != nil {
+			log.WithError(err).Error("unable to accept connection: set no delay")
+			continue
+		}
 
 		srv.acceptConnection(conn)
 	}
@@ -343,7 +394,6 @@ func (srv *Server) onSignal(sig os.Signal) {
 	switch sig {
 	case syscall.SIGTERM, syscall.SIGINT:
 		srv.Stop()
-		os.Exit(0)
 	}
 }
 
@@ -360,9 +410,16 @@ func (srv *Server) hookSignals() {
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, syscall.SIGINT, syscall.SIGTERM)
 	go func() {
-		for sig := range c {
-			log.Infof("Received [%d:%s] signal from OS", sig, sig.String())
-			srv.onSignal(sig)
+		defer srv.wg.Done()
+
+		for {
+			select {
+			case <-srv.shutdown:
+				return
+			case sig := <-c:
+				log.Infof("Received [%d:%s] signal from OS", sig, sig.String())
+				srv.onSignal(sig)
+			}
 		}
 	}()
 }
@@ -396,8 +453,4 @@ func (srv *Server) GetProtoVersion() string {
 
 func (srv *Server) GetMetrics() *SrvMetricsState {
 	return srv.metrics
-}
-
-func (srv *Server) GetStatus() ServerState {
-	return srv.status
 }

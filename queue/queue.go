@@ -7,6 +7,8 @@ import (
 	"sync"
 	"sync/atomic"
 
+	"github.com/sasha-s/go-deadlock"
+
 	"github.com/valinurovam/garagemq/amqp"
 	"github.com/valinurovam/garagemq/config"
 	"github.com/valinurovam/garagemq/interfaces"
@@ -40,13 +42,13 @@ type Queue struct {
 	exclusive   bool
 	autoDelete  bool
 	durable     bool
-	cmrLock     sync.RWMutex
+	cmrLock     deadlock.RWMutex
 	consumers   []interfaces.Consumer
 	consumeExcl bool
 	call        chan struct{}
 	wasConsumed bool
 	shardSize   int
-	actLock     sync.RWMutex
+	actLock     deadlock.RWMutex
 	active      bool
 	// persistent storage
 	msgPStorage interfaces.MsgStorage
@@ -58,7 +60,7 @@ type Queue struct {
 	queueLength     int64
 
 	// lock for sync load swapped-messages from disk
-	loadSwapLock           sync.Mutex
+	loadSwapLock           deadlock.Mutex
 	maxMessagesInRAM       uint64
 	lastStoredMsgID        uint64
 	lastMemMsgID           uint64

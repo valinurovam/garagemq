@@ -26,6 +26,8 @@ func (channel *Channel) connectionRoute(method amqp.Method) *amqp.Error {
 }
 
 func (channel *Channel) connectionStart() {
+	defer channel.wg.Done()
+
 	var capabilities = amqp.Table{}
 	capabilities["publisher_confirms"] = true
 	capabilities["exchange_exchange_bindings"] = false

@@ -1,8 +1,9 @@
 package metrics
 
 import (
-	"sync"
 	"time"
+
+	"github.com/sasha-s/go-deadlock"
 )
 
 // TrackItem implements tracked item with value and timestamp
@@ -15,7 +16,7 @@ type TrackItem struct {
 type TrackBuffer struct {
 	track     []*TrackItem
 	trackDiff []*TrackItem
-	lock      sync.RWMutex
+	lock      deadlock.RWMutex
 	pos       int
 	length    int
 

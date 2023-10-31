@@ -1,7 +1,7 @@
 package safequeue
 
 import (
-	"sync"
+	"github.com/sasha-s/go-deadlock"
 
 	"github.com/valinurovam/garagemq/amqp"
 )
@@ -12,7 +12,7 @@ import (
 // SafeQueue represents simple FIFO queue
 // TODO Is that implementation faster? test simple slice queue
 type SafeQueue struct {
-	sync.RWMutex
+	deadlock.RWMutex
 	shards    [][]*amqp.Message
 	shardSize int
 	tailIdx   int

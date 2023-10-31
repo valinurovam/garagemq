@@ -30,7 +30,6 @@ func TestParsePlain_Failed_WrongFormat(t *testing.T) {
 	}
 }
 
-
 func TestHashPassword_Failed(t *testing.T) {
 	password := t.Name()
 	_, err := HashPassword(password, t.Name())
@@ -38,7 +37,6 @@ func TestHashPassword_Failed(t *testing.T) {
 		t.Fatal("Expected error about auth type")
 	}
 }
-
 
 func TestCheckPasswordHash_Bcrypt(t *testing.T) {
 	password := t.Name()

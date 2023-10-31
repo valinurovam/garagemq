@@ -1,15 +1,16 @@
 package metrics
 
 import (
-	"sync"
 	"time"
+
+	"github.com/sasha-s/go-deadlock"
 )
 
 var r *TrackRegistry
 
 // TrackRegistry is a registry of track counters or other track metrics
 type TrackRegistry struct {
-	cntLock     sync.Mutex
+	cntLock     deadlock.Mutex
 	Counters    map[string]*TrackCounter
 	trackLength int
 	trackTick   *time.Ticker
