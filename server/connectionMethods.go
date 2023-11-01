@@ -103,6 +103,8 @@ func (channel *Channel) connectionTuneOk(method *amqp.ConnectionTuneOk) *amqp.Er
 			channel.conn.heartbeatInterval = method.Heartbeat
 		}
 		channel.conn.heartbeatTimeout = channel.conn.heartbeatInterval * 3
+
+		channel.conn.wg.Add(1)
 		go channel.conn.heartBeater()
 	}
 

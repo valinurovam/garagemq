@@ -98,7 +98,7 @@ func NewConnection(server *Server, netConn *net.TCPConn) (connection *Connection
 		srvMetrics:        server.metrics,
 		wg:                &sync.WaitGroup{},
 		lastOutgoingTS:    make(chan time.Time),
-		heartbeatInterval: 10,
+		heartbeatInterval: 60, // default value as RabbitMQ default value
 	}
 
 	connection.logger = log.WithFields(log.Fields{
@@ -270,7 +270,12 @@ func (conn *Connection) handleOutgoing() {
 			return
 		case frame := <-conn.outgoing:
 			if frame == nil {
+				conn.logger.Warn("unexpected nil frame")
 				return
+			}
+
+			if frame.Type == amqp.FrameHeartbeat {
+				conn.logger.Debug("Outgoing -> Heartbeat")
 			}
 
 			if err = amqp.WriteFrame(buffer, frame); err != nil && !conn.isClosedError(err) {
@@ -339,7 +344,7 @@ func (conn *Connection) handleIncoming() {
 	for {
 		// TODO
 		// @spec-note
-		// After sending connection.close , any received methods except Close and Close­OK MUST be discarded.
+		// After sending connection.close, any received methods except Close and Close­OK MUST be discarded.
 		// The response to receiving a Close after sending Close must be to send Close­Ok.
 		frame, err := amqp.ReadFrame(buffer)
 		if err != nil {
@@ -381,6 +386,10 @@ func (conn *Connection) handleIncoming() {
 			return
 		}
 
+		if frame.Type == amqp.FrameHeartbeat {
+			conn.logger.Debug("Incoming <- Heartbeat")
+		}
+
 		select {
 		case <-conn.ctx.Done():
 			close(channel.incoming)
@@ -391,7 +400,9 @@ func (conn *Connection) handleIncoming() {
 }
 
 func (conn *Connection) heartBeater() {
-	interval := time.Duration(conn.heartbeatInterval) * time.Second
+	defer conn.wg.Done()
+
+	interval := time.Duration(conn.heartbeatInterval) * time.Second / 2
 	conn.heartbeatTimer = time.NewTicker(interval)
 
 	var (
@@ -401,7 +412,9 @@ func (conn *Connection) heartBeater() {
 
 	heartbeatFrame := &amqp.Frame{Type: byte(amqp.FrameHeartbeat), ChannelID: 0, Payload: []byte{}, CloseAfter: false, Sync: true}
 
+	conn.wg.Add(1)
 	go func() {
+		defer conn.wg.Done()
 		for {
 			lastTs, ok = <-conn.lastOutgoingTS
 			if !ok {
@@ -410,9 +423,19 @@ func (conn *Connection) heartBeater() {
 		}
 	}()
 
-	for tickTime := range conn.heartbeatTimer.C {
-		if tickTime.Sub(lastTs) >= interval-time.Second {
-			conn.outgoing <- heartbeatFrame
+	for {
+		select {
+		case ts, stillOutgoing := <-conn.lastOutgoingTS:
+			if !stillOutgoing {
+				return
+			}
+			lastTs = ts
+		case tickTime := <-conn.heartbeatTimer.C:
+			if tickTime.Sub(lastTs) >= interval-time.Second {
+				conn.outgoing <- heartbeatFrame
+			}
+		case <-conn.ctx.Done():
+			return
 		}
 	}
 }
